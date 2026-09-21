@@ -140,3 +140,5 @@ TURN 计量会对经过两个 relay socket 的同一数据分别计数，不能�
 ## 服务端多架构镜像（2026-09-22）
 
 Dockerfile 使用构建宿主运行 Go 编译器，按 BuildKit TARGETOS/TARGETARCH 交叉编译；Server CI 导出 linux/amd64 + linux/arm64 OCI 归档和 SHA-256，不上传镜像仓库。本机归档逐 blob 校验 SHA-256，并核对两份 ELF machine、镜像平台、nonroot 用户与入口。加载归档后，两个平台分别通过完整容器路由/权限检查（amd64 由 Docker Desktop 仿真运行）。本机报告 `/tmp/ct-phase5-multiarch-{amd64,arm64}.log`，产物 `dist/ctserver-linux-amd64-arm64.oci.tar`。
+
+远程 [Server 35658256979](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979) 已成功，包含 race/vet、Go 许可、容器检查及多架构导出。下载 [OCI artifact](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979/artifacts/10664868634) 后再次核对归档 SHA-256、所有 blob、两份 ELF 架构、内嵌版本 `74890367e093` 与 nonroot 入口，均通过；下载文件保留在 `dist/ci-35658256979-server/`。
