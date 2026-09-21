@@ -1,0 +1,4 @@
+<resources>
+    <string name="transfer_channel">File transfers</string>
+    <string name="transfer_running">Importing, sharing or receiving files</string>
+</resources>

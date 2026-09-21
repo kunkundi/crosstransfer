@@ -25,8 +25,12 @@
   - iOS 15.0+，device arm64 / simulator arm64+x86_64 静态 XCFramework、分享扩展、扫码、Documents/Received、系统分享/导出、后台任务、手机布局。
   - 本机未签名 release / simulator 构建、15 项 ABI 符号检查、13 项 Dart 测试、4 项 XCTest（运行时 FFI、P2P、强制中继、失败重连）通过；CLI ⇄ iOS 实际收发校验通过，系统 Files 分享扩展已验收。
   - 修复心跳/重连条件变量锁不一致与 endpoint 生命周期问题；桌面 core 回归扩充至 28 用例 / 305 断言。
-  - 正式 Bundle ID/Team/域名仍待确定，签名真机、相机实扫、后台系统到期与 Universal Link 部署验收未完成；新增 iOS Actions 尚未记录远程运行结果。
-- 下一步：阶段 4 Android，同时补 iOS 真机/域名验收；公开发布前补齐桌面证书/公证与真实桌面外观验收，阶段 5 公共服务与加固沿用规划。
+  - 正式 Bundle ID/Team/域名仍待确定，签名真机、相机实扫、后台系统到期与 Universal Link 部署验收未完成；iOS Actions `35634079792` 已全部通过。
+- **阶段 4 Android 主要实现与本机自动化验收已完成**，见 `docs/PHASE4_NOTES.md`、`docs/ANDROID_BUILD.md`：
+  - NDK 28.2 三 ABI、15 项 FFI 导出、16 KB 对齐；Application 引擎、前台服务、SAF 导入/导出、系统分享、scheme 与 App Link 配置。
+  - 本机 2 项运行时 FFI、2 项 SAF/分享仪器测试、CLI 冷/热链接及后台接收通过；三 ABI Release 测试 APK 与 24 个原生库打包检查通过。
+  - 原生三架构 Actions `35636445939` 全绿；完整 APK/模拟器 CI 待记录结果。正式签名、App Link、真机和 16 KB 系统运行验收待补。
+- 下一步：阶段 5 TLS/许可/存储加固、全平台回归与自托管文档；补移动端真机/域名及桌面证书、公证和外观验收。
 
 ## 硬约束（不要偏离）
 
@@ -45,7 +49,7 @@
 ## 环境
 
 - 已有：xmake 3.1.0、Xcode、Go 1.25（`server/go.mod` 固定 `go 1.25`；升级 `golang.org/x/*` 时注意别把 go 指令拉到 1.26）。
-- Flutter 3.47.5 / Dart 3.13.4（`/opt/homebrew/bin`）、CocoaPods；Android SDK 未装。
+- Flutter 3.47.5 / Dart 3.13.4（`/opt/homebrew/bin`）、CocoaPods；Android SDK 36 / Build Tools 36.0.0 / NDK 28.2.13676358 与 JDK 21 已装，所有者已接受相关许可。
 
 ## 本地验证
 

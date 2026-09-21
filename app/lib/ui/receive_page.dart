@@ -192,7 +192,7 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ),
-                if (!MobilePlatform.isIOS) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
+                if (!MobilePlatform.isMobile) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
               ]),
             ],
           ),
@@ -298,10 +298,10 @@ class _ReceiveCard extends ConsumerWidget {
                 ),
               if (r.state == 'completed')
                 IconButton(
-                  tooltip: s(MobilePlatform.isIOS ? 'recv.export' : 'recv.open_dir'),
+                  tooltip: s(MobilePlatform.isMobile ? 'recv.export' : 'recv.open_dir'),
                   // Open the containing folder, including when the share was
                   // a single file or the receiver renamed a colliding root.
-                  onPressed: () => MobilePlatform.isIOS
+                  onPressed: () => MobilePlatform.isMobile
                       ? MobilePlatform.exportDirectory(r.saveDir)
                       : OpenFilex.open(r.saveDir),
                   icon: const Icon(Icons.folder_open),

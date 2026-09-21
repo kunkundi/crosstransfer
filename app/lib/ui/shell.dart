@@ -104,7 +104,11 @@ class _ShellState extends ConsumerState<Shell> {
     super.initState();
     _mobile = MobileLifecycle(() {
       if (mounted) showSnack(context, ref.read(sProvider)('mobile.expired'));
-    }, _readInbox)..start();
+    }, _readInbox, (error) {
+      if (mounted) {
+        showSnack(context, '${ref.read(sProvider)('common.error')}: $error');
+      }
+    })..start();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _mobile.update(ref.read(coreStateProvider), ref.read(coreStateProvider.notifier));

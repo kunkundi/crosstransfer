@@ -1,0 +1,4 @@
+<resources>
+    <string name="transfer_channel">文件传输</string>
+    <string name="transfer_running">正在导入、分享或接收文件</string>
+</resources>

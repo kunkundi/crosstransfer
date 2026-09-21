@@ -20,6 +20,7 @@ class DesktopNotifier {
     try {
       final ok = await _plugin.initialize(
         settings: const InitializationSettings(
+          android: AndroidInitializationSettings('ic_transfer'),
           iOS: DarwinInitializationSettings(
             requestAlertPermission: true,
             requestSoundPermission: true,
@@ -53,6 +54,11 @@ class DesktopNotifier {
         title: title,
         body: body,
         notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'milestones',
+            'Transfer results',
+            importance: Importance.defaultImportance,
+          ),
           iOS: DarwinNotificationDetails(presentSound: true),
           macOS: DarwinNotificationDetails(presentSound: true),
           linux: LinuxNotificationDetails(),
@@ -64,5 +70,10 @@ class DesktopNotifier {
     }
   }
 
-  bool get supported => Platform.isIOS || Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  bool get supported =>
+      Platform.isAndroid ||
+      Platform.isIOS ||
+      Platform.isMacOS ||
+      Platform.isWindows ||
+      Platform.isLinux;
 }

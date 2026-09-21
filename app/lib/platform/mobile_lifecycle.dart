@@ -9,17 +9,21 @@ import 'mobile.dart';
 /// One background assertion for all active work, with no automatic renewal
 /// after iOS expires it. The UI asks the user to resume paused transfers.
 class MobileLifecycle {
-  MobileLifecycle(this.onExpired, this.onInboxChanged);
+  MobileLifecycle(this.onExpired, this.onInboxChanged, this.onImportError);
   final void Function() onExpired;
   final Future<void> Function() onInboxChanged;
+  final void Function(String) onImportError;
   bool? _active;
   CoreState? _state;
   CoreStateNotifier? _notifier;
 
   void start() {
-    if (!MobilePlatform.isIOS) return;
+    if (!MobilePlatform.isMobile) return;
     MobilePlatform.channel.setMethodCallHandler((call) async {
       if (call.method == 'InboxChanged') await onInboxChanged();
+      if (call.method == 'ImportError') {
+        onImportError(call.arguments.toString());
+      }
       if (call.method == 'BackgroundExpired') {
         final state = _state;
         if (state != null) {
@@ -56,7 +60,7 @@ class MobileLifecycle {
   }
 
   void dispose() {
-    if (!MobilePlatform.isIOS) return;
+    if (!MobilePlatform.isMobile) return;
     MobilePlatform.channel.setMethodCallHandler(null);
     unawaited(
       MobilePlatform.setTransferActive(false).catchError((Object _) {}),

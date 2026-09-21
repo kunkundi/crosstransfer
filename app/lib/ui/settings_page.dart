@@ -127,7 +127,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Expanded(
               child: Text(MobilePlatform.displayPath(_saveDir), maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
-            if (!MobilePlatform.isIOS) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
+            if (!MobilePlatform.isMobile) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
           ]),
         ),
         _Row(

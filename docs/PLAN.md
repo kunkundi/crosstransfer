@@ -297,7 +297,7 @@ const char* CtVersion(void);
 **阶段 3：iOS**（2026-09-22 主要实现与本机验收完成；真机/域名验收待补，见 `docs/PHASE3_NOTES.md`、`docs/IOS_BUILD.md`）
 10. 静态库合并 + podspec；分享扩展；扫码；Universal Link；`Documents/Received`；后台任务。
 
-**阶段 4：Android**
+**阶段 4：Android**（2026-09-22 主要实现与本机自动化验收完成；完整 CI、真机/正式签名/域名验收待补，见 `docs/PHASE4_NOTES.md`）
 11. 特化版 MiniRTC 补 android 平台 xmake 配方与 NDK 构建（libjuice / OpenSSL / libsrtp 交叉编译）。
 12. Runner：`jniLibs`、SAF、分享入口、App Link、前台服务。
 

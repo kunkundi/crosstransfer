@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Test APK only. Files live in its private fixture directory. -->
+        <provider android:name="com.crosstransfer.crosstransfer.FixtureDocuments"
+            android:authorities="ct.android.tests.documents"
+            android:permission="android.permission.MANAGE_DOCUMENTS"
+            android:exported="true" android:grantUriPermissions="true" />
+        <receiver android:name="com.crosstransfer.crosstransfer.FixtureSetup"
+            android:exported="true" />
+    </application>
+</manifest>

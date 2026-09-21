@@ -46,6 +46,10 @@ class _SendPageState extends ConsumerState<SendPage> {
   }
 
   Future<void> _pickFiles() async {
+    if (MobilePlatform.isAndroid) {
+      await _pickAndroid();
+      return;
+    }
     final files = await FilePicker.pickFiles(
       dialogTitle: ref.read(sProvider)('send.pick_files'),
     );
@@ -54,9 +58,24 @@ class _SendPageState extends ConsumerState<SendPage> {
   }
 
   Future<void> _pickFolder() async {
+    if (MobilePlatform.isAndroid) {
+      await _pickAndroid(folder: true);
+      return;
+    }
     final dir = await FilePicker.getDirectoryPath(
         dialogTitle: ref.read(sProvider)('send.pick_folder'));
     if (dir != null) await _share([dir]);
+  }
+
+  Future<void> _pickAndroid({bool folder = false}) async {
+    try {
+      final paths = await MobilePlatform.pickAndroidFiles(folder: folder);
+      if (mounted) await _share(paths);
+    } catch (e) {
+      if (mounted) {
+        showSnack(context, '${ref.read(sProvider)('common.error')}: $e');
+      }
+    }
   }
 
   @override
@@ -310,7 +329,7 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                         icon: const Icon(Icons.link),
                         label: Text(s('send.copy_link')),
                       ),
-                      if (MobilePlatform.isIOS)
+                      if (MobilePlatform.isMobile)
                         OutlinedButton.icon(
                           onPressed: () => MobilePlatform.shareLink(share.link),
                           icon: const Icon(Icons.ios_share),

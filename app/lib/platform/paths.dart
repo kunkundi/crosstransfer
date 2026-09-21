@@ -33,7 +33,7 @@ class AppPaths {
     }
     await Directory(dataDir).create(recursive: true);
 
-    if (Platform.isIOS) {
+    if (Platform.isIOS || Platform.isAndroid) {
       final documents = await getApplicationDocumentsDirectory();
       final saveDir = p.join(documents.path, 'Received');
       await Directory(saveDir).create(recursive: true);
