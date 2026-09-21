@@ -82,6 +82,11 @@ def Main():
             app_data = work / 'app-data'
             app_dest = work / 'received-by-app'
             if args.app:
+                mac_launcher = work / 'macos-test-launcher'
+                if sys.platform == 'darwin':
+                    subprocess.run(['xcrun', 'swiftc', '-swift-version', '5',
+                                    str(ROOT / 'tools/macos_test_launcher.swift'),
+                                    '-o', str(mac_launcher)], check=True)
                 app_data.mkdir()
                 app_dest.mkdir()
                 (app_data / 'config.json').write_text(json.dumps({
@@ -119,9 +124,11 @@ def Main():
                     uri = f'crosstransfer://r/{code}'
                     if sys.platform == 'darwin':
                         if app_process is None:
-                            app_process, _ = Start(direction + '-app', [str(executable)], app_env)
-                            time.sleep(2)
-                        subprocess.run(['open', '-a', str(executable.parents[2]), uri], check=True)
+                            app_process, _ = Start(direction + '-app',
+                                [str(mac_launcher), str(executable.parents[2]), uri], app_env)
+                        else:
+                            subprocess.run(['open', '-a', str(executable.parents[2]), uri],
+                                           check=True, timeout=15)
                     else:
                         activated, _ = Start(direction + '-app', [str(executable), uri], app_env)
                         if app_process is None:
