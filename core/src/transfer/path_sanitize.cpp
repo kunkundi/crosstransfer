@@ -146,7 +146,7 @@ std::string UniqueName(const std::filesystem::path& base, std::string_view name,
 
 std::string ToUtf8(const std::filesystem::path& p) {
 #ifdef _WIN32
-  const std::u8string u8 = p.u8string();
+  const auto u8 = p.u8string();  // std::string in C++17, std::u8string in C++20
   return std::string(u8.begin(), u8.end());
 #else
   return p.string();

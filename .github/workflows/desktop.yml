@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   desktop:
+    name: ${{ matrix.platform }} (${{ matrix.arch }})
     strategy:
       fail-fast: false
       matrix:
@@ -42,15 +43,28 @@ jobs:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
       - uses: subosito/flutter-action@v2
+        id: flutter
         with:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: Cache installed Flutter before native compilation
+        if: steps.flutter.outputs.CACHE-HIT != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.flutter.outputs.CACHE-PATH }}
+          key: ${{ steps.flutter.outputs.CACHE-KEY }}
       - uses: xmake-io/github-action-setup-xmake@v1
         with:
           xmake-version: '3.1.0'
-          package-cache: true
-          package-cache-key: ${{ matrix.os }}-${{ matrix.arch }}
+      - name: Locate native package cache
+        id: native-cache
+        run: echo "path=$(xmake l -c 'import("core.package.package"); print(package.installdir())' | tr -d '\r')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.native-cache.outputs.path }}
+          key: desktop-native-${{ runner.os }}-${{ matrix.arch }}-${{ github.run_id }}
+          restore-keys: desktop-native-${{ runner.os }}-${{ matrix.arch }}-
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -72,6 +86,12 @@ jobs:
         run: |
           xmake build -y core_tests ct_cli
           xmake run core_tests
+      - name: Preserve installed native dependencies, including after failures
+        if: always() && !cancelled() && steps.native-cache.outputs.path != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.native-cache.outputs.path }}
+          key: desktop-native-${{ runner.os }}-${{ matrix.arch }}-${{ github.run_id }}
       - name: Dart analysis, tests and packaged ABI
         working-directory: app
         env:
