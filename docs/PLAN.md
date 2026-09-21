@@ -235,18 +235,22 @@ crosstransfer/
 ```c
 typedef struct CtCore CtCore;
 typedef void (*CtEventCallback)(const char* json_utf8, void* user_data);
-CtCore*     ct_create(const char* config_json);   // 数据/日志目录、服务器、TURN、保存目录、默认分享模式与 ttl
-void        ct_destroy(CtCore*);
-void        ct_set_event_callback(CtCore*, CtEventCallback, void* user_data);
-int         ct_update_config(CtCore*, const char* config_json);
-int         ct_share_create(CtCore*, const char* paths_json, const char* options_json); // → share_state 事件带取件码/链接
-int         ct_share_close(CtCore*, const char* share_id);
-int         ct_receive_start(CtCore*, const char* code_or_link, const char* save_dir);
-int         ct_transfer_pause / ct_transfer_resume / ct_transfer_cancel(CtCore*, const char* transfer_id);
-const char* ct_query(CtCore*, const char* query_json);   // 快照：shares / receives / transfers / config
-void        ct_free_string(const char*);
-const char* ct_version(void);
+CtCore*     CtCreate(const char* config_json);   // 数据/日志目录、服务器、TURN、保存目录、默认分享模式与 ttl
+void        CtDestroy(CtCore*);
+void        CtSetEventCallback(CtCore*, CtEventCallback, void* user_data);
+void        CtSetEventCallbackOwned(CtCore*, CtEventCallback, void* user_data); // 仅共享库：事件为 malloc 副本，Dart listener 用
+int         CtUpdateConfig(CtCore*, const char* config_json);
+int         CtShareCreate(CtCore*, const char* paths_json, const char* options_json, const char** out_share_id);
+int         CtShareClose(CtCore*, const char* share_id);
+int         CtReceiveStart(CtCore*, const char* code_or_link, const char* save_dir, const char** out_transfer_id);
+int         CtReceiveResume(CtCore*, const char* transfer_id);
+int         CtTransferPause / CtTransferResume / CtTransferCancel(CtCore*, const char* transfer_id);
+const char* CtQuery(CtCore*, const char* query_json);   // 快照：shares / receives / transfers / config
+void        CtFreeString(const char*);
+const char* CtVersion(void);
 ```
+
+（实际实现见 `core/include/crosstransfer/ct_api.h`；函数名按项目约定用大驼峰。）
 
 事件：`signal_state`；`share_state`（creating / ready / claimed / transferring / completed / closed / failed，含 code、link、expires_at、接收端计数）；`receive_state`（claiming / connecting / waiting_offer / transferring / verifying / completed / failed，含 `code_not_found` / `code_expired` / `share_busy`）；`transfer_progress`（bytes、rate、eta、当前文件、P2P / TURN / 中继）；`error`。
 
@@ -261,6 +265,8 @@ const char* ct_version(void);
 3. **设置**：保存目录、服务器地址、TURN 模式、分享 ttl、默认 once / open、语言（中 / 英）。
 
 平台：桌面托盘与关窗隐藏；iOS 分享扩展入口、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。
+
+桌面基线（阶段 2 确定）：macOS 12.0+（Flutter 3.47 模板与 `file_picker_darwin` 的要求），**不启用 App Sandbox**（P2P 任意 UDP 端口 + 用户任意目录读写），走 Developer ID 签名 + 公证的 dmg 分发；`crosstransfer_native` 以 `vendored_libraries` podspec 嵌入 `Contents/Frameworks/`。Windows / Linux 把共享库放在可执行文件旁（`lib/`），Dart `DynamicLibrary.open` 按 `CT_NATIVE_LIB` → 包内路径 → 裸名顺序查找。
 
 ## 九、构建与部署
 

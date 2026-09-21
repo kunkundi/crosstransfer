@@ -72,6 +72,15 @@ CT_API void CtDestroy(CtCore* core);
 CT_API void CtSetEventCallback(CtCore* core, CtEventCallback cb,
                                void* user_data);
 
+/**
+ * Same as CtSetEventCallback, but each event arrives as a malloc'd copy that
+ * outlives the call; the callback must release it with CtFreeString. Needed by
+ * asynchronous listeners (Dart NativeCallable.listener). Exported only by the
+ * crosstransfer_native shared library.
+ */
+CT_API void CtSetEventCallbackOwned(CtCore* core, CtEventCallback cb,
+                                    void* user_data);
+
 /** Merge new values into the configuration (server change reconnects). */
 CT_API int CtUpdateConfig(CtCore* core, const char* config_json);
 

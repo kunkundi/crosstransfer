@@ -100,8 +100,10 @@ runs[run_count]: start (4) | length (4)
 | `signal_state` | `state`（connecting / connected / failed / closed / reconnecting / tls_error）, `peer_id` |
 | `share_state` | `id`, `share_id`, `state`（creating / ready / claimed / transferring / completed / closed / failed）, `mode`, `code`, `link`, `scheme_link`, `expires_at`, `files`, `bytes`, `receivers`, `completed`, `error` |
 | `receive_state` | `transfer_id`, `code`, `state`（claiming / connecting / waiting_offer / transferring / completed / failed / cancelled / interrupted）, `save_dir`, `session_id`, `resumable`, `error_code`, `error_message`, `meta` |
-| `transfer_state` / `transfer_progress` | `transfer_id`, `session_id`, `role`, `state`, `error_code`, `error_message`, `path`（p2p / turn / relay）, `bytes_total`, `bytes_done`, `files_total`, `files_done`, `rate_bps`, `loss_permille`, `current_file`, `eta_sec` |
+| `transfer_state` / `transfer_progress` | `transfer_id`, `session_id`, `share_id`（发送端：本地分享 id，供 UI 归组）, `role`, `state`, `error_code`, `error_message`, `path`（p2p / turn / relay）, `bytes_total`, `bytes_done`, `files_total`, `files_done`, `rate_bps`, `loss_permille`, `current_file`, `eta_sec` |
 | `config` | `config` |
 | `error` | `code`, `message` |
 
 `transfer_progress` 节流到 10 Hz。
+
+`CtSetEventCallback` 在 core 事件循环线程上同步回调，`json_utf8` 仅在调用期间有效；`crosstransfer_native` 共享库额外导出 `CtSetEventCallbackOwned`，每个事件传入一份 `malloc` 副本，回调方用 `CtFreeString` 释放，供 Dart `NativeCallable.listener` 这类异步投递的监听器使用。

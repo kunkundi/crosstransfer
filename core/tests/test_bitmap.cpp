@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <doctest/doctest.h>
 
 #include "transfer/bitmap.h"

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=CrossTransfer
+Comment=Send and receive files with a take-code
+Comment[zh_CN]=通过取件码发送和接收文件
+Exec=/opt/crosstransfer/crosstransfer %u
+Icon=com.crosstransfer.crosstransfer
+Terminal=false
+Categories=Network;FileTransfer;
+MimeType=x-scheme-handler/crosstransfer;
+StartupWMClass=com.crosstransfer.crosstransfer

@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cctype>
+#include <cstdint>
 
 namespace ct {
 namespace takecode {

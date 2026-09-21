@@ -11,6 +11,9 @@ add_rules("mode.release", "mode.debug")
 set_languages("c++17")
 set_encodings("utf-8")
 
+-- macOS deployment floor for the Flutter app is 12.0 (see app/macos/Podfile);
+-- pass `--target_minver=12.0` at configure time (tools/build_native.sh does).
+
 includes("minirtc")
 
 add_requires("nlohmann_json 3.11.3", "spdlog 1.14.1",
@@ -52,6 +55,11 @@ end
 target("crosstransfer_core")
     set_kind("static")
     ct_common()
+    -- The API is compiled in this archive, not in native_export.cpp. MSVC
+    -- must see dllexport here for the umbrella DLL to expose every Ct* call.
+    if is_plat("windows") and has_config("ct_native") then
+        add_defines("CT_BUILDING_SHARED")
+    end
     add_deps("minirtc")
     add_packages("nlohmann_json", "spdlog", "openssl3")
     add_files("core/src/**.cpp")
@@ -89,10 +97,14 @@ if has_config("ct_native") then
         add_deps("crosstransfer_core", "minirtc")
         add_files("core/src/api/native_export.cpp")
         if is_plat("macosx", "iphoneos") then
-            add_ldflags("-Wl,-force_load,$(buildir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a", {force = true})
+            add_ldflags("-Wl,-force_load,$(builddir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a", {force = true})
+            add_ldflags("-Wl,-install_name,@rpath/libcrosstransfer_native.dylib", {force = true})
         elseif is_plat("linux", "android") then
-            add_ldflags("-Wl,--whole-archive", "$(buildir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a",
+            add_ldflags("-Wl,--whole-archive", "$(builddir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a",
                 "-Wl,--no-whole-archive", {force = true})
+        elseif is_plat("windows") then
+            add_defines("CT_BUILDING_SHARED")
+            add_shflags("/WHOLEARCHIVE:$(builddir)/$(plat)/$(arch)/$(mode)/crosstransfer_core.lib", {force = true})
         end
     target_end()
 end

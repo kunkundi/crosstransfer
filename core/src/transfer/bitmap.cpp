@@ -5,6 +5,7 @@
 #include "transfer/bitmap.h"
 
 #include <algorithm>
+#include <cstdint>
 
 namespace ct {
 

@@ -7,6 +7,8 @@
 #include "log/log.h"
 #include "transfer/protocol.h"
 
+#include <cstdint>
+
 namespace ct {
 namespace {
 

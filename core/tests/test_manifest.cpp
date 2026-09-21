@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <doctest/doctest.h>
 
 #include <filesystem>

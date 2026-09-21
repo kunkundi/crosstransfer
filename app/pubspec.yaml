@@ -1,0 +1,35 @@
+name: crosstransfer
+description: "CrossTransfer: P2P file transfer with take-codes."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  app_links: ^7.2.1
+  desktop_drop: ^0.8.4
+  ffi: ^2.2.0
+  file_picker: ^13.1.0
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^22.3.1
+  flutter_riverpod: ^3.4.3
+  open_filex: ^4.7.0
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  qr_flutter: ^4.1.0
+  tray_manager: ^0.7.0
+  url_launcher: ^6.3.2
+  window_manager: ^0.5.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  ffigen: ^22.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/tray_icon.png

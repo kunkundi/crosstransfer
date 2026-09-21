@@ -4,6 +4,7 @@
 
 #include "transfer/sha256.h"
 
+#include <cstdint>
 #include <openssl/evp.h>
 
 #include <cstdio>

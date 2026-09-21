@@ -4,6 +4,7 @@
 
 #include "transfer/block_codec.h"
 
+#include <cstdint>
 #include <cstring>
 
 namespace ct {

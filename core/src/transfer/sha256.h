@@ -8,6 +8,7 @@
 #define CT_TRANSFER_SHA256_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <string>

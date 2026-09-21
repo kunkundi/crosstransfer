@@ -5,6 +5,7 @@
 #include "share/transfer_session.h"
 
 #include <algorithm>
+#include <cstdint>
 
 #include "log/log.h"
 #include "transfer/path_sanitize.h"

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <random>
 #include <thread>
 
@@ -766,9 +767,14 @@ void Core::OnCtrl(const std::string& session_id, std::string data) {
 }
 
 nlohmann::json Core::SnapshotJson(const TransferSnapshot& s) const {
+  // Sender-side transfers carry the local share id so a UI can group them.
+  std::string share_id;
+  auto t = transfers_.find(s.session_id);
+  if (t != transfers_.end()) share_id = t->second.share_local_id;
   return {
       {"transfer_id", s.transfer_id},
       {"session_id", s.session_id},
+      {"share_id", share_id},
       {"role", s.role},
       {"state", TransferStateName(s.state)},
       {"error_code", s.error_code},

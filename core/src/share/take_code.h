@@ -10,6 +10,7 @@
 #ifndef CT_SHARE_TAKE_CODE_H_
 #define CT_SHARE_TAKE_CODE_H_
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 

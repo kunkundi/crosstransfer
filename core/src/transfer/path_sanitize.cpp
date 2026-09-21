@@ -5,6 +5,7 @@
 #include "transfer/path_sanitize.h"
 
 #include <cctype>
+#include <cstdint>
 #include <random>
 #include <string>
 #include <system_error>

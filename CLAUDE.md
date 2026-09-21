@@ -16,8 +16,13 @@
   - 根 `xmake.lua`：`crosstransfer_core`（static）、`ct_cli`、`core_tests`（doctest，27 用例全绿）、可选 `crosstransfer_native`（shared，未验证）。
   - `core/include/crosstransfer/ct_api.h` 是唯一公开头（`CtCreate` … `CtVersion`，事件为 JSON 回调），阶段 2 的 ffigen 输入。
   - 端到端脚本在 `tools/`：`run_cli_e2e.sh`（P2P / TURN / 中继 / 丢包）、`run_cli_resume.sh`（kill -9 后续传）、`run_cli_open.sh`（open 模式双接收端）、`repeat_e2e.sh`。1 GiB 回环 156 s、峰值 RSS 35 MB。
-- `app/` 尚未创建。
-- 下一步：阶段 2（桌面 Flutter，macOS → Windows → Linux）。先安装 Flutter，再验证 `crosstransfer_native` 共享库与 ffigen。
+- **阶段 2 进行中**（桌面 Flutter），macOS 部分已完成，记录见 `docs/PHASE2_NOTES.md`：
+  - Flutter 3.47.5 已装（Homebrew cask），CocoaPods 已装。
+  - `app/`：Flutter 桌面工程（macOS / Windows / Linux 目标）。`lib/ffi/`（ffigen 绑定 + `CoreClient`）、`lib/state/`（Riverpod 3）、`lib/ui/`（发送 / 接收 / 设置）、`lib/platform/`（托盘、通知、scheme 链接、路径）、`lib/i18n/`。`flutter analyze` 零问题，`flutter test` 通过。
+  - `tools/build_native.sh` 构建 `crosstransfer_native` 并复制到 `app/<plat>/native/`；macOS 经 Podfile 的 `vendored_libraries` 嵌入 app。`tools/linux_build_native.sh` 在 Ubuntu 容器里构建 Linux `.so`。
+  - 已验证：App ⇄ `ct_cli` 双向传输、`crosstransfer://` 链接直达、关窗隐藏到托盘、`flutter build macos --release`。
+  - macOS 最低版本 12.0，不用 App Sandbox（走公证 dmg 分发）。
+- 下一步：Windows（需 Windows 机器：先 `xmake` 验证 minirtc / core / native，再 `flutter build windows`）、Linux 桌面验证、打包（dmg / NSIS / deb）。
 
 ## 硬约束（不要偏离）
 
@@ -36,7 +41,7 @@
 ## 环境
 
 - 已有：xmake 3.1.0、Xcode、Go 1.25（`server/go.mod` 固定 `go 1.25`；升级 `golang.org/x/*` 时注意别把 go 指令拉到 1.26）。
-- 未安装：Flutter / Dart（阶段 2 前安装）。
+- Flutter 3.47.5 / Dart 3.13.4（`/opt/homebrew/bin`）、CocoaPods；Android SDK 未装。
 
 ## 本地验证
 
@@ -49,4 +54,5 @@ MINIRTC_TEST_DROP_PERCENT=5 tools/run_cli_e2e.sh loss5 --turn off
 tools/run_cli_resume.sh 200 3              # kill -9 接收端后凭 resume_token 续传
 tools/run_cli_open.sh                      # open 模式两接收端并发
 cd minirtc && examples/run_echo.sh p2p     # 仅 MiniRTC 层（见 minirtc/README.md）
+tools/build_native.sh && (cd app && flutter run -d macos)   # 桌面 App（先起本地 server）
 ```

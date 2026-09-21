@@ -3,6 +3,7 @@
 /minirtc/build-*/
 /minirtc/.xmake/
 /build/
+/dist/
 /.xmake/
 *.a
 *.o

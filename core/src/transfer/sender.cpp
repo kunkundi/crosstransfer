@@ -5,6 +5,7 @@
 #include "transfer/sender.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 
 #include "log/log.h"

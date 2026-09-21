@@ -4,6 +4,7 @@
 
 #include "runtime/peer.h"
 
+#include <cstdint>
 #include <cstring>
 
 #include "log/log.h"

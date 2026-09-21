@@ -1,0 +1,21 @@
+PODS:
+  - crosstransfer_native (0.1.0)
+  - FlutterMacOS (1.0.0)
+
+DEPENDENCIES:
+  - crosstransfer_native (from `native`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+
+EXTERNAL SOURCES:
+  crosstransfer_native:
+    :path: native
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+
+SPEC CHECKSUMS:
+  crosstransfer_native: 0a8aa3574ceda929ed7d28dcc981e62b8c488881
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+
+PODFILE CHECKSUM: af1566c7f21f19087161394e4f0d1d99f0daa928
+
+COCOAPODS: 1.17.0

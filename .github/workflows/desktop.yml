@@ -1,0 +1,105 @@
+name: Desktop Phase 2
+on:
+  push:
+    branches: [main, 'codex/phase2-desktop']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows
+            arch: x64
+            native: app/windows/native/crosstransfer_native.dll
+            cli: build/windows/x64/release/ct_cli.exe
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x86_64
+            native: app/linux/native/libcrosstransfer_native.so
+            cli: build/linux/x86_64/release/ct_cli
+          - os: macos-14
+            platform: macos
+            arch: universal
+            native: app/macos/native/libcrosstransfer_native.dylib
+            cli: build/macosx/arm64/release/ct_cli
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: '3.1.0'
+          package-cache: true
+          package-cache-key: ${{ matrix.os }}-${{ matrix.arch }}
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libayatana-appindicator3-dev libnotify-dev libsecret-1-dev libjsoncpp-dev libstdc++-14-dev desktop-file-utils dpkg-dev xvfb dbus-x11 xdotool
+      - name: Native core (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tools/build_native.ps1
+      - name: Native core (Linux)
+        if: runner.os == 'Linux'
+        run: tools/build_native.sh linux x86_64
+      - name: Native core (macOS universal)
+        if: runner.os == 'macOS'
+        run: |
+          tools/build_native.sh macosx universal
+          xmake f -p macosx -a arm64 -m release --ct_native=y --target_minver=12.0 -y
+      - name: Native tests and CLI
+        run: |
+          xmake build -y core_tests ct_cli
+          xmake run core_tests
+      - name: Dart analysis, tests and packaged ABI
+        working-directory: app
+        env:
+          CT_NATIVE_LIB: ${{ github.workspace }}/${{ matrix.native }}
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter analyze
+          flutter test
+          dart run tool/native_check.dart
+      - name: Dart FFI and CLI bidirectional transfer
+        run: python tools/desktop_e2e.py --cli '${{ matrix.cli }}' --native '${{ matrix.native }}'
+      - name: Flutter release
+        working-directory: app
+        run: flutter build ${{ matrix.platform }} --release
+      - name: Package DMG
+        if: runner.os == 'macOS'
+        run: tools/package_macos.sh
+      - name: Package deb
+        if: runner.os == 'Linux'
+        run: tools/package_linux.sh
+      - name: Package NSIS
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          ./tools/package_windows.ps1 -MakeNsis "${env:ProgramFiles(x86)}/NSIS/makensis.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CrossTransfer-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error

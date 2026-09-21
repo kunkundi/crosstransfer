@@ -10,6 +10,7 @@
 #ifndef CT_TRANSFER_PATH_SANITIZE_H_
 #define CT_TRANSFER_PATH_SANITIZE_H_
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <string_view>

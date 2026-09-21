@@ -6,6 +6,8 @@
 
 #include "transfer/protocol.h"
 
+#include <cstdint>
+
 namespace ct {
 
 std::vector<std::vector<uint8_t>> SplitCtrlMessage(const std::string& message) {

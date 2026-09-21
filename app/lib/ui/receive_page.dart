@@ -1,0 +1,288 @@
+// Receive page: link / code input, save folder, list of receives.
+//
+// Copyright (c) 2026 DI JUNKUN. All Rights Reserved. Proprietary.
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
+
+import '../ffi/core_client.dart';
+import '../state/format.dart';
+import '../state/models.dart';
+import '../state/providers.dart';
+import 'widgets.dart';
+
+class ReceivePage extends ConsumerStatefulWidget {
+  const ReceivePage({super.key});
+
+  @override
+  ConsumerState<ReceivePage> createState() => _ReceivePageState();
+}
+
+class _ReceivePageState extends ConsumerState<ReceivePage> {
+  final _input = TextEditingController();
+  final _focus = FocusNode();
+  String? _saveDirOverride;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _input.addListener(() => setState(() => _error = null));
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  String get _saveDir =>
+      _saveDirOverride ?? ref.read(coreStateProvider).config.saveDir;
+
+  Future<void> _chooseDir() async {
+    final dir = await FilePicker.getDirectoryPath(
+        dialogTitle: ref.read(sProvider)('settings.choose_dir'),
+        initialDirectory: _saveDir.isEmpty ? null : _saveDir);
+    if (dir != null) setState(() => _saveDirOverride = dir);
+  }
+
+  void _start() {
+    final s = ref.read(sProvider);
+    final code = extractTakeCode(_input.text);
+    if (code == null) {
+      setState(() => _error = s('recv.invalid'));
+      return;
+    }
+    if (_saveDir.isEmpty) {
+      setState(() => _error = s('recv.no_save_dir'));
+      return;
+    }
+    if (!ref.read(coreStateProvider).serverConfigured) {
+      setState(() => _error = s('send.no_server'));
+      return;
+    }
+    try {
+      ref.read(coreStateProvider.notifier).startReceive(code, saveDir: _saveDir);
+      _input.clear();
+    } on CoreException catch (e) {
+      setState(() => _error = '${s('recv.invalid')} (${e.status})');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = ref.watch(sProvider);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final receives = ref.watch(coreStateProvider.select((st) => st.receiveList));
+    final String saveDir = _saveDirOverride ??
+        ref.watch(coreStateProvider.select<String>((st) => st.config.saveDir));
+
+    // A link opened from the OS lands here.
+    ref.listen<String?>(pendingReceiveProvider, (_, next) {
+      if (next == null) return;
+      _input.text = formatTakeCode(next);
+      _focus.requestFocus();
+      Future.microtask(() => ref.read(pendingReceiveProvider.notifier).set(null));
+    });
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    focusNode: _focus,
+                    autofocus: true,
+                    onSubmitted: (_) => _start(),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()]),
+                    decoration: InputDecoration(
+                      hintText: s('recv.input_hint'),
+                      prefixIcon: const Icon(Icons.qr_code_2),
+                      errorText: _error,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  height: 56,
+                  child: FilledButton.icon(
+                    onPressed: _start,
+                    icon: const Icon(Icons.download),
+                    label: Text(s('recv.start')),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Icon(Icons.folder_open, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Text('${s('recv.save_to')}: ',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+                Expanded(
+                  child: Text(saveDir,
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
+              ]),
+            ],
+          ),
+        ),
+        if (receives.isEmpty)
+          EmptyHint(s('recv.empty'))
+        else ...[
+          const SizedBox(height: 16),
+          for (final r in receives)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ReceiveCard(r, key: ValueKey(r.transferId)),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReceiveCard extends ConsumerWidget {
+  const _ReceiveCard(this.r, {super.key});
+  final ReceiveInfo r;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(sProvider);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final t = ref.watch(
+        coreStateProvider.select((st) => st.transferForReceive(r.transferId)));
+    final n = ref.read(coreStateProvider.notifier);
+    final name = r.metaName.isNotEmpty ? r.metaName : r.code;
+    final detail = (r.state == 'failed' || r.state == 'interrupted') && r.errorCode.isNotEmpty
+        ? s.errorCode(r.errorCode)
+        : null;
+    final paused = r.state == 'paused';
+    final running = r.state == 'transferring' || r.state == 'verifying' || paused;
+    final dest = r.metaName.isNotEmpty ? p.join(r.saveDir, r.metaName) : r.saveDir;
+    // A rejected code never becomes valid again; only offer retry when the
+    // core kept a resume token or the failure was transient.
+    const permanent = {'code_not_found', 'code_expired', 'share_closed', 'user'};
+    final canRetry = (r.isInterrupted || r.state == 'failed') &&
+        (r.resumable || !permanent.contains(r.errorCode));
+
+    return Card(
+      elevation: 0,
+      color: cs.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              Icon(
+                r.metaRoots > 1 || (r.metaFiles > 1) ? Icons.folder_zip_outlined : Icons.insert_drive_file_outlined,
+                color: cs.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name,
+                        style: theme.textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        r.code,
+                        if (r.metaFiles > 0)
+                          s('send.files_bytes')
+                              .replaceFirst('{files}', '${r.metaFiles}')
+                              .replaceFirst('{bytes}', formatBytes(r.metaBytes)),
+                        r.saveDir,
+                      ].join('  ·  '),
+                      style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              StateChip(r.state, detail: detail),
+              const SizedBox(width: 4),
+              if (running)
+                IconButton(
+                  tooltip: paused ? s('recv.resume') : s('recv.pause'),
+                  onPressed: () => paused
+                      ? n.resumeTransfer(r.transferId)
+                      : n.pauseTransfer(r.transferId),
+                  icon: Icon(paused ? Icons.play_arrow : Icons.pause),
+                ),
+              if (canRetry)
+                IconButton(
+                  tooltip: s('recv.retry'),
+                  onPressed: () => n.resumeReceive(r.transferId),
+                  icon: const Icon(Icons.refresh),
+                ),
+              if (r.state == 'completed')
+                IconButton(
+                  tooltip: s('recv.open_dir'),
+                  onPressed: () => OpenFilex.open(dest),
+                  icon: const Icon(Icons.folder_open),
+                ),
+              if (r.isActive)
+                IconButton(
+                  tooltip: s('recv.cancel'),
+                  onPressed: () => n.cancelTransfer(r.transferId),
+                  icon: const Icon(Icons.close),
+                )
+              else
+                IconButton(
+                  tooltip: s('recv.remove'),
+                  onPressed: () => n.removeReceive(r.transferId),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+            ]),
+            if (t != null && (running || t.state == 'completed' && r.state == 'completed')) ...[
+              const SizedBox(height: 12),
+              TransferProgressView(t),
+            ] else if (r.isActive && !running) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(minHeight: 4),
+            ],
+            if (r.errorMessage.isNotEmpty && (r.state == 'failed' || r.state == 'interrupted'))
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(r.errorMessage,
+                    style: theme.textTheme.bodySmall?.copyWith(color: cs.error)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

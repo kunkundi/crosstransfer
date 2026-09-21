@@ -5,6 +5,7 @@
 #include "transfer/file_io.h"
 
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <system_error>
 

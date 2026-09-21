@@ -5,6 +5,7 @@
 #include "transfer/manifest.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <set>
 #include <system_error>
 

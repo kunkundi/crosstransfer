@@ -1,5 +1,6 @@
 // End-to-end test of SenderTransfer <-> ReceiverTransfer over an in-memory
 // lossy datagram pipe, with a fake ctrl channel for file_done / file_ok.
+#include <cstdint>
 #include <doctest/doctest.h>
 
 #include <atomic>
