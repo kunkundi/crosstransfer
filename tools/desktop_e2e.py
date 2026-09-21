@@ -132,6 +132,8 @@ def Main():
                     WaitFor(lambda: all((dest / source.name / f.relative_to(source)).exists()
                                        for f in source.rglob('*')), timeout=120)
                     assert app_process.poll() is None, 'desktop application exited unexpectedly'
+                    saved_config = json.loads((app_data / 'config.json').read_text(encoding='utf-8'))
+                    assert saved_config['log_level'] == 'warn', 'startup overwrote the saved log level'
                     if sender.wait(timeout=30) != 0:
                         raise RuntimeError(f'{direction} sender failed')
                 elif direction == 'ffi-to-cli':

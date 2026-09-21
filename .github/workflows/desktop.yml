@@ -2,7 +2,9 @@ name: Desktop Phase 2
 on:
   push:
     branches: [main, 'codex/phase2-desktop']
+    paths-ignore: ['**.md']
   pull_request:
+    paths-ignore: ['**.md']
   workflow_dispatch:
 permissions:
   contents: read
