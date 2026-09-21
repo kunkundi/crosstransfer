@@ -47,7 +47,7 @@ fi
 extra=()
 case "$PLAT" in
   macosx) extra+=(--target_minver=12.0) ;;
-  windows) [ "$ARCH" = "x86_64" ] && ARCH=x64 ;;
+  windows) if [ "$ARCH" = "x86_64" ]; then ARCH=x64; fi ;;
 esac
 
 echo "==> xmake f -p $PLAT -a $ARCH -m $MODE --ct_native=y ${extra[*]:-}"

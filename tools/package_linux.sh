@@ -61,4 +61,6 @@ Description: P2P file transfer with take-codes
  Transfer files directly between devices using a code or link.
 EOF
 chmod -R go-w "$STAGE/pkg"
-dpkg-deb --root-owner-group --build "$STAGE/pkg" "$ROOT/dist/crosstransfer_${VERSION}_${DEB_ARCH}.deb"
+DEB="crosstransfer_${VERSION}_${DEB_ARCH}.deb"
+dpkg-deb --root-owner-group --build "$STAGE/pkg" "$ROOT/dist/$DEB"
+(cd "$ROOT/dist" && sha256sum "$DEB" > "$DEB.sha256")

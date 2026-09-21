@@ -22,5 +22,5 @@ Copy-Item "$($Redist.FullName)/*.dll" $Bundle -Force
 $Output = "$Root/dist/CrossTransfer-$Version-windows-x64-setup.exe"
 & $MakeNsis "/DBUNDLE=$Bundle" "/DVERSION=$Version" "/DOUTPUT=$Output" "$Root/packaging/windows/crosstransfer.nsi"
 if ($LASTEXITCODE -ne 0) { throw 'NSIS packaging failed' }
-(Get-FileHash $Output -Algorithm SHA256).Hash | Set-Content "$Output.sha256"
+"$((Get-FileHash $Output -Algorithm SHA256).Hash.ToLower())  $(Split-Path $Output -Leaf)" | Set-Content "$Output.sha256" -Encoding utf8
 Write-Output $Output
