@@ -1,0 +1,22 @@
+CrossTransfer — Proprietary License
+
+Copyright (c) 2024-2026 DI JUNKUN (kunkundi). All rights reserved.
+
+This software and its source code, including the specialised MiniRTC transport
+engine under `minirtc/`, the signaling server under `server/`, and every other
+file in this repository unless stated otherwise, are the confidential and
+proprietary property of the copyright holder.
+
+No part of this software may be copied, modified, merged, published,
+distributed, sublicensed, sold, or otherwise used, in source or binary form,
+without a prior written license agreement from the copyright holder.
+
+Third-party components are distributed under their own licenses; see
+THIRD_PARTY_NOTICES.md. The MiniRTC baseline from which `minirtc/` was derived
+was previously published by the same copyright holder under LGPL-3.0; this
+specialised edition is a separate proprietary work by that holder and the
+LGPL grant does not extend to it.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
