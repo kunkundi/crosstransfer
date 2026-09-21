@@ -72,8 +72,11 @@ def Main():
                 target.write_bytes(archive.extractfile(member).read())
                 modes[member.name] = member.mode
         source = work / PREFIX
-        subprocess.run(["git", "apply", "--check", str(PATCH)], cwd=source, check=True)
-        subprocess.run(["git", "apply", str(PATCH)], cwd=source, check=True)
+        # git apply honors a host's core.autocrlf even outside a checkout.
+        # Pin this subprocess only; never mutate the developer's Git settings.
+        git = ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "apply"]
+        subprocess.run([*git, "--check", str(PATCH)], cwd=source, check=True)
+        subprocess.run([*git, str(PATCH)], cwd=source, check=True)
         (source / "CROSSTRANSFER-CHANGES.txt").write_bytes(CHANGES.encode("utf-8"))
         (source / "CROSSTRANSFER-RELAY-ONLY.patch").write_bytes(PATCH.read_bytes())
         buffer = io.BytesIO()
