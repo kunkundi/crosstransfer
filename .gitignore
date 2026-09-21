@@ -1,0 +1,26 @@
+# build outputs
+/minirtc/build/
+/minirtc/build-*/
+/minirtc/.xmake/
+/build/
+/.xmake/
+*.a
+*.o
+*.dylib
+*.so
+*.dll
+
+# server
+/server/ctserver
+/server/bin/
+
+# logs / local runs
+logs/
+*.log
+/tmp/
+
+# editors
+.DS_Store
+.idea/
+.vscode/
+compile_commands.json

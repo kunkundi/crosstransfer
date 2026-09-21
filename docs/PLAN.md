@@ -1,0 +1,318 @@
+# CrossTransfer 完整规划（v7，2026-09-21）
+
+## 一、目标与约束
+
+在 `/Users/dijunkun/SourceCode/crosstransfer` 新建一款**商业闭源**的 P2P 文件传输工具，覆盖 Windows / macOS / Linux / iOS / Android。客户端、服务端、传输引擎全部在本仓库内自主实现。
+
+已确定的约束：
+
+1. UI 用 **Flutter + Dart FFI**，一套界面覆盖全平台。
+2. 传输引擎用 **MiniRTC 特化版**，源码放在本仓库 `minirtc/` 维护；裁掉音视频，保留信令 / ICE / DTLS-SRTP / RTP 数据通道 / KCP，并按需改造。
+3. 服务端**完全重写**，放在本仓库 `server/`，使用 **Go**；信令协议由本项目自行定义。
+4. 核心逻辑**全部新写**，不从 CrossDesk 复制后改；CrossDesk 只作为架构与协议事实的参考。
+5. 交互为**取件码模式**：发送端选文件后生成取件码 / 链接 / 二维码，接收端输入即收。
+6. 传输协议分工：**控制消息走 KCP 可靠流；文件数据走自研"按偏移传块 + 位图 SACK"协议**，跑在非可靠流上。
+7. **商业闭源**：所有第三方依赖必须允许闭源静态链接（iOS 必须静态）；LGPL 依赖全部移除，ICE 层以 libjuice（MPL-2.0）替换 libnice / glib / gupnp。
+
+已逐项确认的设计决策：
+
+| # | 决策 |
+| --- | --- |
+| 1 | 取件码 10 位 Crockford Base32（4 位前缀 + 6 位密钥，50 bit）；UI 链接/二维码优先、手输兜底 |
+| 2 | 断线续传用 `resume_token`；`once` 码失效后仍可凭 token 恢复 |
+| 3 | 第一版 DTLS-SRTP、信任服务器转发的指纹；协议预留 `auth` 字段供 SPAKE2 升级 |
+| 4 | 输入取件码即视为同意，`offer` 到达直接开始；进度页可取消 |
+| 5 | 服务端无账号、纯内存、单实例；不存文件；`claim` 限速；TURN 内嵌 pion/turn，可切外部 coturn |
+| 6 | 固定由接收端发 offer |
+| 7 | 全部专有许可；依赖仅 MPL / BSD / Boost / Apache / MIT；libjuice + miniupnpc 替换 libnice / glib / gupnp；无 ICE-TCP / TURN-TCP，由服务端 WSS 中继兜底 |
+| 8 | 第一版不做浏览器接收页，落地页仅"用 App 打开 / 下载" |
+| 9 | 非可靠流接 PacedSender + BWE，块净荷 ≤ 1100 字节；ctrl 走 KCP 窗口 1024；BWE 为主、SACK 丢包 AIMD 兜底 |
+| 10 | iOS 传输期间 `beginBackgroundTask`，大文件需前台；Android 前台服务 |
+| 11 | UI 中 / 英双语；应用名 CrossTransfer；bundle id 与域名在 Flutter 阶段前由用户提供 |
+
+执行假设：
+
+| 项 | 假设 |
+| --- | --- |
+| Android | 分阶段，特化版 MiniRTC 需补 NDK 构建（libjuice / OpenSSL / libsrtp 交叉编译，无 glib 后难度明显降低） |
+| 许可 | 项目、`minirtc/` 特化版、`server/` 均为专有许可。MiniRTC 版权人（dijunkun = kunkundi）为用户本人；`qos/aimd_rate_control.cc` 中一处外部贡献的一行初始化修复在特化版中重写。仓库根放 `LICENSE`（专有）与 `THIRD_PARTY_NOTICES.md`（汇总依赖许可证文本，随产品分发，App 内提供开源许可证页） |
+| 公共服务 | 第一版提供自托管部署；公共服务器域名后定 |
+
+环境：本机有 xmake 3.1.0、Xcode、Go 1.25；**未安装 Flutter / Dart**。MiniRTC 基线 `/Users/dijunkun/crossdesk/deps/submodules/minirtc` commit `a25a3b4`，已复制到 `minirtc/`；仓库已 `git init`，尚未裁剪。
+
+## 二、总体架构
+
+```text
+┌─────────────┐  WSS(JSON)  ┌────────────────────┐  WSS(JSON)  ┌─────────────┐
+│  发送端 App  │◀──────────▶│  server (Go)        │◀──────────▶│  接收端 App  │
+│ Flutter     │             │ 信令/取件码/TURN/中继 │             │ Flutter     │
+│ core (C++)  │             └────────────────────┘             │ core (C++)  │
+│ minirtc     │◀════════ ICE(P2P 或 TURN-UDP) + DTLS-SRTP ════▶│ minirtc     │
+└─────────────┘        ctrl: KCP 可靠流   data/sack: 块协议      └─────────────┘
+                       ICE 失败 → 经 server 的 WSS 中继兜底
+```
+
+分层：Flutter（渲染、平台文件访问）→ `core/`（C API，状态机与传输引擎）→ `minirtc/`（信令客户端、ICE、加密、数据通道）→ `server/`（信令、取件码、TURN、中继）。
+
+## 三、服务端 `server/`（Go）
+
+| 模块 | 内容 |
+| --- | --- |
+| 信令 WSS | 单端点 `/ws`；JSON 消息；每连接一个 goroutine；心跳 30 s；断线即清理其持有的 share / claim |
+| 取件码注册表 | 内存表 + 过期清理；10 位 Crockford Base32（4 位前缀 + 6 位密钥），CSPRNG 生成，前缀索引、密钥常量时间比较；`once` / `open` 两种模式 |
+| ICE 配置下发 | 返回 STUN 地址与 TURN HMAC 时间凭据（与 coturn REST API 相同算法），凭据有效期 10 分钟 |
+| TURN | 默认内嵌 `pion/turn`（UDP；客户端 ICE 仅用 UDP），配置可切换为外部 coturn |
+| WSS 中继兜底 | ICE 失败时，会话双方经 `relay` 二进制帧在同一条 WSS 上转发；服务端按 `session_id` 转发、按连接限速；UI 提示"中继模式" |
+| 运维 | `/healthz`、结构化日志、可选 Prometheus `/metrics`；TLS 支持自带证书或 ACME；Dockerfile + compose；配置用环境变量 + 可选 YAML |
+
+不做：用户账号、持久身份、历史记录、文件中转存储。服务器不接触文件内容。
+
+### 信令协议 v1
+
+所有消息 `{"type": "...", "id": <请求序号>, ...}`，服务端回复携带同一 `id`；错误统一 `{"type":"error","id":..,"code":"..","message":".."}`。
+
+| 方向 | 消息 | 字段 | 说明 |
+| --- | --- | --- | --- |
+| C→S | `hello` | `app`, `version`, `platform`, `proto` | 连接后第一条；回 `welcome{peer_id, ice_servers, heartbeat_sec}`，`peer_id` 为本连接的临时随机 ID |
+| C→S | `create_share` | `mode`("once"/"open"), `ttl_sec`, `meta`(总大小、文件数，仅展示) | 回 `share_created{share_id, code, expires_at}` |
+| C→S | `close_share` | `share_id` | 通知已配对接收端 `share_closed` |
+| C→S | `claim` | `code`, `resume_token`(可选) | 校验取件码 → 创建 session，向双方发 `session_start{session_id, role, remote_peer_id, ice_servers, resume_token}`；带 `resume_token` 时恢复中断的 session（即使 `once` 码已失效）；失败码 `code_not_found` / `code_expired` / `share_busy` / `rate_limited` |
+| C↔S | `signal` | `session_id`, `to`, `payload{sdp \| candidate \| candidates_done}` | 服务端只按 `session_id` 校验双方身份并转发；`payload` 预留 `auth` |
+| C→S | `leave` | `session_id` | 通知对端 `session_end{reason}` |
+| C↔S | `relay` | `session_id` + 二进制帧 | ICE 失败后的 WSS 中继数据；服务端仅转发，不解析 |
+| C↔S | `ping` / `pong` | | 心跳 |
+
+约束：`claim` 按 IP 与全局限速、失败恒定延迟；`once` 模式首个 `claim` 成功即失效，`open` 模式持续有效直到关闭或过期；发送端保留未完成 session 状态直到 share 过期以支持续传；`session_start` 后固定由接收端发 offer。
+
+## 四、特化版 MiniRTC `minirtc/`
+
+### 依赖与许可证边界（闭源要求）
+
+| 依赖 | 许可证 | 处理 |
+| --- | --- | --- |
+| glib、gupnp / gssdp / libsoup / libxml2 / libpsl、proxy-libintl | LGPL | **移除**（闭源静态链接不合规） |
+| libnice（含 MiniRTC 四个补丁） | LGPL-2.1 / MPL-1.1，硬依赖 glib | **移除**，以 libjuice 替代 |
+| libjuice | MPL-2.0 | **新增**：纯 C，ICE + STUN + TURN-UDP，零外部依赖 |
+| miniupnpc | BSD-3 | **新增**：替代 gupnp 做网关端口映射 |
+| OpenSSL 3、libsrtp、websocketpp、asio、KCP、spdlog、nlohmann_json、concurrentqueue | Apache-2.0 / BSD / Boost / MIT | 保留 |
+| WebRTC 派生代码（`common/`、`qos/`、部分 RTP/RTCP） | BSD-3 + PATENTS | 保留，附带 LICENSE / PATENTS |
+
+libjuice 不支持 ICE-TCP / TURN-TCP，UDP 被完全封锁的网络由服务端 WSS 中继兜底；libnice 补丁中的"中继后升级 P2P"与"对称 NAT 预测打洞"第一版不保留，后续按需在 libjuice 之上重做。
+
+合规义务仅剩：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 要求公开对 libjuice 源文件的修改（如有）。App 内设置 → 法律信息 → 开源许可证页面。
+
+### 改造范围
+
+**ICE 层替换**：MiniRTC 的 DTLS 由自身用 OpenSSL 在 ICE socket 之上实现（`ice_agent.cpp` 的 `BIO_s_nice`），与 libnice 无关。替换限于 `ice/ice_agent`：以 libjuice 的 `juice_agent_t` 实现 gather / set remote description / add candidate / send / recv 回调 / state 回调；DTLS、SRTP、RTP、KCP 层不变；`ice/punch_*` 删除；UPnP 映射改用 miniupnpc。
+
+**直接删除**（不加宏）：`src/media/`、`src/frame/`、`src/fec/`、`src/inih/`、`transport/channel/` 的 video / audio 文件、`rtp/` 的 H.264 / AV1 packetizer / depacketizer 与 OBU、`rtcp/` 的 FIR、`pc/datachannel_connection*`、`transport/datachannel_transport*`、`thirdparty/` 中 openh264 / dav1d / svt-av1 / aom / libyuv / nvcodec / openfec / libdatachannel / webrtc / glib / gupnp / libnice 配方及相关 `add_requires`、Apple 媒体 frameworks、`config/`、`tests/`、`ios/`、`doc/`；新增 `thirdparty/libjuice`、`thirdparty/miniupnpc` 配方。
+
+**重写**：
+
+- `pc/peer_connection`：按信令协议 v1 实现客户端侧；去掉 `login / join_transmission` 等旧消息与 INI 配置。
+- `transport/ice_transport_controller`：只保留数据流上下文、SRTP 会话表、`PacedSender`、拥塞控制与传输反馈；目标从 3.5k 行降到 < 800 行。
+- `transport/ice_transport`：SDP 只含一条 `m=application` 及各数据流的 `a=ssrc` / `a=x-reliable-data`。
+- `api/minirtc.h`：重写为数据专用 API。
+
+**数据路径改造**：非可靠流经 `PacedSender` 发送并进入传输反馈，使 `qos/` 延迟型带宽估计对数据流生效并对外暴露；可靠流 KCP 参数可配。
+
+### 新 C API
+
+```c
+typedef struct MiniRtcPeer MiniRtcPeer;
+typedef struct {
+  const char* server_host; int server_port;       // WSS
+  const char* log_dir;
+  MiniRtcTurnMode turn_mode; bool enable_srtp;
+  const char* app; const char* version; const char* platform;   // hello
+  OnSignalStatus  on_signal_status;   // Connecting/Connected/Failed/Closed/Reconnecting/TlsError
+  OnShareEvent    on_share_event;     // share_created / share_closed / claimed
+  OnSessionStatus on_session_status;  // Connecting/Connected/Disconnected/Failed/Closed + reason + relay 标志
+  OnReceiveData   on_receive_data;    // (data,len,session_id,stream)
+  OnNetStats      on_net_stats;       // bitrate/loss/rtt/bwe/traversal
+  void* user_data;
+} MiniRtcParams;
+MiniRtcPeer* minirtc_create(const MiniRtcParams*);
+void minirtc_destroy(MiniRtcPeer**);
+int  minirtc_connect(MiniRtcPeer*);                                        // WSS + hello
+int  minirtc_add_data_stream(MiniRtcPeer*, const char* name, bool reliable);  // connect 前
+int  minirtc_create_share(MiniRtcPeer*, const char* mode, int ttl_sec, const char* meta_json);
+int  minirtc_close_share(MiniRtcPeer*, const char* share_id);
+int  minirtc_claim(MiniRtcPeer*, const char* code, const char* resume_token);
+int  minirtc_leave(MiniRtcPeer*, const char* session_id);
+int  minirtc_send(MiniRtcPeer*, const char* session_id, const char* stream, const void* data, size_t len);
+int  minirtc_get_link_estimate(MiniRtcPeer*, const char* session_id, MiniRtcLinkEstimate* out);  // bwe_bps, rtt_ms, loss
+int  minirtc_set_reliable_window(MiniRtcPeer*, const char* stream, int wnd);
+```
+
+一个 Peer 对应一条 WSS 连接，可同时持有多个 session（`open` 模式）。
+
+验收：macOS / Linux / Windows / iphoneos 编译；`xmake show -t minirtc` 依赖仅剩 libjuice、miniupnpc、websocketpp、asio、openssl、libsrtp、kcp、spdlog、nlohmann_json、concurrentqueue，且全部为 MPL / BSD / Boost / Apache / MIT；`minirtc/examples/data_echo` 两端经本地 `server/` 完成 create_share → claim → P2P / 强制 TURN / WSS 中继 → 可靠与非可靠收发。
+
+## 五、交互与传输协议
+
+### 取件码
+
+- **格式**：10 位 Crockford Base32（去掉 0/O/1/I/L，大小写不敏感），50 bit 熵，CSPRNG 生成；显示为 `XXXXX-XXXXX`，例如 `3K7QW-P9X2M`。
+- **结构**：前 4 位路由前缀 + 后 6 位密钥。第一版 `claim` 发送完整码；第二版升级 SPAKE2 后只发前缀，密钥留在两端做口令认证，码格式不变。
+- **安全度量**：100 万活跃分享下单次盲猜命中概率约 1/10⁹；配合 `claim` 限速、失败恒定延迟、TTL（`once` 默认 10 分钟，`open` 最长 24 小时）、日志只记前缀。
+- **UI 原则：链接 / 二维码优先，手输兜底**。发送页主视觉是二维码与"复制链接 / 系统分享"，取件码次要展示可复制；接收页首屏是"扫码"与"粘贴链接"，手输框自动大写、跳过连字符、拒绝混淆字符、输满 10 位自动提交。
+- **链接**：`https://<域名>/r/<code>`（iOS Universal Link / Android App Link 直达接收页）；桌面 `crosstransfer://r/<code>`；落地页只显示"用 App 打开 / 下载"。
+
+### 流程
+
+```text
+发送端                          server                           接收端
+选文件 → create_share ─────▶ 分配 code/share_id
+UI 显示 二维码 / 链接 / 取件码
+                                                    扫码 / 点链接 / 输码 → claim{code}
+       ◀── session_start ──── 配对 ────── session_start ──▶
+       ◀──────── signal(offer/answer/candidate) 经 server 转发 ────────▶
+       ◀══════ ICE + DTLS-SRTP 建立（P2P → TURN-UDP，失败则 WSS 中继）══════▶
+ctrl: offer{manifest} ────────────────────────────────────▶ 校验后建接收目录
+       ◀──────────────────── accept{每文件位图摘要} ─────────
+data 按 pacer 速率发块 ────▶ ；◀──── sack 位图/空洞 + 速率/丢包 ──
+ctrl: file_done / transfer_done                                校验 SHA-256 → 完成
+once 模式：close_share，code 失效
+```
+
+- 分享 `once`（默认）/ `open`；`ttl` 默认 10 分钟；未配对超时自动关闭。
+- 输入取件码即视为同意，`offer` 到达即开始；进度页展示清单，可取消。
+- 两端无持久身份，`peer_id` 每次连接临时分配；续传靠 `resume_token`。
+
+### 安全模型
+
+- 传输层 DTLS-SRTP（沿用 MiniRTC 的 DTLS 密钥导出）；连通性依次为 P2P → TURN-UDP → 服务端 WSS 中继。
+- 第一版信任服务器转发的 SDP 指纹（与 WebRTC 同级）；预留 SPAKE2 升级使服务器无法中间人。
+- 取件码 50 bit 熵 + 限速 + TTL。
+
+### 流与块协议
+
+| 流名 | 传输 | 内容 |
+| --- | --- | --- |
+| `ctrl` | KCP 可靠流（窗口 1024） | JSON：`offer`（manifest：相对路径 / 大小 / SHA-256、目录树）、`accept`（每文件位图摘要）、`reject`、`pause`、`resume`、`cancel`、`file_done`、`transfer_done`、`error{code,msg}` |
+| `data` | 非可靠流，单包 | 块头 `magic(2) ver(1) flags(1) file_index(2) block_index(4) len(2)` + 净荷 ≤ 1100 字节 |
+| `sack` | 非可靠流，单包 | 每 50–100 ms：`file_index`、最高连续已收块、空洞游程列表、接收速率、丢包估计 |
+
+发送端：`Sweep`（按 pacer 速率顺序发全部块）→ `Repair`（按 SACK 空洞重发）→ `file_done`。速率来自 `minirtc_get_link_estimate` 的 BWE，不可用时按 SACK 丢包率 AIMD。接收端 `pwrite` 到 `<name>.ctpart`，位图周期性持久化到 `transfers.json`，完成后校验 SHA-256 改名，同名加后缀。目录用 `/` 相对路径，拒绝绝对路径、`..`、驱动器前缀、控制字符、平台保留名；空文件直接创建；任一侧失败以 `error` 收敛并清理。WSS 中继模式下同一协议经 `relay` 帧承载，块大小不变。
+
+## 六、仓库布局
+
+```text
+crosstransfer/
+├── xmake.lua                      # minirtc + crosstransfer_core + ct_cli + crosstransfer_native(shared)
+├── LICENSE                        # 专有
+├── THIRD_PARTY_NOTICES.md         # 依赖许可证汇总（随产品分发）
+├── minirtc/                       # 特化版 MiniRTC
+│   ├── xmake.lua  src/  thirdparty/(libjuice, miniupnpc, libsrtp, websocketpp)  examples/data_echo  README.md
+├── core/                          # crosstransfer_core（C++17，C API）
+│   ├── include/crosstransfer/ct_api.h      # 唯一公开头（ffigen 输入）
+│   ├── src/api/      C API、事件 JSON
+│   ├── src/runtime/  事件循环线程、Peer RAII 封装 + 回调门控、后台销毁队列
+│   ├── src/share/    Share / Receive 状态机、取件码与链接编解码
+│   ├── src/transfer/ ctrl / 块 / sack 编解码、Sweep/Repair 发送器、位图接收器、SHA-256、续传
+│   ├── src/storage/  config.json、transfers.json
+│   ├── src/log/
+│   └── tests/
+├── cli/                           # ct_cli share <paths...> / ct_cli receive <code> --dir
+├── server/                        # Go
+│   ├── cmd/ctserver
+│   ├── internal/{signal, codes, turn, relay, config}
+│   ├── Dockerfile  compose.yaml  .env.example
+├── app/                           # Flutter
+│   ├── lib/{ffi, state, ui, platform}  ffigen.yaml
+│   └── linux/ windows/ macos/ ios/ android/
+├── tools/build_native.sh / .ps1   # xmake 构建 + 合并 + 复制到 app 各平台目录
+├── docs/                          # 架构、信令协议、块协议、构建、部署、第三方许可证清单
+├── .github/workflows/
+└── README.md  README_EN.md
+```
+
+## 七、core 设计
+
+线程模型：MiniRTC 回调 → 门控 → 拷贝 → 投递 core 单线程事件循环；文件 I/O 每传输一个工作线程；UI 只收一个 UTF-8 JSON 事件回调（Dart 用 `NativeCallable.listener`），进度节流 ≤ 10 Hz；所有 `ct_*` 非阻塞。
+
+```c
+typedef struct CtCore CtCore;
+typedef void (*CtEventCallback)(const char* json_utf8, void* user_data);
+CtCore*     ct_create(const char* config_json);   // 数据/日志目录、服务器、TURN、保存目录、默认分享模式与 ttl
+void        ct_destroy(CtCore*);
+void        ct_set_event_callback(CtCore*, CtEventCallback, void* user_data);
+int         ct_update_config(CtCore*, const char* config_json);
+int         ct_share_create(CtCore*, const char* paths_json, const char* options_json); // → share_state 事件带取件码/链接
+int         ct_share_close(CtCore*, const char* share_id);
+int         ct_receive_start(CtCore*, const char* code_or_link, const char* save_dir);
+int         ct_transfer_pause / ct_transfer_resume / ct_transfer_cancel(CtCore*, const char* transfer_id);
+const char* ct_query(CtCore*, const char* query_json);   // 快照：shares / receives / transfers / config
+void        ct_free_string(const char*);
+const char* ct_version(void);
+```
+
+事件：`signal_state`；`share_state`（creating / ready / claimed / transferring / completed / closed / failed，含 code、link、expires_at、接收端计数）；`receive_state`（claiming / connecting / waiting_offer / transferring / verifying / completed / failed，含 `code_not_found` / `code_expired` / `share_busy`）；`transfer_progress`（bytes、rate、eta、当前文件、P2P / TURN / 中继）；`error`。
+
+## 八、Flutter 应用
+
+依赖：`ffi`、`ffigen`、`flutter_riverpod`、`path_provider`、`file_picker`、`desktop_drop`、`qr_flutter`、`mobile_scanner`、`app_links`、`share_handler`、`tray_manager` + `window_manager`、`flutter_local_notifications`、`open_filex`（均为 BSD / MIT）。
+
+页面：
+
+1. **发送页**：拖入 / 选择文件或目录 → 二维码 + "复制链接 / 系统分享"为主视觉，取件码次要展示 → 等待 / 进度 / 完成 / 关闭分享。
+2. **接收页**：扫码 / 粘贴链接为首屏，手输 10 位码兜底 → 保存目录 → 清单与进度 → 完成后打开目录。
+3. **设置**：保存目录、服务器地址、TURN 模式、分享 ttl、默认 once / open、语言（中 / 英）。
+
+平台：桌面托盘与关窗隐藏；iOS 分享扩展入口、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。
+
+## 九、构建与部署
+
+- 根 `xmake.lua`：`includes("minirtc")`，`crosstransfer_core`（static）、`ct_cli`（binary）、`crosstransfer_native`（shared umbrella，`-force_load` / `--whole-archive`）。
+- 桌面：`tools/build_native.sh <plat> <arch>` → `app/<plat>/native/libcrosstransfer_native.*`，Dart `DynamicLibrary.open`。
+- iOS：合并为 `.a` + podspec `vendored_libraries`，Dart `DynamicLibrary.process()`。
+- Android（后置）：Gradle `externalNativeBuild` → `jniLibs`。
+- 服务端：`go build` 单二进制；`Dockerfile`（distroless）、`compose.yaml`（信令 + 内嵌 TURN，主机网络）；配置 `CT_LISTEN`、`CT_TLS_CERT/KEY` 或 `CT_ACME_DOMAIN`、`CT_PUBLIC_IP`、`CT_TURN_PORT`、`CT_TURN_PORT_RANGE`、`CT_TURN_SECRET`、`CT_EXTERNAL_TURN`、`CT_RELAY_RATE_LIMIT`。
+- CI：native 三平台 + iOS 未签名；`go test` + `go vet` + 多架构镜像；`flutter build`；发布门禁包含第三方许可证清单生成与依赖许可证核对。
+
+## 十、实施阶段
+
+**阶段 0：服务端 + 特化版 MiniRTC**
+1. `server/`：信令、取件码、TURN 凭据、内嵌 TURN、WSS 中继、健康检查；`go test` 覆盖协议状态机、取件码分配 / 过期 / 限速、中继转发；本地可跑。
+2. `minirtc/`：删除媒体、浏览器路径与 libnice / glib / gupnp；`ice_agent` 改为 libjuice + miniupnpc；重写 `pc/` 信令客户端、`ice_transport_controller` 数据专用版、SDP；新 C API；四平台编译；`examples/data_echo` 经本地 server 跑通 P2P、强制 TURN 与 WSS 中继。
+3. 数据路径改造：非可靠流接 pacer + BWE，暴露链路估计；KCP 参数可配；限速 / 丢包网络下实测。
+
+**阶段 1：core + ct_cli**
+4. xmake 骨架、日志、Peer 封装、事件循环、Share / Receive 状态机、取件码与链接编解码。
+5. ctrl / 块 / sack 编解码、Sweep/Repair 发送器、位图接收器、SHA-256、续传；单元测试。
+6. `ct_cli share` / `ct_cli receive` 两进程经本地 server 端到端。
+
+**阶段 2：桌面 Flutter**（macOS → Windows → Linux）
+7. 安装 Flutter、`flutter create`、ffigen、`CoreClient` 与 providers。
+8. 三个页面、拖拽、二维码、链接 scheme、托盘、通知。
+9. 三平台 native 集成与打包（dmg / pkg、NSIS、deb）。
+
+**阶段 3：iOS**
+10. 静态库合并 + podspec；分享扩展；扫码；Universal Link；`Documents/Received`；后台任务。
+
+**阶段 4：Android**
+11. 特化版 MiniRTC 补 android 平台 xmake 配方与 NDK 构建（libjuice / OpenSSL / libsrtp 交叉编译）。
+12. Runner：`jniLibs`、SAF、分享入口、App Link、前台服务。
+
+**阶段 5：加固与公共服务**
+13. CI 全矩阵、多接收端并发、强制 TURN、WSS 中继压测、TLS / ACME、文档、第三方许可证清单、App 内开源许可证页。
+14. 可选：SPAKE2 口令认证、浏览器接收页、libjuice 之上的打洞增强（对称 NAT 预测、中继后升级 P2P）。
+
+## 十一、验证
+
+- **server**：`go test`（协议状态机、取件码分配 / 过期 / 限速、TURN 凭据、中继转发）；两个 WebSocket 客户端脚本走完 create_share → claim → signal → relay → leave。
+- **minirtc**：四平台编译；依赖清单与许可证核对（无 LGPL）；`data_echo` P2P / 强制 TURN / WSS 中继 / SRTP 收发、断线重连。
+- **core**：编解码往返与畸形输入、位图 / 游程、路径清洗、Sweep/Repair 状态机、取件码 / 链接解析。
+- **ct_cli 端到端**：0 字节、< 1 块、≥ 1 GiB（内存平稳、吞吐记录）、含子目录、同名、非 ASCII、kill 接收端后凭 `resume_token` 续传、`TurnForceUdp`、中继模式、错误 / 过期码、`open` 模式两接收端并发、5% 丢包下完整性。
+- **Flutter 与 iOS 真机**：全流程、扫码、链接直达、分享菜单。
+
+## 十二、风险
+
+- 特化版 MiniRTC 的 `pc/`、`ice_agent`、`ice_transport_controller` 属于重写而非裁剪，四平台（含 iOS）编译要在阶段 0 内完成。
+- libjuice 替换 libnice 会丢失现有打洞补丁，P2P 成功率可能略降；以 TURN-UDP + WSS 中继保证连通性，成功率数据在阶段 0 的 `data_echo` 实测中记录。
+- UDP 完全封锁的网络只能走 WSS 中继，吞吐受服务端带宽限制；中继限速与计费策略在阶段 5 定。
+- 自研块协议的速率控制依赖 BWE 接入效果，阶段 0 第 3 步需在限速 / 丢包网络实测；不理想则退回 SACK 丢包率 AIMD。
+- 内嵌 `pion/turn` 成熟度低于 coturn；凭据算法与 coturn 兼容，可随时切换。
+- iOS 后台传输受限，大文件需前台。
+- Android 依赖 MiniRTC NDK 移植，工期不确定。
