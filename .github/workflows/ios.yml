@@ -40,6 +40,8 @@ jobs:
         working-directory: app
         run: |
           flutter pub get --enforce-lockfile
+          python3 ../tools/check_legal_assets.py
+          python3 ../tools/check_pub_notices.py
           flutter analyze
           flutter test
           flutter build ios --release --no-codesign

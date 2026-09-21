@@ -21,6 +21,14 @@ class S {
 }
 
 const Map<String, String> _zh = {
+  'legal.title': '开源许可证',
+  'legal.copyright': '© 2026 DI JUNKUN。CrossTransfer 为专有软件。各开源组件适用其各自的许可证。',
+  'legal.view': '查看第三方版权与许可声明',
+  'legal.source_title': '源码',
+  'legal.source_notice': '本 App 随附以下 MPL 组件的完整对应源码与许可原文。libjuice 包含 CrossTransfer 的 ct1 修改及说明；dbus 和 Dart gtk 保持上游原样。可以离线导出；CrossTransfer 的专有许可不限制您对这些源码享有的 MPL 权利。',
+  'legal.export_source': '导出源码',
+  'legal.saved': '源码已保存',
+  'legal.export_failed': '源码导出失败，请重试或选择其他保存位置。',
   'recv.scan': '扫码接收',
   'recv.camera_error': '无法使用相机，请在系统设置中允许相机权限，或返回粘贴链接。',
   'recv.export': '导出到文件',
@@ -179,6 +187,14 @@ const Map<String, String> _zh = {
 };
 
 const Map<String, String> _en = {
+  'legal.title': 'Open-source licenses',
+  'legal.copyright': '© 2026 DI JUNKUN. CrossTransfer is proprietary software. Open-source components are covered by their respective licenses.',
+  'legal.view': 'View third-party copyright and license notices',
+  'legal.source_title': 'Source code',
+  'legal.source_notice': 'This app includes complete corresponding source and license text for the MPL components below. libjuice includes CrossTransfer ct1 modifications and change notes; dbus and Dart gtk are unmodified upstream packages. Export them offline. CrossTransfer’s proprietary license does not restrict your MPL rights to this source.',
+  'legal.export_source': 'Export source',
+  'legal.saved': 'Source saved',
+  'legal.export_failed': 'Could not export the source. Try again or choose another destination.',
   'recv.scan': 'Scan QR code',
   'recv.camera_error': 'Camera unavailable. Allow camera access in Settings, or go back and paste the link.',
   'recv.export': 'Export to Files',

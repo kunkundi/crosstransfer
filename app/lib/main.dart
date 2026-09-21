@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'ffi/core_client.dart';
 import 'platform/notifications.dart';
+import 'platform/legal.dart';
 import 'platform/paths.dart';
 import 'state/app_prefs.dart';
 import 'state/providers.dart';
@@ -29,6 +30,7 @@ bool get _isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinu
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerNativeLicenses();
   if (_isDesktop) await windowManager.ensureInitialized();
 
   final paths = await AppPaths.resolve();

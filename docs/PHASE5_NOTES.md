@@ -51,7 +51,7 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 新增确定性测试由 writer 回调把两份最终块放进同一批，并提前送达哈希。旧实现稳定失败，修复后 **32 项 core / 859 断言通过**。大并发还发现 TURN 数据停顿/ICE 超时，正在继续定位，不能将该轮记为整体通过。
 
-## 剩余工作
+## TURN 停顿排查过程
 
 TURN 停顿已复现并采集进程线程栈（本机 `/tmp/ct-turn-deadlock.sample`）。源码中 `agent_send` 的 TURN 分支需要连接锁，原收包路径在同一连接锁内进入传输层，形成与发送/反馈锁的反向等待。ICE 封装已增加有界收包队列和独立交付线程，Close 等待交付结束；新测试用真实本地 ICE 连接阻塞上层回调，同时验证 libjuice API 仍可返回，20 断言通过。复测大流量未再停顿，但发现原强制 TURN 候选过滤可以退回 prflx/P2P；将该模式补成真正中继限制后再做完整验收。
 
@@ -78,6 +78,30 @@ TURN 停顿已复现并采集进程线程栈（本机 `/tmp/ct-turn-deadlock.sam
 2026-09-22 的最新远程回归（提交 `4475140`，Desktop `35644512582`、Android `35644512598`、iOS `35644512727`）均被 GitHub 拒绝启动：账户付款或 Actions 支出上限需要所有者处理。不是代码执行失败；在账单状态恢复前不反复重跑。Windows CRT 修复与最后的 Linux 回归尚未获得远程验证。
 
 - 全平台远程回归与 Windows 慢构建诊断。
-- 完整传递依赖许可审计、App 内开源许可证页及分发清单。
-- 自托管 TLS/ACME、部署、升级和多接收端/中继负载文档与验证。
+- Windows/Linux 最终分发包的许可和系统依赖门禁验收。
+- 公共服务资源配额、长期负载和真实公网 ACME 验收。
 - 正式身份/签名/域名、移动真机、16 KB 系统与厂商后台限制需相应资源后补验收。
+
+
+## 通知与许可分发（2026-09-22）
+
+Android 通知聚合插件带入 `desugar_jdk_libs 2.1.4`（GPL-2.0 with Classpath Exception）。已移除两者，Android 使用 NotificationManager，Apple 使用 UserNotifications，仅保留 Linux/Windows 的 BSD 平台通知插件。Android 新增系统通知内容、渠道和点击 Intent 的仪器测试，**6 项通过**；iOS **5 项 XCTest 通过**。双方原生库已重建，包含严格 TURN 与接收队列修复。
+
+所有者已授权既有 ISC、Unicode/ICU、Zlib、libpng、FTL/IJG、public-domain 与 Linux 系统 GTK/GLib 动态链接例外；具体限制已同步 PLAN。App 设置增加法律页，包含完整原生/Android 补充文本、Flutter 生成的许可清单，以及 libjuice ct1、dbus、Dart gtk 三份完整 MPL 源码的离线导出。103 项 pub 声明闭包、68 个 Android Maven 坐标、15 个 Go 模块和原生依赖均记录版本/来源/哈希证据，详见 LICENSE_AUDIT。
+
+**24 项 Dart 测试通过**，新增手机尺寸布局下三个源码归档与随包原始字节一致的导出验证。Android release 解析图和依赖文本检查通过；已增加源码/文本校验、依赖输入漂移门禁与 Linux 系统库分发边界检查。Windows/Linux 的产物级验收仍等待 CI 恢复。
+
+## 限速中继回归（2026-09-22）
+
+4 接收端 ×（16 MiB + 814 字节），每连接 WSS 中继限速 1 MiB/s，实际丢弃 31,940 个受限数据帧。全部接收端哈希与空文件/中文路径一致，服务端 peer/share/session 回收为零。总耗时 72.032 秒，聚合 0.889 MiB/s；发送端峰值 RSS 33.1 MiB，服务端 22.0 MiB。报告为本机 `dist/load-phase5-limited-final.json`，是回环限速恢复验收，不代表公网容量。
+
+## macOS AOT 工具链兼容（2026-09-22）
+
+新增法律页后的完整程序触发 Flutter 3.47.5 上游 #191575：框架 `_window_macos.dart` 的 `_Rect` 在 AOT 快照引用中仍存在，但 class ID 已被裁掉。普通 Release 构建失败；关闭 TFA 也因缺少分发表元数据失败，未保留这组无效参数。
+
+在独立 SDK 副本对 6 个 FFI 类型添加 entry-point 保留标记后，universal Release App 构建成功（66.9 MB）。`tools/build_macos_app.py` 固定版本/原文哈希、显式刷新 package_config、构建后恢复原 SDK 解析，已重复执行通过；全局 Flutter SDK 的 git diff 为空。该处理随 CI 固定版本使用，升级需重新验证并移除。完整许可与三份源码共 20 项法律资产的最终 App 校验通过。
+
+
+本轮最终产物验证：Android Release APK 85.5 MB，15 个原生库、3 个引擎 ABI、64 位 ELF/ZIP 16 KB 对齐、测试签名、20 项法律/源码资产通过，DEX 不含已移除运行库；模拟器 P2P/WSS 中继两项实际 FFI 收发再次通过。iOS 模拟器 App 重建后 20 项法律资产、15 项 FFI 导出、分享扩展和 App Group 一致性通过。
+
+macOS local-test DMG 的 ad-hoc 签名、镜像校验、法律资产通过。系统 Launch Services 启动后，冷启动和热启动链接收件均验证所有 SHA-256、中文路径与空目录。原验收脚本直接执行二进制可能未注册为运行中的 App，随后 `open -a` 会另起未隔离实例；已改用专门的 Launch Services 启动器传递隔离环境，并在结束时只关闭自己启动的应用。该测试修复通过新 DMG 复测，未把原超时当作成功。

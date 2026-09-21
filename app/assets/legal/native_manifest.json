@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "components": [
+    {
+      "name": "asio",
+      "version": "1.32.0",
+      "license": "BSL-1.0",
+      "source": "https://github.com/chriskohlhoff/asio/tree/asio-1-32-0",
+      "archive_sha256": "f1b94b80eeb00bb63a3c8cef5047d4e409df4d8a3fe502305976965827d95672",
+      "license_members": [
+        "asio-asio-1-32-0/asio/COPYING",
+        "asio-asio-1-32-0/asio/LICENSE_1_0.txt"
+      ],
+      "asset": "asio.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "8aeb3e8a710eb8e22d5a3d5b03f77aaeae83480a6f6ee02ff284ef58c9fbddd3"
+    },
+    {
+      "name": "nlohmann_json",
+      "version": "v3.11.3",
+      "license": "MIT",
+      "source": "https://github.com/nlohmann/json/tree/v3.11.3",
+      "archive_sha256": "0d8ef5af7f9794e3263480193c491549b2ba6cc74bb018906202ada498a79406",
+      "license_members": [
+        "json-3.11.3/LICENSE.MIT"
+      ],
+      "asset": "nlohmann_json.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "15487a7e3228888672ddecf946620381110a8b139d8039454d6047cdf9e7fe72"
+    },
+    {
+      "name": "spdlog",
+      "version": "v1.14.1",
+      "license": "MIT",
+      "source": "https://github.com/gabime/spdlog/tree/v1.14.1",
+      "archive_sha256": "429dfdf3afc1984feb59e414353c21c110bc79609f6d7899d52f6aa388646f6d",
+      "license_members": [
+        "spdlog-1.14.1/LICENSE",
+        "spdlog-1.14.1/include/spdlog/fmt/bundled/fmt.license.rst"
+      ],
+      "asset": "spdlog.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "7658f61098bffdb07facf709f93d76f5f397ed4f77869c9b1e391b6ca915d396"
+    },
+    {
+      "name": "websocketpp",
+      "version": "0.8.2",
+      "license": "BSD-3-Clause; MIT; Zlib",
+      "source": "https://github.com/zaphoyd/websocketpp/tree/0.8.2",
+      "archive_sha256": "6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755",
+      "license_members": [
+        "websocketpp-0.8.2/COPYING"
+      ],
+      "asset": "websocketpp.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "8878f1eec8c65c3d7a7b25bc7c5418102054e55edf8e58b1179e369cdc4d90ab"
+    },
+    {
+      "name": "kcp",
+      "version": "1.7",
+      "license": "MIT",
+      "source": "https://github.com/skywind3000/kcp/tree/1.7",
+      "archive_sha256": "b4d26994d95599ab0c44e1f93002f9fda275094a879d66c192d79d596529199e",
+      "license_members": [
+        "kcp-1.7/LICENSE"
+      ],
+      "asset": "kcp.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "aa5ab72a26e85849d9da27f49ae317daf591e5d5399c48860e879ef1b3513bbb"
+    },
+    {
+      "name": "libsrtp",
+      "version": "v2.7.0",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/cisco/libsrtp/tree/v2.7.0",
+      "archive_sha256": "54facb1727a557c2a76b91194dcb2d0a453aaf8e2d0cbbf1e3c2848c323e28ad",
+      "license_members": [
+        "libsrtp-2.7.0/LICENSE"
+      ],
+      "asset": "libsrtp.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "c14a3fe2591cbf069347bf53c7afad503e5b388aa29bd229c3187bf76bd93c59"
+    },
+    {
+      "name": "openssl3",
+      "version": "3.5.8",
+      "license": "Apache-2.0",
+      "source": "https://www.openssl.org/source/",
+      "archive_sha256": "a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2",
+      "license_members": [
+        "openssl-3.5.8/LICENSE.txt"
+      ],
+      "asset": "openssl3.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "58da78d1c3ee6c10f903b5f16733074ffbe0f56cbcdeb72a33102a7a8fd46f10"
+    },
+    {
+      "name": "miniupnpc",
+      "version": "2.3.3",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/miniupnp/miniupnp/tree/miniupnpc_2_3_3",
+      "archive_sha256": "8cf2c833b3e76fc4893ff29c2a376e3394962449e5970e373c0a91421724d222",
+      "license_members": [
+        "miniupnp-miniupnpc_2_3_3/miniupnpc/LICENSE"
+      ],
+      "asset": "miniupnpc.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "c8cebe885510e94d839612169448ed13bd87d6e36581674d2ea51e5c8f7d11d7"
+    },
+    {
+      "name": "libjuice",
+      "version": "1.7.2 + ct1",
+      "license": "MPL-2.0",
+      "source": "https://github.com/paullouisageneau/libjuice/tree/v1.7.2",
+      "asset": "libjuice.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+      "source_archive": "libjuice-1.7.2-ct1.tar.gz",
+      "source_sha256": "916a4d3cf32cd8ab4fdca2f7a6b39d94b90e1915471030850abaa26833e11c25"
+    },
+    {
+      "name": "WebRTC",
+      "version": "MiniRTC a25a3b4 derivative",
+      "license": "BSD-3-Clause + patent grant",
+      "source": "https://webrtc.googlesource.com/src/",
+      "asset": "webrtc.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "3d66cf3c4c7d6f0a583125b9e6e7b7d1901cf6eaf1ada588292dcca2113edb3c"
+    },
+    {
+      "name": "ZXing Android Embedded",
+      "version": "4.3.0",
+      "license": "Apache-2.0",
+      "source": "https://github.com/journeyapps/zxing-android-embedded/tree/v4.3.0",
+      "asset": "zxing-android-embedded.txt",
+      "platforms": [
+        "android"
+      ],
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "name": "ZXing Core",
+      "version": "3.4.1",
+      "license": "Apache-2.0",
+      "source": "https://github.com/zxing/zxing/tree/zxing-3.4.1",
+      "asset": "zxing-core.txt",
+      "platforms": [
+        "android"
+      ],
+      "license_sha256": "3f62881f0566227a24b12e5a754cc79f39aaa94883038e95c94812e1f50af42f"
+    },
+    {
+      "name": "picohash (libjuice bundled)",
+      "version": "libjuice v1.7.2",
+      "license": "LicenseRef-Public-Domain",
+      "source": "https://github.com/paullouisageneau/libjuice/blob/v1.7.2/src/picohash.h",
+      "asset": "picohash.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "c0ae9e2d0f9c4c85482ffb72194746208c19fcf129535ca74148aa62d9db70df"
+    },
+    {
+      "name": "Android runtime libraries",
+      "version": "68 Maven coordinates (2026-09-22)",
+      "license": "Apache-2.0; Flutter notices supplied separately",
+      "source": "https://developer.android.com/jetpack/androidx",
+      "asset": "android-runtime.txt",
+      "platforms": [
+        "android"
+      ],
+      "license_sha256": "8d23e885bc95bedb58858dfeda68194df1f0a55754fe2f3a8fdc997b6c55b2f7"
+    },
+    {
+      "name": "dbus (Dart)",
+      "version": "0.7.15",
+      "license": "MPL-2.0",
+      "source": "https://pub.dev/packages/dbus/versions/0.7.15",
+      "asset": "dbus.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      "source_archive": "dbus-0.7.15.tar.gz",
+      "source_sha256": "a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383"
+    },
+    {
+      "name": "gtk (Dart)",
+      "version": "2.2.0",
+      "license": "MPL-2.0",
+      "source": "https://pub.dev/packages/gtk/versions/2.2.0",
+      "asset": "gtk.txt",
+      "platforms": [
+        "all"
+      ],
+      "license_sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      "source_archive": "gtk-2.2.0.tar.gz",
+      "source_sha256": "4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5"
+    }
+  ]
+}

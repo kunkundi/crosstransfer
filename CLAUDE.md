@@ -30,14 +30,14 @@
   - NDK 28.2 三 ABI、15 项 FFI 导出、16 KB 对齐；Application 引擎、前台服务、SAF 导入/导出、系统分享、scheme 与 App Link 配置。
   - 本机 2 项运行时 FFI、2 项 SAF/分享仪器测试、CLI 冷/热链接及后台接收通过；三 ABI Release 测试 APK 与 24 个原生库打包检查通过。
   - 原生三架构 Actions `35636445939` 全绿；完整 APK/模拟器 CI 待记录结果。正式签名、App Link、真机和 16 KB 系统运行验收待补。
-- **阶段 5 加固进行中**，见 `docs/PHASE5_NOTES.md`：WSS SAN 身份验证、OpenSSL 3.5.8 LTS；扫码替换为 AVFoundation/ZXing，移除 ML Kit；受发送状态保护的 Imported 副本清理。本机 31 项 core / 848 断言、20 项 Dart、Android 5 项仪器测试与 iOS 5 项 XCTest 通过。
+- **阶段 5 加固进行中**，见 `docs/PHASE5_NOTES.md`：WSS SAN 身份验证、OpenSSL 3.5.8 LTS；扫码替换为 AVFoundation/ZXing，移除 ML Kit；受发送状态保护的 Imported 副本清理。本机 34 项 core / 889 断言、24 项 Dart、Android 6 项仪器测试与 iOS 5 项 XCTest 通过。严格 TURN 三轮 8 × 64 MiB、P2P/WSS 并发与限速中继均通过。
 - 远程 macOS 全流程 `35641577661` 成功；Linux TLS 测试缺失头文件、Windows OpenSSL provider CRT 不一致已修复。最新 `4475140` 的三组 CI 被 GitHub 付款/支出上限拒绝启动，需所有者处理，勿反复重跑。
-- 许可审计发现既有 ISC、Unicode/ICU、Zlib、libpng、FTL/IJG 等宽松许可超出 PLAN 原名单，具体证据在 `docs/LICENSE_AUDIT.md`，已向所有者询问白名单解释，尚待回复。
-- 下一步：完整许可清单/App 法律页、自托管加固与文档、并发/强制 TURN/中继压测；补全 CI 和真机/域名/签名验收。
+- 许可审计中的既有宽松许可和 Linux 系统 GTK/GLib 动态链接例外已获所有者授权（2026-09-22），边界见 PLAN 与 `docs/LICENSE_AUDIT.md`。Android GPL＋Classpath desugaring 运行库已移除，不包含在授权中。
+- 已完成 App 法律页、离线 MPL 源码导出与依赖清单门禁。macOS Release 使用 `tools/build_macos_app.py` 的独立 SDK AOT 修复，详见 DESKTOP_BUILD。下一步：公共服务资源配额，补全 CI 与真机/域名/签名验收。
 
 ## 硬约束（不要偏离）
 
-- 闭源商业软件：不得引入 GPL / LGPL 依赖；ICE 层用 libjuice（MPL-2.0）+ miniupnpc（BSD-3），不用 libnice / glib。
+- 闭源商业软件：不得引入 GPL / LGPL 运行库；已授权的唯一例外为 Linux 界面动态链接由系统提供、未修改、不随 App 打包的 GTK/GLib。已审计的 ISC、Unicode/ICU、Zlib、libpng、FTL/IJG、public-domain 也已获准。ICE 层用 libjuice（MPL-2.0）+ miniupnpc（BSD-3），不用 libnice / glib。
 - 核心逻辑全部新写，不从 `/Users/dijunkun/crossdesk` 复制代码；CrossDesk 只作参考。
 - 服务端用 Go，信令协议见 `docs/PLAN.md` 第三部分。
 - 文件数据走自研块协议（非可靠流 + 位图 SACK），控制消息走 KCP 可靠流。

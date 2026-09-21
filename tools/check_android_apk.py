@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify all packaged Android ELF libraries and ZIP entries support 16 KB pages."""
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -23,6 +24,25 @@ def Main():
     found = set()
     count = 0
     with tempfile.TemporaryDirectory(prefix='ct-apk-check-') as tmp, zipfile.ZipFile(args.apk) as archive:
+        root = Path(__file__).resolve().parents[1]
+        legal = root / 'app/assets/legal'
+        manifest = json.loads((legal / 'native_manifest.json').read_text())
+        assets = {'native_manifest.json', 'libjuice-1.7.2-ct1.tar.gz'}
+        assets.update(component['asset'] for component in manifest['components'])
+        assets.update(component['source_archive'] for component in manifest['components'] if 'source_archive' in component)
+        for name in assets:
+            assert archive.read('assets/flutter_assets/assets/legal/' + name) == (legal / name).read_bytes(), f'Stale/missing legal asset: {name}'
+        for name in archive.namelist():
+            if not re.fullmatch(r'classes\d*\.dex', name):
+                continue
+            dex = Path(tmp) / name
+            dex.write_bytes(archive.read(name))
+            dump = subprocess.check_output([str(sdk / 'build-tools/36.0.0/dexdump'), '-f', str(dex)], text=True)
+            classes = re.findall(r"Class descriptor\s*:\s*'([^']+)'", dump)
+            assert classes, f'Cannot inspect DEX classes: {name}'
+            removed = [value for value in classes if value.startswith((
+                'Lj$/', 'Lcom/google/mlkit/', 'Lcom/dexterous/flutterlocalnotifications/'))]
+            assert not removed, f'Removed runtime classes found: {removed[:10]}'
         for member in archive.infolist():
             if not re.fullmatch(r'lib/[^/]+/[^/]+\.so', member.filename):
                 continue
@@ -54,7 +74,7 @@ def Main():
                             assert min(rounded, stop) <= max(end, start), f'RELRO overlaps writable data: {member.filename}'
             count += 1
     assert found == expected, f'Engine ABIs {found}, expected {expected}'
-    print(f'PASS APK: {count} native libraries, {len(found)} engine ABIs, 16 KB 64-bit ELF/ZIP alignment, valid signature')
+    print(f'PASS APK: {count} native libraries, {len(found)} engine ABIs, 16 KB 64-bit ELF/ZIP alignment, valid signature, current legal/source assets, no removed runtime classes')
 
 
 if __name__ == '__main__':

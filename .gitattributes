@@ -1,0 +1,6 @@
+# License/source checks use exact bytes on all build hosts.
+* text=auto eol=lf
+*.tar.gz binary
+*.png binary
+*.ico binary
+*.icns binary

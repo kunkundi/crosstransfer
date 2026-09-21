@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-09-22",
+  "policy": "PLAN.md: approved permissive/MPL dependencies; Linux unmodified system GTK/GLib dynamic-only exception; GPL/desugaring runtime forbidden",
+  "sha256": {
+    "app/android/app/build.gradle.kts": "5b4f7782a25a655c83da9c035572e4bbe1d984ca28a6d0099dae630bafa2330e",
+    "app/android/settings.gradle.kts": "016759283e88ade6eba92910583feeef88b962839b957aa414296afd2952d122",
+    "app/ios/Podfile": "4843b1d12373343400432383bfb22ec49f2b1ecdc8501b5d8dcbccf0b58ac197",
+    "app/ios/Podfile.lock": "26a82c46d27a6103cf2efe219a835c281ea030c950baf09c4fb44698a050a2d7",
+    "app/linux/CMakeLists.txt": "22f29c2f783ff15f75c05e6b41e8fb394d012fee525983bac10c031effbb57c3",
+    "app/macos/Podfile": "cea213e2e88469288f64cbd5ae509ffe376b53b6ed1966dd6bb124c6280b3827",
+    "app/macos/Podfile.lock": "a2b5f0d3e868cb34b8d6286ccc07f690207033d5c8c1cf6cbb802649238d8510",
+    "app/pubspec.lock": "0dc3590116ad319b62bd81be3fccc099caeebd8600a96de907372ef3e246686f",
+    "app/pubspec.yaml": "2ea97f78317230e994590a50e8ce9b8bf56fdf11d05098769dd8d531f478ec96",
+    "app/windows/CMakeLists.txt": "d52c84f65d20abc9633ec4989df745e225bbfc02e043665e1faa6ba2052628f7",
+    "minirtc/thirdparty/libjuice/relay-only.patch": "f4da71fead668b403be34828b23d758b3d6da3c67f6005554d00ac255568a31d",
+    "minirtc/thirdparty/libjuice/xmake.lua": "dee63ee859075fde782c0d76371b9c36708d47aa889043a10e452544de8dbd98",
+    "minirtc/thirdparty/libsrtp/xmake.lua": "8a60f53fecc3899a1d805f19e4e8cf16b3fae2942bb76f829d6ceaf611cf53d5",
+    "minirtc/thirdparty/miniupnpc/xmake.lua": "a62add196ccbe84ec66876275a0108a0fe6c06b99d0d3529160b7a74fd69c5bb",
+    "minirtc/thirdparty/openssl3/configure/patch.lua": "521272ec3f3929a4a0bfd54fdcb3f20ba20493ab28c54daee9e3f628af085fe3",
+    "minirtc/thirdparty/openssl3/fetch.lua": "8891b16baa8435d5351192e8479ae23a22c8f24ecc6a222c18dc50e79efb4973",
+    "minirtc/thirdparty/openssl3/xmake.lua": "1cfbd163b5952bf819f0f553826d11a23ec78c378680f5a1a7f733b217c54c7e",
+    "minirtc/thirdparty/websocketpp/xmake.lua": "beac245a717c2bc3bc8d17265d9fc9b54f699f3833b11513f8723c4dbaffd539",
+    "minirtc/thirdparty/xmake.lua": "3da4fb793de885dbf27816693ffd9c0f2ac5f42a86a1a723ea68fc5bb53ca7e7",
+    "minirtc/xmake.lua": "59257d97d49384dddea0254bce5b8d757d05d8c1c94af07aa61782263248f8e1",
+    "xmake.lua": "0da78dfd8ae13d01a7a2964f087c11c4140b62ad72f4b006f6ebca194d2d5db7"
+  }
+}

@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${1:-$ROOT/app/build/macos/Build/Products/Release/crosstransfer.app}"
 test -d "$APP"
+python3 "$ROOT/tools/check_flutter_legal_bundle.py" "$APP/Contents/Frameworks/App.framework/Resources/flutter_assets"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT

@@ -93,9 +93,13 @@ jobs:
         working-directory: app
         run: |
           flutter pub get --enforce-lockfile
+          python3 ../tools/check_legal_assets.py
+          python3 ../tools/check_pub_notices.py
           flutter analyze
           flutter test
           flutter build apk --release
+          (cd android && ./gradlew :app:verifyRuntimeLicenses)
+          python3 ../tools/check_android_notices.py
           python3 ../tools/check_android_apk.py build/app/outputs/flutter-apk/app-release.apk
       - name: Runtime FFI, P2P and relay on Android 15
         uses: ReactiveCircus/android-emulator-runner@v2

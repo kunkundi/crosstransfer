@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 if (!$Bundle) { $Bundle = Join-Path $Root 'app/build/windows/x64/runner/Release' }
 $Bundle = (Resolve-Path $Bundle).Path
+python "$Root/tools/check_flutter_legal_bundle.py" "$Bundle/data/flutter_assets"
+if ($LASTEXITCODE -ne 0) { throw 'Bundled legal assets are missing or stale' }
 foreach ($Name in @('crosstransfer.exe', 'crosstransfer_native.dll', 'flutter_windows.dll')) {
     if (!(Test-Path (Join-Path $Bundle $Name))) { throw "Missing bundle file: $Name" }
 }

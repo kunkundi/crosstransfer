@@ -12,6 +12,8 @@ BUNDLE="${1:-$ROOT/app/build/linux/$FLUTTER_ARCH/release/bundle}"
 BUNDLE="$(cd "$BUNDLE" && pwd)"
 test -f "$BUNDLE/crosstransfer"
 test -f "$BUNDLE/lib/libcrosstransfer_native.so"
+python3 "$ROOT/tools/check_linux_system_libs.py" "$BUNDLE"
+python3 "$ROOT/tools/check_flutter_legal_bundle.py" "$BUNDLE/data/flutter_assets"
 for ELF in "$BUNDLE/crosstransfer" "$BUNDLE/lib/libcrosstransfer_native.so"; do
   case "$DEB_ARCH" in
     amd64) readelf -h "$ELF" | grep -q 'Advanced Micro Devices X86-64' ;;

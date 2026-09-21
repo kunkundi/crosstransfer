@@ -5,6 +5,7 @@ from pathlib import Path
 import plistlib
 import re
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -13,6 +14,8 @@ def Main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('app', type=Path)
     args = parser.parse_args()
+    subprocess.run([sys.executable, str(ROOT / 'tools/check_flutter_legal_bundle.py'),
+                    str(args.app / 'Frameworks/App.framework/flutter_assets')], check=True)
     info = plistlib.loads((args.app / 'Info.plist').read_bytes())
     binary = args.app / info['CFBundleExecutable']
     names = set(re.findall(r'\b(Ct\w+)\s*\(', (ROOT / 'core/include/crosstransfer/ct_api.h').read_text()))

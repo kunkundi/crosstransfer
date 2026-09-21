@@ -12,7 +12,7 @@
 4. 核心逻辑**全部新写**，不从 CrossDesk 复制后改；CrossDesk 只作为架构与协议事实的参考。
 5. 交互为**取件码模式**：发送端选文件后生成取件码 / 链接 / 二维码，接收端输入即收。
 6. 传输协议分工：**控制消息走 KCP 可靠流；文件数据走自研"按偏移传块 + 位图 SACK"协议**，跑在非可靠流上。
-7. **商业闭源**：所有第三方依赖必须允许闭源静态链接（iOS 必须静态）；LGPL 依赖全部移除，ICE 层以 libjuice（MPL-2.0）替换 libnice / glib / gupnp。
+7. **商业闭源**：随 App 编译或分发的第三方依赖必须允许闭源链接（iOS 原生传输库必须静态）；禁止 GPL/LGPL 运行库。唯一系统库例外：Linux 界面动态链接由发行版提供、未修改、不随 App 打包的 GTK/GLib。ICE 层仍以 libjuice（MPL-2.0）替换 libnice / glib / gupnp。
 
 已逐项确认的设计决策：
 
@@ -24,7 +24,7 @@
 | 4 | 输入取件码即视为同意，`offer` 到达直接开始；进度页可取消 |
 | 5 | 服务端无账号、纯内存、单实例；不存文件；`claim` 限速；TURN 内嵌 pion/turn，可切外部 coturn |
 | 6 | 固定由接收端发 offer |
-| 7 | 全部专有许可；依赖仅 MPL / BSD / Boost / Apache / MIT；libjuice + miniupnpc 替换 libnice / glib / gupnp；无 ICE-TCP / TURN-TCP，由服务端 WSS 中继兜底 |
+| 7 | 全部专有许可；依赖允许 MPL / BSD / Boost / Apache / MIT，以及已审计的 ISC、Unicode/ICU、Zlib、libpng、FTL/IJG、public-domain；Linux GTK/GLib 仅限系统动态链接例外；ICE 使用 libjuice + miniupnpc；无 ICE-TCP / TURN-TCP，由 WSS 中继兜底 |
 | 8 | 第一版不做浏览器接收页，落地页仅"用 App 打开 / 下载" |
 | 9 | 非可靠流接 PacedSender + BWE，块净荷 ≤ 1100 字节；ctrl 走 KCP 窗口 1024；BWE 为主、SACK 丢包 AIMD 兜底 |
 | 10 | iOS 传输期间 `beginBackgroundTask`，大文件需前台；Android 前台服务 |
@@ -88,6 +88,8 @@
 
 ### 依赖与许可证边界（闭源要求）
 
+2026-09-22 所有者明确授权上述既有宽松许可和 Linux 系统 GTK/GLib 例外。该例外不允许将 GTK/GLib 静态链接、修改或复制进安装包，也不允许重新引入已移除的 Android GPL＋Classpath 运行库。Dart `gtk` 与 `dbus` 包自身为 MPL-2.0，完整未修改源码随 App 提供，与 Linux 系统 GTK/GLib 的 LGPL 许可分别记录。
+
 | 依赖 | 许可证 | 处理 |
 | --- | --- | --- |
 | glib、gupnp / gssdp / libsoup / libxml2 / libpsl、proxy-libintl | LGPL | **移除**（闭源静态链接不合规） |
@@ -99,7 +101,7 @@
 
 libjuice 不支持 ICE-TCP / TURN-TCP，UDP 被完全封锁的网络由服务端 WSS 中继兜底；libnice 补丁中的"中继后升级 P2P"与"对称 NAT 预测打洞"第一版不保留，后续按需在 libjuice 之上重做。
 
-分发义务：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 无论 libjuice 是否修改，均要求提供对应覆盖源码并告知获取方式，修改部分同样保留 MPL-2.0。阶段 5 的 ct1 源码归档随产品提供。App 内设置 → 法律信息 → 开源许可证页面。
+分发义务：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 无论组件是否修改，均要求提供对应覆盖源码并告知获取方式，修改部分同样保留 MPL-2.0。阶段 5 的 libjuice ct1、dbus 0.7.15、Dart gtk 2.2.0 完整源码归档随产品提供并支持离线导出。App 内设置 → 法律信息 → 开源许可证页面。
 
 ### 改造范围
 
@@ -309,6 +311,8 @@ const char* CtVersion(void);
 
 阶段 5 首批加固：原生 OpenSSL 固定到仍在维护的 3.5 LTS（当前 3.5.8），Windows 默认使用 nmake 并保留依赖构建失败日志；WSS 必须同时验证受信证书链与目标 DNS/IP 的 SAN，拒绝不匹配、过期及不受信证书，并以回归测试覆盖；梳理所有传递依赖许可（尤其移动端扫码 SDK），完善 App 内许可页面与分发清单；对移动端导入副本提供可控清理。公开域名、证书和真实设备验证仍按所有者提供的资源推进。
 
+通知依赖整改：`flutter_local_notifications` 的 Android 实现依赖 `desugar_jdk_libs`（GPL-2.0 with Classpath Exception），虽有链接例外，仍不符合本项目不引入 GPL/LGPL 的约束。移除该聚合插件与 desugaring 运行库；Android 使用 NotificationManager，iOS/macOS 使用系统 UserNotifications，仅保留已使用的 Linux/Windows BSD-3-Clause 平台插件。即时收发通知行为不变，不引入定时通知需求；Android 最低 API 24 保持不变。
+
 导入副本清理：设置页显示 Imported 的占用和可清理批次，用户确认后只删除本次预览列出的 UUID 批次；进行中/暂停的发送、未处理 Inbox 和正在导入的文件必须保留。清理期间禁止新建/恢复发送，原生文件操作串行化并在删除前重新检查 Inbox。不得遍历符号链接或删除 Received、用户源文件及任意传入路径。
 
 自托管加固：落地页仅渲染规范化的有效取件码，配置 `CT_DOWNLOAD_URL` 后提供 HTTPS 下载跳转；`CT_ASSOCIATION_DIR` 可提供两个固定的 App/Universal Link 关联 JSON 文件。健康探测读取与服务相同的 YAML/环境配置并在 ACME 模式使用域名 SNI；容器为非 root 用户准备持久证书目录。域名关联内容由签名/域名配置工具生成，部署不自动推断正式身份。
@@ -318,6 +322,8 @@ const char* CtVersion(void);
 并发 TURN 加固：libjuice 接收回调持有内部连接锁，而 TURN 发送也需要该锁；不得在此回调中进入持有发送/反馈/DTLS 锁的传输代码。ICE 封装将收包复制到每 agent 的有界队列（最多 4 MiB、4096 包），由独立线程按序交付，满时按 UDP 丢包处理。关闭时先禁用新发送/收包并停止 libjuice，再清空队列、等待交付线程退出；应用结束后不得残留回调。
 
 强制 TURN 不能仅过滤发出的候选：libjuice 1.7.2 仍可通过 peer-reflexive 检查发现并选中直连。为 `juice_config` 增加可选 `relay_only`，在底层配对时拒绝所有非本地 relay 候选；只有强制 TURN 开启，自动/P2P 保持默认行为。补丁和完整对应 libjuice 源码继续按 MPL-2.0 提供，随二进制分发其许可、修改说明和源码归档；不改变本项目其他源文件的专有许可。
+
+macOS Release 临时构建约定：Flutter 3.47.5 触发上游 #191575 的内部 FFI class ID AOT 崩溃；构建脚本在仓库 build 目录中复制 SDK，校验精确版本/源文件后仅为 6 个内部 FFI 类型添加 entry-point 保留标记。不得改动全局 SDK、关闭验证或启用实验窗口特性；升级 SDK 时复核并移除处理。
 
 ## 十一、验证
 

@@ -13,6 +13,7 @@ import '../state/models.dart';
 import '../state/providers.dart';
 import 'widgets.dart';
 import 'import_storage.dart';
+import 'legal_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -249,6 +250,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         if (MobilePlatform.isMobile) const ImportStorage(),
         SectionTitle(s('settings.about')),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.balance_outlined),
+          title: Text(s('legal.title')),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => LegalPage(strings: s, version: config.appVersion),
+          )),
+        ),
         _Row(
             label: s('settings.version'),
             child: Text('${config.appVersion}  (core ${CoreClient.version})')),

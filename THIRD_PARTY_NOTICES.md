@@ -1,9 +1,11 @@
 # Third-party notices
 
 CrossTransfer is proprietary software (see `LICENSE`). It embeds or links the
-components below. The project prohibits GPL/LGPL runtime dependencies. The
-complete transitive inventory and bundled notices are still being completed;
-see `docs/LICENSE_AUDIT.md` for the current evidence and remaining items.
+components below. GPL/LGPL bundled runtime dependencies are prohibited; Linux
+may dynamically use unmodified system-provided GTK/GLib without bundling them.
+Full version/source/text inventories and validation limits are documented in
+`docs/LICENSE_AUDIT.md`. In the app, open Settings > Open-source licenses to read
+Flutter/engine and supplemental notices and export the bundled MPL sources.
 
 ## Bundled source (in this repository)
 
@@ -20,7 +22,7 @@ see `docs/LICENSE_AUDIT.md` for the current evidence and remaining items.
 | OpenSSL | 3.5.8 | Apache-2.0 | DTLS, TLS for WSS |
 | libsrtp | 2.7.0 | BSD-3-Clause | SRTP / SRTCP |
 | KCP | 1.7 | MIT | reliable stream |
-| websocketpp | 0.8.2 | BSD-3-Clause | WebSocket client |
+| websocketpp | 0.8.2 | BSD-3-Clause / MIT / Zlib (bundled helpers) | WebSocket client |
 | asio | 1.32.0 | BSL-1.0 | networking |
 | spdlog | 1.14.1 | MIT | logging |
 | nlohmann_json | 3.11.3 | MIT | JSON |
@@ -59,7 +61,9 @@ the modules selected in `server/go.mod`.
 
 glib, gupnp / gssdp / libsoup / libxml2 / libpsl, libnice (LGPL) and all media
 codecs (openh264, dav1d, SVT-AV1, aom, libyuv, NVIDIA codec SDK, openfec,
-libopus) as well as libdatachannel are not part of this project.
+libopus) as well as libdatachannel are not part of the transfer engine.
+The Linux Flutter UI separately links the distribution-provided GTK/GLib.
+These unmodified system libraries are not copied into CrossTransfer packages.
 
 ## Mobile QR scanning
 
@@ -69,3 +73,30 @@ and ZXing Core 3.4.1 (ZXing authors), both Apache-2.0. Full upstream license tex
 Sources: https://github.com/journeyapps/zxing-android-embedded and https://github.com/zxing/zxing.
 iOS uses the system AVFoundation framework. mobile_scanner and Google ML Kit
 are no longer included.
+
+## Flutter, Dart and platform plugins
+
+The compiled Flutter assets contain the engine and Dart package copyright and
+license texts in `NOTICES.Z`; the app displays these through LicenseRegistry.
+`assets/legal/native_manifest.json` indexes supplemental native/Android notices
+and the full original texts in that same asset directory.
+
+The unmodified MPL-2.0 Dart packages dbus 0.7.15 and gtk 2.2.0 have complete source
+archives `dbus-0.7.15.tar.gz` and `gtk-2.2.0.tar.gz` in `assets/legal/`, available
+for offline export from Settings > Open-source licenses > Source code. Their
+SHA-256 values are `a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383`
+and `4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5`, respectively.
+Upstream source: https://pub.dev/api/archives/dbus-0.7.15.tar.gz and
+https://pub.dev/api/archives/gtk-2.2.0.tar.gz. CrossTransfer's proprietary license
+places no additional restriction on recipients' MPL rights to this covered source.
+Dart gtk is distinct from the Linux operating system's GTK library.
+
+libjuice's bundled picohash includes its original public-domain dedication,
+preserved in the full source archive and separately in `picohash.txt`.
+Notifications use Android NotificationManager and Apple UserNotifications; the
+Linux/Windows notification plugins are BSD-3-Clause. The aggregate plugin and
+GPL-plus-Classpath `desugar_jdk_libs` are no longer included.
+
+Flutter engine notices include Unicode/ICU, zlib, libpng, FreeType (FTL selected),
+and libjpeg-turbo (IJG/BSD/Zlib). Retain all corresponding copyright, attribution,
+and disclaimer text; do not replace them with this summary.

@@ -136,14 +136,20 @@ jobs:
           CT_NATIVE_LIB: ${{ github.workspace }}/${{ matrix.native }}
         run: |
           flutter pub get --enforce-lockfile
+          python ../tools/check_legal_assets.py
+          python ../tools/check_pub_notices.py
           flutter analyze
           flutter test
           dart run tool/native_check.dart
       - name: Dart FFI and CLI bidirectional transfer
         run: python tools/desktop_e2e.py --cli '${{ matrix.cli }}' --native '${{ matrix.native }}'
       - name: Flutter release
+        if: runner.os != 'macOS'
         working-directory: app
         run: flutter build ${{ matrix.platform }} --release
+      - name: Flutter macOS release (isolated AOT workaround)
+        if: runner.os == 'macOS'
+        run: python3 tools/build_macos_app.py
       - name: Package DMG
         if: runner.os == 'macOS'
         run: |
