@@ -26,9 +26,9 @@ std::string S(const char* s, const char* def = "") { return s ? s : def; }
 
 extern "C" {
 
-const char* minirtc_version(void) { return "1.0.0"; }
+const char* MiniRtcVersion(void) { return "1.0.0"; }
 
-MiniRtcPeer* minirtc_create(const MiniRtcParams* p) {
+MiniRtcPeer* MiniRtcCreate(const MiniRtcParams* p) {
   if (!p || !p->server_host) return nullptr;
   PeerParams pp;
   pp.server_host = p->server_host;
@@ -58,69 +58,69 @@ MiniRtcPeer* minirtc_create(const MiniRtcParams* p) {
   return peer;
 }
 
-void minirtc_destroy(MiniRtcPeer** peer) {
+void MiniRtcDestroy(MiniRtcPeer** peer) {
   if (!peer || !*peer) return;
   (*peer)->pc->Disconnect();
   delete *peer;
   *peer = nullptr;
 }
 
-int minirtc_add_data_stream(MiniRtcPeer* peer, const char* name, bool reliable) {
+int MiniRtcAddDataStream(MiniRtcPeer* peer, const char* name, bool reliable) {
   if (!peer || !name || !*name) return -1;
   return peer->pc->AddDataStream(name, reliable);
 }
 
-int minirtc_set_reliable_window(MiniRtcPeer* peer, const char* stream, int wnd) {
+int MiniRtcSetReliableWindow(MiniRtcPeer* peer, const char* stream, int wnd) {
   if (!peer || !stream) return -1;
   return peer->pc->SetReliableWindow(stream, wnd);
 }
 
-int minirtc_connect(MiniRtcPeer* peer) {
+int MiniRtcConnect(MiniRtcPeer* peer) {
   if (!peer) return -1;
   return peer->pc->Connect();
 }
 
-int minirtc_disconnect(MiniRtcPeer* peer) {
+int MiniRtcDisconnect(MiniRtcPeer* peer) {
   if (!peer) return -1;
   return peer->pc->Disconnect();
 }
 
-int minirtc_create_share(MiniRtcPeer* peer, const char* mode, int ttl_sec,
+int MiniRtcCreateShare(MiniRtcPeer* peer, const char* mode, int ttl_sec,
                          const char* meta_json) {
   if (!peer) return -1;
   return peer->pc->CreateShare(S(mode, "once"), ttl_sec, S(meta_json));
 }
 
-int minirtc_close_share(MiniRtcPeer* peer, const char* share_id) {
+int MiniRtcCloseShare(MiniRtcPeer* peer, const char* share_id) {
   if (!peer || !share_id) return -1;
   return peer->pc->CloseShare(share_id);
 }
 
-int minirtc_claim(MiniRtcPeer* peer, const char* code, const char* resume_token) {
+int MiniRtcClaim(MiniRtcPeer* peer, const char* code, const char* resume_token) {
   if (!peer) return -1;
   const std::string c = S(code), t = S(resume_token);
   if (c.empty() && t.empty()) return -1;
   return peer->pc->Claim(c, t);
 }
 
-int minirtc_leave(MiniRtcPeer* peer, const char* session_id) {
+int MiniRtcLeave(MiniRtcPeer* peer, const char* session_id) {
   if (!peer || !session_id) return -1;
   return peer->pc->Leave(session_id);
 }
 
-int minirtc_send(MiniRtcPeer* peer, const char* session_id, const char* stream,
+int MiniRtcSend(MiniRtcPeer* peer, const char* session_id, const char* stream,
                  const void* data, size_t len) {
   if (!peer || !session_id || !stream || !data || len == 0) return -1;
   return peer->pc->Send(session_id, stream, static_cast<const uint8_t*>(data), len);
 }
 
-int minirtc_get_link_estimate(MiniRtcPeer* peer, const char* session_id,
+int MiniRtcGetLinkEstimate(MiniRtcPeer* peer, const char* session_id,
                               MiniRtcLinkEstimate* out) {
   if (!peer || !session_id || !out) return -1;
   return peer->pc->GetLinkEstimate(session_id, out);
 }
 
-size_t minirtc_max_datagram_size(void) {
+size_t MiniRtcMaxDatagramSize(void) {
   return minirtc::DataTransport::kMaxDatagramPayload;
 }
 

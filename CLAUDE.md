@@ -22,6 +22,8 @@
 - 核心逻辑全部新写，不从 `/Users/dijunkun/crossdesk` 复制代码；CrossDesk 只作参考。
 - 服务端用 Go，信令协议见 `docs/PLAN.md` 第三部分。
 - 文件数据走自研块协议（非可靠流 + 位图 SACK），控制消息走 KCP 可靠流。
+- **命名**：函数一律大驼峰，包括 C API 导出（`CtCreate`、`MiniRtcSend`），不用蛇形；变量与文件名蛇形，枚举常量 `UPPER_SNAKE`。
+- **提交信息**：Google/Angular 风格 `type(scope): 摘要`，正文中文，一次提交只做一件事。
 
 ## 参考路径
 

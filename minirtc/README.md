@@ -18,16 +18,16 @@
 ## 数据路径
 
 ```
-minirtc_send ─▶ DataTransport::Send
+MiniRtcSend ─▶ DataTransport::Send
    reliable   ─▶ KCP ─▶ RTP(PT 121) ─┐
    unreliable ─▶ RTP(PT 120) ────────┼─▶ PacedSender ─▶ SRTP protect ─▶ path
                                      │                                   │
    feedback ◀── RTCP CCFB ◀──────────┘          ICE(libjuice) / WSS relay
 ```
 
-- 非可靠流每次 `minirtc_send` 一个报文（≤ 1150 字节），进入 pacer；pacer 队列超过 400 ms 时 `minirtc_send` 返回 1（回压）。
-- 可靠流按 KCP 窗口回压（默认 1024，`minirtc_set_reliable_window` 可调）。
-- 接收端对每个 RTP 包生成 RFC 8888 反馈（25–250 ms），发送端 `TransportFeedbackAdapter` → `CongestionControl`（延迟型 + 丢包型）→ pacer 速率与 `minirtc_get_link_estimate`。
+- 非可靠流每次 `MiniRtcSend` 一个报文（≤ 1150 字节），进入 pacer；pacer 队列超过 400 ms 时 `MiniRtcSend` 返回 1（回压）。
+- 可靠流按 KCP 窗口回压（默认 1024，`MiniRtcSetReliableWindow` 可调）。
+- 接收端对每个 RTP 包生成 RFC 8888 反馈（25–250 ms），发送端 `TransportFeedbackAdapter` → `CongestionControl`（延迟型 + 丢包型）→ pacer 速率与 `MiniRtcGetLinkEstimate`。
 - pacing factor 1.15（视频版为 2.5），有界队列不超速排空。
 - 连通性：P2P → TURN-UDP（`MINIRTC_TURN_AUTO`）→ ICE 失败或超时后 WSS 中继（`enable_ws_relay`）。`force_ws_relay` 跳过 ICE。
 - DTLS-SRTP（AES-128-GCM）在任何路径上都启用；接收端（offerer）是 DTLS client；指纹经信令交换。

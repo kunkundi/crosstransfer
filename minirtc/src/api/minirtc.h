@@ -139,7 +139,7 @@ typedef void (*MiniRtcOnNetStats)(const char* session_id,
                                   const MiniRtcNetStats* stats,
                                   void* user_data);
 
-/** Peer parameters. Strings are copied by minirtc_create. */
+/** Peer parameters. Strings are copied by MiniRtcCreate. */
 typedef struct MiniRtcParams {
   const char* server_host;   /**< signaling host (no scheme) */
   int server_port;
@@ -169,48 +169,48 @@ typedef struct MiniRtcParams {
 
 /* ---- API ------------------------------------------------------------ */
 
-MINIRTC_API const char* minirtc_version(void);
+MINIRTC_API const char* MiniRtcVersion(void);
 
-MINIRTC_API MiniRtcPeer* minirtc_create(const MiniRtcParams* params);
-MINIRTC_API void minirtc_destroy(MiniRtcPeer** peer);
+MINIRTC_API MiniRtcPeer* MiniRtcCreate(const MiniRtcParams* params);
+MINIRTC_API void MiniRtcDestroy(MiniRtcPeer** peer);
 
-/** Register a data stream. Call before minirtc_connect. */
-MINIRTC_API int minirtc_add_data_stream(MiniRtcPeer* peer, const char* name,
+/** Register a data stream. Call before MiniRtcConnect. */
+MINIRTC_API int MiniRtcAddDataStream(MiniRtcPeer* peer, const char* name,
                                         bool reliable);
 /** KCP send/receive window (packets) for a reliable stream. Default 1024. */
-MINIRTC_API int minirtc_set_reliable_window(MiniRtcPeer* peer,
+MINIRTC_API int MiniRtcSetReliableWindow(MiniRtcPeer* peer,
                                             const char* stream, int wnd);
 
 /** Open the signaling connection and send hello. Asynchronous. */
-MINIRTC_API int minirtc_connect(MiniRtcPeer* peer);
+MINIRTC_API int MiniRtcConnect(MiniRtcPeer* peer);
 /** Close signaling and all sessions. */
-MINIRTC_API int minirtc_disconnect(MiniRtcPeer* peer);
+MINIRTC_API int MiniRtcDisconnect(MiniRtcPeer* peer);
 
 /** mode: "once" | "open"; ttl_sec <= 0 → server default. meta_json may be NULL. */
-MINIRTC_API int minirtc_create_share(MiniRtcPeer* peer, const char* mode,
+MINIRTC_API int MiniRtcCreateShare(MiniRtcPeer* peer, const char* mode,
                                      int ttl_sec, const char* meta_json);
-MINIRTC_API int minirtc_close_share(MiniRtcPeer* peer, const char* share_id);
+MINIRTC_API int MiniRtcCloseShare(MiniRtcPeer* peer, const char* share_id);
 
 /** Claim a take-code (any accepted form) or resume with a token. */
-MINIRTC_API int minirtc_claim(MiniRtcPeer* peer, const char* code,
+MINIRTC_API int MiniRtcClaim(MiniRtcPeer* peer, const char* code,
                               const char* resume_token);
-MINIRTC_API int minirtc_leave(MiniRtcPeer* peer, const char* session_id);
+MINIRTC_API int MiniRtcLeave(MiniRtcPeer* peer, const char* session_id);
 
 /**
  * Send on a stream. Unreliable: one datagram ≤ 1150 bytes, dropped if the
  * pacer queue is saturated (returns 1). Reliable: queued into KCP; returns
  * 1 when the send window is full (caller should retry later).
  */
-MINIRTC_API int minirtc_send(MiniRtcPeer* peer, const char* session_id,
+MINIRTC_API int MiniRtcSend(MiniRtcPeer* peer, const char* session_id,
                              const char* stream, const void* data,
                              size_t len);
 
-MINIRTC_API int minirtc_get_link_estimate(MiniRtcPeer* peer,
+MINIRTC_API int MiniRtcGetLinkEstimate(MiniRtcPeer* peer,
                                           const char* session_id,
                                           MiniRtcLinkEstimate* out);
 
-/** Maximum unreliable payload per minirtc_send call. */
-MINIRTC_API size_t minirtc_max_datagram_size(void);
+/** Maximum unreliable payload per MiniRtcSend call. */
+MINIRTC_API size_t MiniRtcMaxDatagramSize(void);
 
 #ifdef __cplusplus
 }

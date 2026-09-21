@@ -114,7 +114,7 @@ void OnData(const uint8_t* data, size_t len, const char* sid, const char* stream
     std::string msg(reinterpret_cast<const char*>(data), len);
     if (s->role == "sender" && msg.rfind("ping", 0) == 0) {
       const std::string reply = "pong" + msg.substr(4);
-      minirtc_send(s->peer, sid, "ctrl", reply.data(), reply.size());
+      MiniRtcSend(s->peer, sid, "ctrl", reply.data(), reply.size());
     }
   } else {
     s->data_rx.fetch_add(1);
@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
   p.force_ws_relay = relay_only;
   p.ice_timeout_ms = 15000;
   p.app = "data_echo";
-  p.version = minirtc_version();
+  p.version = MiniRtcVersion();
   p.platform = "cli";
   p.on_signal_status = OnSignal;
   p.on_share_event = OnShare;
@@ -215,40 +215,40 @@ int main(int argc, char** argv) {
   p.on_net_stats = OnStats;
   p.user_data = &st;
 
-  MiniRtcPeer* peer = minirtc_create(&p);
+  MiniRtcPeer* peer = MiniRtcCreate(&p);
   if (!peer) {
-    std::fprintf(stderr, "minirtc_create failed\n");
+    std::fprintf(stderr, "MiniRtcCreate failed\n");
     return 1;
   }
   st.peer = peer;
-  minirtc_add_data_stream(peer, "ctrl", true);
-  minirtc_add_data_stream(peer, "data", false);
-  if (minirtc_connect(peer) != 0) {
-    std::fprintf(stderr, "minirtc_connect failed\n");
+  MiniRtcAddDataStream(peer, "ctrl", true);
+  MiniRtcAddDataStream(peer, "data", false);
+  if (MiniRtcConnect(peer) != 0) {
+    std::fprintf(stderr, "MiniRtcConnect failed\n");
     return 1;
   }
   if (!WaitFor(st, 10000, [&] { return st.signal_ready; })) {
     std::fprintf(stderr, "signaling not ready (%s)\n", st.fail_reason.c_str());
-    minirtc_destroy(&peer);
+    MiniRtcDestroy(&peer);
     return 1;
   }
 
   if (cmd == "share") {
-    minirtc_create_share(peer, "once", 600, R"({"files":1,"bytes":0})");
+    MiniRtcCreateShare(peer, "once", 600, R"({"files":1,"bytes":0})");
     if (!WaitFor(st, 5000, [&] { return !st.code.empty(); })) {
       std::fprintf(stderr, "create_share failed\n");
-      minirtc_destroy(&peer);
+      MiniRtcDestroy(&peer);
       return 1;
     }
     std::printf("CODE %s\n", st.code.c_str());
     std::fflush(stdout);
   } else {
-    minirtc_claim(peer, code.c_str(), nullptr);
+    MiniRtcClaim(peer, code.c_str(), nullptr);
   }
 
   if (!WaitFor(st, 60000, [&] { return st.connected; })) {
     std::fprintf(stderr, "session not connected (%s)\n", st.fail_reason.c_str());
-    minirtc_destroy(&peer);
+    MiniRtcDestroy(&peer);
     return 1;
   }
   std::string sid;
@@ -263,11 +263,11 @@ int main(int argc, char** argv) {
     // Reliable ping/pong.
     for (int i = 0; i < 20; ++i) {
       const std::string msg = "ping" + std::to_string(i);
-      while (minirtc_send(peer, sid.c_str(), "ctrl", msg.data(), msg.size()) == 1)
+      while (MiniRtcSend(peer, sid.c_str(), "ctrl", msg.data(), msg.size()) == 1)
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     // Unreliable bulk: paced by BWE; count deliveries at the peer via stats.
-    const size_t payload = minirtc_max_datagram_size();
+    const size_t payload = MiniRtcMaxDatagramSize();
     std::vector<uint8_t> buf(payload, 0xAB);
     const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
     uint32_t seq = 0;
@@ -282,7 +282,7 @@ int main(int argc, char** argv) {
       int burst = 0;
       while (budget >= (double)payload && burst < 64) {
         std::memcpy(buf.data(), &seq, 4);
-        const int r = minirtc_send(peer, sid.c_str(), "data", buf.data(), payload);
+        const int r = MiniRtcSend(peer, sid.c_str(), "data", buf.data(), payload);
         if (r == 0) {
           ++seq;
           ++sent;
@@ -296,7 +296,7 @@ int main(int argc, char** argv) {
     }
     // Tell the sender we are done and wait for pongs.
     const std::string done = "ping-done";
-    minirtc_send(peer, sid.c_str(), "ctrl", done.data(), done.size());
+    MiniRtcSend(peer, sid.c_str(), "ctrl", done.data(), done.size());
     std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     std::printf("RESULT sent_data=%llu pong_rx=%llu\n", (unsigned long long)sent,
                 (unsigned long long)st.ctrl_rx.load());
@@ -321,7 +321,7 @@ int main(int argc, char** argv) {
                 (long long)st.last_seq.load());
     rc = (st.ctrl_rx.load() >= 21 && st.data_rx.load() > 0) ? 0 : 1;
   }
-  minirtc_leave(peer, sid.c_str());
-  minirtc_destroy(&peer);
+  MiniRtcLeave(peer, sid.c_str());
+  MiniRtcDestroy(&peer);
   return rc;
 }

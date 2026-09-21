@@ -8,7 +8,7 @@
 | `minirtc/`：删媒体/浏览器/libnice/glib；`ice_agent` 改 libjuice + miniupnpc；重写 `pc/`、`DataTransport`（替代 `ice_transport_controller`）、SDP；新 C API | 完成 |
 | 四平台编译 | macOS arm64、iOS arm64、Linux arm64（Ubuntu 24.04 Docker，`xmake f -p linux`）通过；Windows 未实测（本机无 MSVC/MinGW） |
 | `data_echo` 经本地 server：P2P / 强制 TURN / WSS 中继 | 全部通过（含 DTLS-SRTP） |
-| 数据路径：非可靠流接 pacer + BWE，暴露 `minirtc_get_link_estimate`；KCP 窗口可配 | 完成 |
+| 数据路径：非可靠流接 pacer + BWE，暴露 `MiniRtcGetLinkEstimate`；KCP 窗口可配 | 完成 |
 | 限速 / 丢包实测 | 5% 丢包：可靠流完整、非可靠流丢约 5%；8 Mbit/s 限速：BWE 收敛到约 7 Mbit/s、稳态零丢包 |
 
 ## 与规划的偏差 / 决定

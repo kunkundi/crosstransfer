@@ -132,17 +132,17 @@ typedef struct {
   OnNetStats      on_net_stats;       // bitrate/loss/rtt/bwe/traversal
   void* user_data;
 } MiniRtcParams;
-MiniRtcPeer* minirtc_create(const MiniRtcParams*);
-void minirtc_destroy(MiniRtcPeer**);
-int  minirtc_connect(MiniRtcPeer*);                                        // WSS + hello
-int  minirtc_add_data_stream(MiniRtcPeer*, const char* name, bool reliable);  // connect 前
-int  minirtc_create_share(MiniRtcPeer*, const char* mode, int ttl_sec, const char* meta_json);
-int  minirtc_close_share(MiniRtcPeer*, const char* share_id);
-int  minirtc_claim(MiniRtcPeer*, const char* code, const char* resume_token);
-int  minirtc_leave(MiniRtcPeer*, const char* session_id);
-int  minirtc_send(MiniRtcPeer*, const char* session_id, const char* stream, const void* data, size_t len);
-int  minirtc_get_link_estimate(MiniRtcPeer*, const char* session_id, MiniRtcLinkEstimate* out);  // bwe_bps, rtt_ms, loss
-int  minirtc_set_reliable_window(MiniRtcPeer*, const char* stream, int wnd);
+MiniRtcPeer* MiniRtcCreate(const MiniRtcParams*);
+void MiniRtcDestroy(MiniRtcPeer**);
+int  MiniRtcConnect(MiniRtcPeer*);                                        // WSS + hello
+int  MiniRtcAddDataStream(MiniRtcPeer*, const char* name, bool reliable);  // connect 前
+int  MiniRtcCreateShare(MiniRtcPeer*, const char* mode, int ttl_sec, const char* meta_json);
+int  MiniRtcCloseShare(MiniRtcPeer*, const char* share_id);
+int  MiniRtcClaim(MiniRtcPeer*, const char* code, const char* resume_token);
+int  MiniRtcLeave(MiniRtcPeer*, const char* session_id);
+int  MiniRtcSend(MiniRtcPeer*, const char* session_id, const char* stream, const void* data, size_t len);
+int  MiniRtcGetLinkEstimate(MiniRtcPeer*, const char* session_id, MiniRtcLinkEstimate* out);  // bwe_bps, rtt_ms, loss
+int  MiniRtcSetReliableWindow(MiniRtcPeer*, const char* stream, int wnd);
 ```
 
 一个 Peer 对应一条 WSS 连接，可同时持有多个 session（`open` 模式）。
@@ -194,7 +194,7 @@ once 模式：close_share，code 失效
 | `data` | 非可靠流，单包 | 块头 `magic(2) ver(1) flags(1) file_index(2) block_index(4) len(2)` + 净荷 ≤ 1100 字节 |
 | `sack` | 非可靠流，单包 | 每 50–100 ms：`file_index`、最高连续已收块、空洞游程列表、接收速率、丢包估计 |
 
-发送端：`Sweep`（按 pacer 速率顺序发全部块）→ `Repair`（按 SACK 空洞重发）→ `file_done`。速率来自 `minirtc_get_link_estimate` 的 BWE，不可用时按 SACK 丢包率 AIMD。接收端 `pwrite` 到 `<name>.ctpart`，位图周期性持久化到 `transfers.json`，完成后校验 SHA-256 改名，同名加后缀。目录用 `/` 相对路径，拒绝绝对路径、`..`、驱动器前缀、控制字符、平台保留名；空文件直接创建；任一侧失败以 `error` 收敛并清理。WSS 中继模式下同一协议经 `relay` 帧承载，块大小不变。
+发送端：`Sweep`（按 pacer 速率顺序发全部块）→ `Repair`（按 SACK 空洞重发）→ `file_done`。速率来自 `MiniRtcGetLinkEstimate` 的 BWE，不可用时按 SACK 丢包率 AIMD。接收端 `pwrite` 到 `<name>.ctpart`，位图周期性持久化到 `transfers.json`，完成后校验 SHA-256 改名，同名加后缀。目录用 `/` 相对路径，拒绝绝对路径、`..`、驱动器前缀、控制字符、平台保留名；空文件直接创建；任一侧失败以 `error` 收敛并清理。WSS 中继模式下同一协议经 `relay` 帧承载，块大小不变。
 
 ## 六、仓库布局
 
