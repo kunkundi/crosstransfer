@@ -517,8 +517,24 @@ void WsClient::LoadTlsSystemRootCertificates(SSL_CTX* ssl_ctx) {
 
 bool WsClient::VerifyTlsWithSystemTrust(X509_STORE_CTX* store_ctx,
                                        const std::string& uri) {
+  // Platform trust may supply missing anchors, but must never override name,
+  // expiry, signature or other OpenSSL verification errors.
+  if (!store_ctx || !IsTrustError(X509_STORE_CTX_get_error(store_ctx))) return false;
 #ifdef __APPLE__
 #if TARGET_OS_IPHONE
+  // SecPolicy may accept legacy subject names. Preserve the stricter SAN
+  // identity configured for OpenSSL before using Apple only for trust anchors.
+  X509* leaf = X509_STORE_CTX_get0_cert(store_ctx);
+  X509_VERIFY_PARAM* params = X509_STORE_CTX_get0_param(store_ctx);
+  if (!leaf || !params) return false;
+  bool matched = false;
+  if (const char* host = X509_VERIFY_PARAM_get0_host(params, 0)) {
+    matched = X509_check_host(leaf, host, 0, X509_VERIFY_PARAM_get_hostflags(params), nullptr) == 1;
+  } else if (char* address = X509_VERIFY_PARAM_get1_ip_asc(params)) {
+    matched = X509_check_ip_asc(leaf, address, 0) == 1;
+    OPENSSL_free(address);
+  }
+  if (!matched) return false;
   return VerifyWithAppleSystemTrust(store_ctx, AppleTlsHostname(uri));
 #else
   (void)store_ctx;
@@ -532,10 +548,10 @@ bool WsClient::VerifyTlsWithSystemTrust(X509_STORE_CTX* store_ctx,
 #endif
 }
 
-bool WsClient::LogTlsVerificationError(X509_STORE_CTX* store_ctx) {
+void WsClient::LogTlsVerificationError(X509_STORE_CTX* store_ctx) {
   if (!store_ctx) {
     LOG_ERROR("TLS certificate verify failed: no certificate store context");
-    return false;
+    return;
   }
 
   const int error = X509_STORE_CTX_get_error(store_ctx);
@@ -543,7 +559,6 @@ bool WsClient::LogTlsVerificationError(X509_STORE_CTX* store_ctx) {
   LOG_ERROR("TLS certificate verify failed: {} (err={}, depth={})",
             message ? message : "unknown", error,
             X509_STORE_CTX_get_error_depth(store_ctx));
-  return IsTrustError(error);
 }
 
 }  // namespace minirtc

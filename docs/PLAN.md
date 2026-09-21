@@ -307,6 +307,8 @@ const char* CtVersion(void);
 13. CI 全矩阵、多接收端并发、强制 TURN、WSS 中继压测、TLS / ACME、文档、第三方许可证清单、App 内开源许可证页。
 14. 可选：SPAKE2 口令认证、浏览器接收页、libjuice 之上的打洞增强（对称 NAT 预测、中继后升级 P2P）。
 
+阶段 5 首批加固：WSS 必须同时验证受信证书链与目标 DNS/IP 的 SAN，拒绝不匹配、过期及不受信证书，并以回归测试覆盖；梳理所有传递依赖许可（尤其移动端扫码 SDK），完善 App 内许可页面与分发清单；对移动端导入副本提供可控清理。公开域名、证书和真实设备验证仍按所有者提供的资源推进。
+
 ## 十一、验证
 
 - **server**：`go test`（协议状态机、取件码分配 / 过期 / 限速、TURN 凭据、中继转发）；两个 WebSocket 客户端脚本走完 create_share → claim → signal → relay → leave。

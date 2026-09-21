@@ -61,13 +61,13 @@ class WsClient : public std::enable_shared_from_this<WsClient> {
   void OnText(const std::string& payload);
   void OnBinary(const std::string& payload);
   bool OnTlsVerify(bool preverified, X509_STORE_CTX* store_ctx);
-  void ConfigureTls(SSL_CTX* ctx);
+  bool ConfigureTls(SSL_CTX* ctx);
 
  private:
   static void LoadTlsSystemRootCertificates(SSL_CTX* ssl_ctx);
   static bool VerifyTlsWithSystemTrust(X509_STORE_CTX* store_ctx,
                                        const std::string& uri);
-  static bool LogTlsVerificationError(X509_STORE_CTX* store_ctx);
+  static void LogTlsVerificationError(X509_STORE_CTX* store_ctx);
 
   void SetStatus(WsStatus status);
   void ScheduleReconnect();

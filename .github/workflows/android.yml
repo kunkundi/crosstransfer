@@ -1,7 +1,7 @@
 name: Android Phase 4
 on:
   push:
-    branches: [main, 'codex/phase4-android']
+    branches: [main, 'codex/phase4-android', 'codex/phase5-hardening']
     paths-ignore: ['**.md']
   pull_request:
     paths-ignore: ['**.md']

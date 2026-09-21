@@ -3,6 +3,7 @@
  */
 
 #include "ws_client.h"
+#include "tls_peer_name.h"
 
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio_client.hpp>
@@ -190,9 +191,8 @@ void EndpointImpl<TlsConfig>::Register() {
                        asio::ssl::context::single_dh_use);
       ctx->set_verify_mode(asio::ssl::verify_peer |
                            asio::ssl::verify_fail_if_no_peer_cert);
-      if (auto self = owner.lock()) {
-        self->ConfigureTls(ctx->native_handle());
-      }
+      auto self = owner.lock();
+      if (!self || !self->ConfigureTls(ctx->native_handle())) return ssl_context_ptr{};
       ctx->set_verify_callback(
           [owner](bool preverified, asio::ssl::verify_context& vctx) {
             if (auto self = owner.lock()) {
@@ -202,6 +202,7 @@ void EndpointImpl<TlsConfig>::Register() {
           });
     } catch (std::exception& e) {
       LOG_ERROR("TLS init error: {}", e.what());
+      return ssl_context_ptr{};
     }
     return ctx;
   });
@@ -397,11 +398,19 @@ void WsClient::OnBinary(const std::string& payload) {
                          payload.size());
 }
 
-void WsClient::ConfigureTls(SSL_CTX* ctx) { LoadTlsSystemRootCertificates(ctx); }
+bool WsClient::ConfigureTls(SSL_CTX* ctx) {
+  if (!ConfigureTlsPeerName(ctx, uri_)) {
+    LOG_ERROR("Unable to configure TLS peer identity");
+    return false;
+  }
+  LoadTlsSystemRootCertificates(ctx);
+  return true;
+}
 
 bool WsClient::OnTlsVerify(bool preverified, X509_STORE_CTX* store_ctx) {
   if (!preverified && VerifyTlsWithSystemTrust(store_ctx, uri_)) return true;
-  if (!preverified && LogTlsVerificationError(store_ctx)) {
+  if (!preverified) {
+    LogTlsVerificationError(store_ctx);
     SetStatus(WsStatus::kTlsCertError);
   }
   return preverified;

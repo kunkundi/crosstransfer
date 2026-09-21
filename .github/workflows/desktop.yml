@@ -1,7 +1,7 @@
 name: Desktop Phase 2
 on:
   push:
-    branches: [main, 'codex/phase2-desktop']
+    branches: [main, 'codex/phase2-desktop', 'codex/phase5-hardening']
     paths-ignore: ['**.md']
   pull_request:
     paths-ignore: ['**.md']
@@ -88,6 +88,9 @@ jobs:
         run: |
           xmake build -y core_tests ct_cli
           xmake run core_tests
+      - name: Trusted WSS and wrong-host rejection
+        if: runner.os != 'Windows'
+        run: python3 tools/run_tls_e2e.py --cli '${{ matrix.cli }}'
       - name: Preserve installed native dependencies, including after failures
         if: always() && !cancelled() && steps.native-cache.outputs.path != ''
         uses: actions/cache/save@v4

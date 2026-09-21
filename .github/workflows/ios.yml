@@ -1,7 +1,7 @@
 name: iOS Phase 3
 on:
   push:
-    branches: [main, 'codex/phase3-ios']
+    branches: [main, 'codex/phase3-ios', 'codex/phase5-hardening']
     paths-ignore: ['**.md']
   pull_request:
     paths-ignore: ['**.md']
