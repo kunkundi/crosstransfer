@@ -56,6 +56,11 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Reserve disk for Flutter and the Android emulator
+        run: |
+          # Only remove unrelated, preinstalled tools on this disposable runner.
+          sudo rm -rf /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h /
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
