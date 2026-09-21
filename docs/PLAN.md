@@ -99,7 +99,7 @@
 
 libjuice 不支持 ICE-TCP / TURN-TCP，UDP 被完全封锁的网络由服务端 WSS 中继兜底；libnice 补丁中的"中继后升级 P2P"与"对称 NAT 预测打洞"第一版不保留，后续按需在 libjuice 之上重做。
 
-合规义务仅剩：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 要求公开对 libjuice 源文件的修改（如有）。App 内设置 → 法律信息 → 开源许可证页面。
+分发义务：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 无论 libjuice 是否修改，均要求提供对应覆盖源码并告知获取方式，修改部分同样保留 MPL-2.0。阶段 5 的 ct1 源码归档随产品提供。App 内设置 → 法律信息 → 开源许可证页面。
 
 ### 改造范围
 
@@ -316,6 +316,8 @@ const char* CtVersion(void);
 内嵌 TURN peer 策略：默认仅允许公共 IPv4 单播目标，拒绝私网、回环、共享地址、链路本地、组播、文档/基准测试及保留地址，避免中继到服务器内部网络。`CT_TURN_ALLOW_PRIVATE_PEERS=true` 仅供受控私网/回环测试，显式放行 RFC1918、回环和 CGNAT；链路本地、组播等仍拒绝。当前内嵌中继仅有 UDP4，不接受 IPv6 peer。外部 TURN 的策略由运营者独立配置，带宽/资源配额另行加固。
 
 并发 TURN 加固：libjuice 接收回调持有内部连接锁，而 TURN 发送也需要该锁；不得在此回调中进入持有发送/反馈/DTLS 锁的传输代码。ICE 封装将收包复制到每 agent 的有界队列（最多 4 MiB、4096 包），由独立线程按序交付，满时按 UDP 丢包处理。关闭时先禁用新发送/收包并停止 libjuice，再清空队列、等待交付线程退出；应用结束后不得残留回调。
+
+强制 TURN 不能仅过滤发出的候选：libjuice 1.7.2 仍可通过 peer-reflexive 检查发现并选中直连。为 `juice_config` 增加可选 `relay_only`，在底层配对时拒绝所有非本地 relay 候选；只有强制 TURN 开启，自动/P2P 保持默认行为。补丁和完整对应 libjuice 源码继续按 MPL-2.0 提供，随二进制分发其许可、修改说明和源码归档；不改变本项目其他源文件的专有许可。
 
 ## 十一、验证
 

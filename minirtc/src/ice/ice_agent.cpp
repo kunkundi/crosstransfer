@@ -99,6 +99,7 @@ IceAgent::IceAgent(const IceConfig& config, Callbacks callbacks)
   });
 
   juice_config_t jc{};
+  jc.relay_only = config_.turn_mode == MINIRTC_TURN_FORCE;
   jc.concurrency_mode = JUICE_CONCURRENCY_MODE_THREAD;
   jc.cb_state_changed = &IceAgent::OnStateStatic;
   jc.cb_candidate = &IceAgent::OnCandidateStatic;

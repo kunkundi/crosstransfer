@@ -1,0 +1,33 @@
+--- a/include/juice/juice.h
++++ b/include/juice/juice.h
+@@ -115,6 +115,9 @@
+ 	juice_cb_recv_t cb_recv;
+ 
+ 	void *user_ptr;
++
++	// CrossTransfer extension: select only locally relayed candidate pairs.
++	bool relay_only;
+ 
+ } juice_config_t;
+ 
+--- a/src/agent.c
++++ b/src/agent.c
+@@ -108,6 +108,7 @@
+ 	agent->config.cb_gathering_done = config->cb_gathering_done;
+ 	agent->config.cb_recv = config->cb_recv;
+ 	agent->config.user_ptr = config->user_ptr;
++	agent->config.relay_only = config->relay_only;
+ 	if (alloc_failed) {
+ 		JLOG_FATAL("Memory allocation for configuration copy failed");
+ 		goto error;
+@@ -2398,6 +2398,10 @@
+ 
+ int agent_add_candidate_pair(juice_agent_t *agent, ice_candidate_t *local, // local may be NULL
+                              ice_candidate_t *remote) {
++	// CrossTransfer: signaling filters alone cannot stop peer-reflexive bypass.
++	if (agent->config.relay_only && (!local || local->type != ICE_CANDIDATE_TYPE_RELAYED))
++		return 0;
++
+ 	ice_candidate_pair_t pair;
+ 	bool is_controlling = agent->mode == AGENT_MODE_CONTROLLING;
+ 	if (ice_create_candidate_pair(local, remote, is_controlling, &pair)) {

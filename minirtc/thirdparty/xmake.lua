@@ -1,1 +1,1 @@
-includes("openssl3", "libsrtp", "websocketpp", "miniupnpc")
+includes("openssl3", "libsrtp", "websocketpp", "miniupnpc", "libjuice")

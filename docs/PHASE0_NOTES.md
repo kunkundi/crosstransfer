@@ -13,9 +13,9 @@
 
 ## 与规划的偏差 / 决定
 
-- **libjuice 1.7.2 未打补丁**（MPL 义务为零）。为保证角色分配稳定，应答方在应用远端 offer 之后才开始收集候选（controlled），offerer 是 DTLS client。
+- **阶段 0 的 libjuice 1.7.2 未打补丁**。分发其二进制仍须提供对应源码获取方式；阶段 5 已补 ct1 强制中继策略与完整 MPL 源码归档。为保证角色分配稳定，应答方在应用远端 offer 之后才开始收集候选（controlled），offerer 是 DTLS client。
 - 本地 SDP 只含 ICE 属性 + 指纹 + `a=x-data-stream` 行；所有候选（含 host）都经 trickle 发送，便于 `MINIRTC_TURN_FORCE` 过滤与 UPnP 追加候选。
-- **强制 TURN** 通过只发/只收 relay 候选实现；libjuice 仍可能把对端的 relay 地址配成 prflx 直连，实际路径以 `selected pair` 日志为准（本机回环测试可见 P2P/TURN 混合，这是回环环境特性）。
+- **阶段 0 的强制 TURN 存在缺口**：只发/只收 relay 候选，仍可经 prflx 发现并选中直连，不能作为严格中继验证。阶段 5 增加底层 `relay_only` 配对限制，并检查发送/接收双方完成时的实际路径。
 - WSS 中继：`force_ws_relay` 跳过 ICE；ICE 失败或 `ice_timeout_ms` 超时自动切换；服务端发送队列满时**丢弃**中继帧而非断连；未知 session 的帧静默丢弃。
 - 拥塞控制参数：pacing factor 2.5 → 1.15；有界 pacer 队列（不超速排空）；网络上限 20 → 200 Mbit/s；AIMD 起始 30 → 200 Mbit/s。KCP 段走"音频"优先级，块数据走普通优先级。
 - `PeerConnection` 的会话状态变更全部串行到一个 worker 队列，libjuice / WebSocket / pacer 线程互不阻塞；libjuice 回调中只做数据路径。

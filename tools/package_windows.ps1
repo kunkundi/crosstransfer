@@ -11,6 +11,7 @@ New-Item -ItemType Directory -Force "$Root/dist", "$Bundle/legal" | Out-Null
 Copy-Item "$Root/LICENSE", "$Root/THIRD_PARTY_NOTICES.md" "$Bundle/legal/" -Force
 Copy-Item "$Root/minirtc/thirdparty/webrtc/LICENSE" "$Bundle/legal/WebRTC-LICENSE" -Force
 Copy-Item "$Root/minirtc/thirdparty/webrtc/PATENTS" "$Bundle/legal/WebRTC-PATENTS" -Force
+Copy-Item "$Root/app/assets/legal/libjuice-1.7.2-ct1.tar.gz", "$Root/docs/licenses/libjuice.txt" "$Bundle/legal/" -Force
 # Flutter's runner and plugins use the dynamic MSVC runtime. Ship the permitted
 # app-local CRT files so a clean machine does not require a separate installer.
 $VsWhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"

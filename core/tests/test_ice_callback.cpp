@@ -3,11 +3,46 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
 
 #include "../../minirtc/src/ice/ice_agent.h"
+
+TEST_CASE("libjuice relay-only configuration refuses a reachable direct peer") {
+  using namespace std::chrono;
+  juice_config_t config{};
+  config.bind_address = "127.0.0.1";
+  config.concurrency_mode = JUICE_CONCURRENCY_MODE_THREAD;
+  using Agent = std::unique_ptr<juice_agent_t, decltype(&juice_destroy)>;
+  Agent direct(juice_create(&config), &juice_destroy);
+  config.relay_only = true;
+  Agent forced(juice_create(&config), &juice_destroy);
+  REQUIRE(direct);
+  REQUIRE(forced);
+  REQUIRE(juice_gather_candidates(direct.get()) == JUICE_ERR_SUCCESS);
+  REQUIRE(juice_gather_candidates(forced.get()) == JUICE_ERR_SUCCESS);
+  char direct_sdp[JUICE_MAX_SDP_STRING_LEN], forced_sdp[JUICE_MAX_SDP_STRING_LEN];
+  REQUIRE(juice_get_local_description(direct.get(), direct_sdp, sizeof(direct_sdp)) == JUICE_ERR_SUCCESS);
+  REQUIRE(juice_get_local_description(forced.get(), forced_sdp, sizeof(forced_sdp)) == JUICE_ERR_SUCCESS);
+  // Intentionally bypass our signaling filters: libjuice sees both host
+  // candidates and can learn peer-reflexive ones from incoming checks.
+  REQUIRE(juice_set_remote_description(forced.get(), direct_sdp) == JUICE_ERR_SUCCESS);
+  REQUIRE(juice_set_remote_description(direct.get(), forced_sdp) == JUICE_ERR_SUCCESS);
+  bool escaped = false;
+  const auto deadline = steady_clock::now() + milliseconds(1200);
+  while (steady_clock::now() < deadline) {
+    const auto state = juice_get_state(forced.get());
+    if (state == JUICE_STATE_CONNECTED || state == JUICE_STATE_COMPLETED) {
+      escaped = true;
+      break;
+    }
+    std::this_thread::sleep_for(milliseconds(5));
+  }
+  CHECK_FALSE(escaped);
+  CHECK(juice_send(forced.get(), "test", 4) != JUICE_ERR_SUCCESS);
+}
 
 TEST_CASE("ICE receive callback never holds the libjuice connection lock") {
   using namespace std::chrono;

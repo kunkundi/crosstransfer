@@ -57,6 +57,24 @@ TURN 停顿已复现并采集进程线程栈（本机 `/tmp/ct-turn-deadlock.sam
 
 内置 TURN 增加默认 peer 访问策略（参考 [IANA IPv4 特殊用途地址表](https://www.iana.org/assignments/iana-ipv4-special-registry/)）：拒绝私网/回环/CGNAT、链路本地、组播、文档/基准测试和保留地址；IPv6 peer 因当前仅 UDP4 中继而拒绝。受控测试可显式开放 RFC1918、回环、CGNAT，但不能放开链路本地。新增地址边界、IPv4-mapped IPv6 和真实 TURN Allocate/CreatePermission/双向数据测试；默认策略确实阻止回环数据，测试开关下双向数据通过。完整 Go race/vet 通过。
 
+## 严格 TURN 与并发回归（2026-09-22）
+
+原强制模式只过滤信令中的候选，但 libjuice 可自行发现并提名直连 prflx 候选。新增 `relay_only` 配置，并在 libjuice 配对入口拒绝非本地 relay 候选。ct1 补丁、完整对应源码及 MPL 文本随各平台分发；`tools/check_libjuice_source.py` 从固定哈希的官方归档应用补丁，逐文件验证随包源码，同时检查许可原文与公告哈希。额外测试绕过应用的信令过滤，直接把可达 host 候选送给 libjuice，验证强制模式仍拒绝直连。全量 **34 项 core / 889 断言通过**。
+
+新增 `tools/run_transfer_load.py`：独立临时 CA、受信 WSS、独立服务端/客户端进程和状态目录；每个接收端校验 SHA-256、空文件/空目录/中文路径，双方最终传输路径必须与测试场景一致，且服务端 peer/share/session 归零。CI 已接入 macOS/Linux 的 4 × 8 MiB 回归，远程执行仍受 GitHub 账单问题阻挡。
+
+本机 macOS arm64，8 接收端 ×（64 MiB + 814 字节），严格 TURN 连续三轮、WSS 中继和 P2P 均通过。测量包含建连与退出，每轮核对 536,877,424 字节；数据仅代表本机回环回归，不代表公网容量或稳定性能基线。
+
+| 场景 | 完成时间 | 聚合 MiB/s | 服务端峰值 RSS | 发送端峰值 RSS |
+| --- | ---: | ---: | ---: | ---: |
+| 严格 TURN 第 1 轮 | 83.969 s | 6.098 | 24.3 MiB | 63.6 MiB |
+| 严格 TURN 第 2 轮 | 53.917 s | 9.496 | 22.6 MiB | 61.8 MiB |
+| 严格 TURN 第 3 轮 | 18.702 s | 27.378 | 24.6 MiB | 65.6 MiB |
+| WSS 中继 | 22.324 s | 22.935 | 24.3 MiB | 77.3 MiB |
+| P2P | 9.190 s | 55.714 | 18.8 MiB | 173.3 MiB |
+
+本机原始报告 `dist/load-phase5-strict-turn-v2.json`。TURN 每轮实际 16 个 allocation；客户端断开后它们暂留至 TURN 生命周期超时，未宣称 allocation 立即释放。各轮无 ICE 互锁、误写已校验文件或路径退回直连。TURN 吞吐波动明显，公网配额/长期负载与吞吐调优仍待后续验证。
+
 2026-09-22 的最新远程回归（提交 `4475140`，Desktop `35644512582`、Android `35644512598`、iOS `35644512727`）均被 GitHub 拒绝启动：账户付款或 Actions 支出上限需要所有者处理。不是代码执行失败；在账单状态恢复前不反复重跑。Windows CRT 修复与最后的 Linux 回归尚未获得远程验证。
 
 - 全平台远程回归与 Windows 慢构建诊断。

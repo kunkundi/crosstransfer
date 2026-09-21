@@ -28,5 +28,5 @@
 
 - 明确以上既有宽松许可证的白名单解释并更新 PLAN。
 - 锁定 native、Go、pub、Gradle 与 Apple 传递依赖清单，包含源码版本、来源、许可证和文本校验和；区分构建/测试工具与运行时。
-- MPL-2.0 libjuice 即使未修改，分发二进制也需要告知取得对应源代码的方式；当前根 NOTICE 中“仅修改时”的描述不完整，需补齐。
+- MPL-2.0 libjuice 的说明已纠正：ct1 的完整对应源码与修改说明归档在 `app/assets/legal/libjuice-1.7.2-ct1.tar.gz`，原文在 `docs/licenses/libjuice.txt`，随分发物提供；App 内源码导出入口待接入。参见 [Mozilla FAQ Q8/Q10](https://www.mozilla.org/en-US/MPL/2.0/FAQ/)。
 - App 法律页面与所有分发物携带完整版权/许可文本及必要源码信息；设置 CI 防止锁文件更新后清单失配。

@@ -33,6 +33,7 @@ cp "$ROOT/app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png" 
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/pkg/usr/share/doc/crosstransfer/"
 cp "$ROOT/minirtc/thirdparty/webrtc/LICENSE" "$STAGE/pkg/usr/share/doc/crosstransfer/WebRTC-LICENSE"
 cp "$ROOT/minirtc/thirdparty/webrtc/PATENTS" "$STAGE/pkg/usr/share/doc/crosstransfer/WebRTC-PATENTS"
+cp "$ROOT/app/assets/legal/libjuice-1.7.2-ct1.tar.gz" "$ROOT/docs/licenses/libjuice.txt" "$STAGE/pkg/usr/share/doc/crosstransfer/"
 # Derive runtime dependencies from every ELF shipped in the bundle, including
 # plugins; do not guess the GTK/glibc package names for a distribution.
 cat > "$STAGE/debian/control" <<'EOF'

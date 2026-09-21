@@ -1,10 +1,9 @@
 # Third-party notices
 
 CrossTransfer is proprietary software (see `LICENSE`). It embeds or links the
-components below. Every dependency permits closed-source static linking; no
-GPL or LGPL code is included. License texts of packages fetched by xmake are
-available in their upstream repositories and are bundled with binary releases
-by the release pipeline (`tools/` in later phases).
+components below. The project prohibits GPL/LGPL runtime dependencies. The
+complete transitive inventory and bundled notices are still being completed;
+see `docs/LICENSE_AUDIT.md` for the current evidence and remaining items.
 
 ## Bundled source (in this repository)
 
@@ -16,7 +15,7 @@ by the release pipeline (`tools/` in later phases).
 
 | Package | Version | License | Purpose |
 | --- | --- | --- | --- |
-| libjuice | 1.7.2 | MPL-2.0 | ICE / STUN / TURN-UDP |
+| libjuice | 1.7.2 + CrossTransfer ct1 | MPL-2.0 | ICE / STUN / TURN-UDP; opt-in relay-only policy |
 | miniupnpc | 2.3.3 | BSD-3-Clause | UPnP IGD port mapping |
 | OpenSSL | 3.5.8 | Apache-2.0 | DTLS, TLS for WSS |
 | libsrtp | 2.7.0 | BSD-3-Clause | SRTP / SRTCP |
@@ -26,9 +25,19 @@ by the release pipeline (`tools/` in later phases).
 | spdlog | 1.14.1 | MIT | logging |
 | nlohmann_json | 3.11.3 | MIT | JSON |
 
-MPL-2.0 note: libjuice is used unmodified. If the project ever patches libjuice
-source files, those modified files (and only those) must be made available
-under MPL-2.0.
+MPL-2.0 source notice: libjuice covered source, including our ct1 changes, is
+available under MPL-2.0 in `libjuice-1.7.2-ct1.tar.gz`. Desktop packages include
+this archive alongside these notices; mobile/Flutter bundles include it in
+`assets/legal/` (APK path: `assets/flutter_assets/assets/legal/`). The archive
+contains the complete corresponding source and `CROSSTRANSFER-CHANGES.txt`.
+Its SHA-256 is `916a4d3cf32cd8ab4fdca2f7a6b39d94b90e1915471030850abaa26833e11c25`.
+Repository copy: `app/assets/legal/libjuice-1.7.2-ct1.tar.gz`; full license:
+`docs/licenses/libjuice.txt`. Upstream: https://github.com/paullouisageneau/libjuice/tree/v1.7.2.
+The changes add `juice_config_t.relay_only` and reject non-relayed local
+candidate pairs when enabled. No additional restriction in CrossTransfer's
+proprietary license limits recipients' rights to this covered source under MPL.
+Distributing even an unmodified compiled MPL library requires informing
+recipients how to obtain its corresponding covered source.
 
 ## Server dependencies (Go modules, statically linked)
 

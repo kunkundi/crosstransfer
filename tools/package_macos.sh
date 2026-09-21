@@ -21,6 +21,7 @@ mkdir -p "$PACKED/Contents/Resources/legal"
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$PACKED/Contents/Resources/legal/"
 cp "$ROOT/minirtc/thirdparty/webrtc/LICENSE" "$PACKED/Contents/Resources/legal/WebRTC-LICENSE"
 cp "$ROOT/minirtc/thirdparty/webrtc/PATENTS" "$PACKED/Contents/Resources/legal/WebRTC-PATENTS"
+cp "$ROOT/app/assets/legal/libjuice-1.7.2-ct1.tar.gz" "$ROOT/docs/licenses/libjuice.txt" "$PACKED/Contents/Resources/legal/"
 IDENTITY="${CT_SIGN_IDENTITY:--}"
 if [ -n "${CT_NOTARY_PROFILE:-}" ] && [ "$IDENTITY" = - ]; then
   echo 'Notarization requires CT_SIGN_IDENTITY (Developer ID Application)' >&2; exit 1

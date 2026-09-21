@@ -40,6 +40,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+      - name: Verify corresponding MPL source bundle
+        run: python tools/check_libjuice_source.py
       - uses: actions/setup-go@v5
         with:
           go-version-file: server/go.mod
@@ -111,6 +113,17 @@ jobs:
       - name: Trusted WSS and wrong-host rejection
         if: runner.os != 'Windows'
         run: python3 tools/run_tls_e2e.py --cli '${{ matrix.cli }}'
+      - name: Concurrent P2P, TURN and rate-limited WSS transfers
+        if: runner.os != 'Windows'
+        run: python3 tools/run_transfer_load.py --cli '${{ matrix.cli }}' --receivers 4 --mib 8 --timeout 240 --output dist/transfer-load.json
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os != 'Windows'
+        with:
+          name: transfer-load-${{ matrix.platform }}
+          path: |
+            dist/transfer-load.json
+            dist/transfer-load-failure-logs/
+          if-no-files-found: ignore
       - name: Preserve installed native dependencies, including after failures
         if: always() && !cancelled() && steps.native-cache.outputs.path != ''
         uses: actions/cache/save@v4
