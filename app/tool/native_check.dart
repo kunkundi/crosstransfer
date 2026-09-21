@@ -7,7 +7,22 @@ import 'dart:io';
 import 'package:crosstransfer/ffi/core_client.dart';
 import 'package:crosstransfer/ffi/native_library.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
+  if (args.length != 2 || args.first != '--worker') {
+    // Native logging is process-wide and keeps its log file open until exit.
+    // Let the worker exit before removing its data directory on Windows.
+    final dir = Directory.systemTemp.createTempSync('ct-native-check-');
+    try {
+      final worker = await Process.start(Platform.resolvedExecutable,
+          [Platform.script.toFilePath(), '--worker', dir.path],
+          mode: ProcessStartMode.inheritStdio);
+      exitCode = await worker.exitCode;
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+    return;
+  }
+  final dir = Directory(args[1]);
   final library = NativeLibrary.open();
   final header = File('../core/include/crosstransfer/ct_api.h').readAsStringSync();
   final names = RegExp(r'CT_API\s+[^;]+?\b(Ct\w+)\s*\(')
@@ -15,7 +30,6 @@ Future<void> main() async {
   for (final name in names) {
     if (!library.providesSymbol(name)) throw StateError('missing export: $name');
   }
-  final dir = Directory.systemTemp.createTempSync('ct-native-check-');
   CoreClient? client;
   try {
     client = CoreClient.create({'data_dir': dir.path, 'log_level': 'error'});
@@ -33,6 +47,5 @@ Future<void> main() async {
     client?.dispose();
     // Drain already posted NativeCallable events before exiting the isolate.
     await Future<void>.delayed(Duration.zero);
-    dir.deleteSync(recursive: true);
   }
 }
