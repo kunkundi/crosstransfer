@@ -70,7 +70,8 @@ docker compose logs --tail=100 ctserver
 
 - 内置 TURN 只支持 UDP；UDP 被封锁时客户端使用 WSS 中继。跨公网部署的 `CT_PUBLIC_IP` 必须是该主机实际可达的地址，端口范围同时在云安全组与主机防火墙放行。
 - 外部 coturn：设置 `CT_EXTERNAL_TURN=turn:turn.example.com:3478?transport=udp`，两端使用相同的 `static-auth-secret` / `CT_TURN_SECRET`；这会关闭内置 TURN。配置外部 TURN 的用户/全局配额及禁止内网、回环等目标的权限策略。
-- 当前内置 TURN 尚无完整公共服务配额与私网 peer 拒绝策略；对公网开放前应完成阶段 5 的这项加固，或使用配置好访问策略的外部 TURN。不要把 WSS 限速误当作 TURN 限速。
+- 内置 TURN 默认拒绝私网、回环、CGNAT、链路本地、组播及特殊用途目标，当前中继只支持 IPv4。仅受控内网/回环测试可设置 `CT_TURN_ALLOW_PRIVATE_PEERS=true` 放行 RFC1918、回环和 CGNAT；链路本地（含常见云元数据地址）等仍拒绝。`tools/start_server.sh` 为本机开发默认启用此开关，公网部署不要使用该脚本的默认配置。
+- 内置 TURN 的公共服务带宽/资源配额尚未完成；对公网开放前应完成这项加固，或使用配置好访问策略的外部 TURN。目标 IP 过滤不能替代出站防火墙，也不能保护使用公网地址的内部服务。不要把 WSS 限速误当作 TURN 限速。
 - 只有后端端口无法被公网直连、且可信代理**覆盖**客户端提供的转发头时，才设置 `CT_TRUST_PROXY=1`。否则保持关闭，避免绕过按 IP 的取件限速。
 - `/healthz` 返回存活、版本、连接/分享/会话/TURN 数量。`ctserver -healthz` 使用相同的 YAML/环境设置，并为 ACME 提供正确的 SNI；此本机存活探针不验证服务端证书，不代表公网证书验收。
 - `CT_METRICS=true` 开启 Prometheus 文本 `/metrics`。该路由没有独立鉴权，应由内部代理访问策略保护。默认关闭。

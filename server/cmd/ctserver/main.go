@@ -72,18 +72,22 @@ func run() error {
 		}
 		lo, hi, _ := cfg.TURNPorts()
 		turnSrv, err = turn.Start(turn.Options{
-			PublicIP: ip,
-			Port:     cfg.TURNPort,
-			MinPort:  lo,
-			MaxPort:  hi,
-			Realm:    cfg.TURNRealm,
-			Secret:   cfg.TURNSecret,
-			Logger:   log,
+			PublicIP:          ip,
+			Port:              cfg.TURNPort,
+			MinPort:           lo,
+			MaxPort:           hi,
+			Realm:             cfg.TURNRealm,
+			Secret:            cfg.TURNSecret,
+			Logger:            log,
+			AllowPrivatePeers: cfg.TURNAllowPrivatePeers,
 		})
 		if err != nil {
 			return err
 		}
 		defer turnSrv.Close()
+		if cfg.TURNAllowPrivatePeers {
+			log.Warn("TURN private/loopback peers enabled; use only in controlled networks")
+		}
 	}
 
 	hub := sig.NewHub(sig.Options{

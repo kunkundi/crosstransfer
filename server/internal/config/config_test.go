@@ -7,23 +7,30 @@ import (
 
 func TestApplyEnvAndValidate(t *testing.T) {
 	env := map[string]string{
-		"CT_LISTEN":            ":9000",
-		"CT_PUBLIC_IP":         "203.0.113.5",
-		"CT_TURN_PORT":         "3478",
-		"CT_TURN_PORT_RANGE":   "50000-50100",
-		"CT_TURN_SECRET":       "s3cret",
-		"CT_RELAY_RATE_LIMIT":  "1048576",
-		"CT_CLAIM_RATE_PER_IP": "0.5",
-		"CT_TURN_CRED_TTL":     "5m",
-		"CT_METRICS":           "true",
-		"CT_STUN_SERVERS":      "stun.example.org:3478, 198.51.100.2:3478",
+		"CT_LISTEN":                   ":9000",
+		"CT_PUBLIC_IP":                "203.0.113.5",
+		"CT_TURN_PORT":                "3478",
+		"CT_TURN_PORT_RANGE":          "50000-50100",
+		"CT_TURN_SECRET":              "s3cret",
+		"CT_RELAY_RATE_LIMIT":         "1048576",
+		"CT_CLAIM_RATE_PER_IP":        "0.5",
+		"CT_TURN_CRED_TTL":            "5m",
+		"CT_TURN_ALLOW_PRIVATE_PEERS": "true",
+		"CT_METRICS":                  "true",
+		"CT_STUN_SERVERS":             "stun.example.org:3478, 198.51.100.2:3478",
 	}
 	cfg := Default()
+	if cfg.TURNAllowPrivatePeers {
+		t.Fatal("private TURN peers must be denied by default")
+	}
 	if err := cfg.applyEnv(func(k string) (string, bool) { v, ok := env[k]; return v, ok }); err != nil {
 		t.Fatal(err)
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
+	}
+	if !cfg.TURNAllowPrivatePeers {
+		t.Fatal("explicit controlled-network override was ignored")
 	}
 	if cfg.Listen != ":9000" || cfg.RelayRateLimit != 1048576 || cfg.ClaimRatePerIP != 0.5 || cfg.TURNCredTTL != 5*time.Minute || !cfg.Metrics {
 		t.Fatalf("%+v", cfg)

@@ -47,6 +47,8 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 ## 剩余工作
 
+内置 TURN 增加默认 peer 访问策略（参考 [IANA IPv4 特殊用途地址表](https://www.iana.org/assignments/iana-ipv4-special-registry/)）：拒绝私网/回环/CGNAT、链路本地、组播、文档/基准测试和保留地址；IPv6 peer 因当前仅 UDP4 中继而拒绝。受控测试可显式开放 RFC1918、回环、CGNAT，但不能放开链路本地。新增地址边界、IPv4-mapped IPv6 和真实 TURN Allocate/CreatePermission/双向数据测试；默认策略确实阻止回环数据，测试开关下双向数据通过。完整 Go race/vet 通过。
+
 2026-09-22 的最新远程回归（提交 `4475140`，Desktop `35644512582`、Android `35644512598`、iOS `35644512727`）均被 GitHub 拒绝启动：账户付款或 Actions 支出上限需要所有者处理。不是代码执行失败；在账单状态恢复前不反复重跑。Windows CRT 修复与最后的 Linux 回归尚未获得远程验证。
 
 - 全平台远程回归与 Windows 慢构建诊断。

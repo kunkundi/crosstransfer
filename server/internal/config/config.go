@@ -19,19 +19,20 @@ type Config struct {
 	DownloadURL    string `yaml:"download_url"`    // CT_DOWNLOAD_URL, HTTPS release/download page
 	AssociationDir string `yaml:"association_dir"` // CT_ASSOCIATION_DIR, generated platform association JSON
 
-	Listen        string        `yaml:"listen"`          // CT_LISTEN, e.g. ":8443"
-	TLSCert       string        `yaml:"tls_cert"`        // CT_TLS_CERT
-	TLSKey        string        `yaml:"tls_key"`         // CT_TLS_KEY
-	ACMEDomain    string        `yaml:"acme_domain"`     // CT_ACME_DOMAIN
-	ACMECacheDir  string        `yaml:"acme_cache_dir"`  // CT_ACME_CACHE_DIR
-	PublicIP      string        `yaml:"public_ip"`       // CT_PUBLIC_IP (relay/STUN address advertised to clients)
-	STUNServers   []string      `yaml:"stun_servers"`    // CT_STUN_SERVERS (comma separated; default = public_ip:turn_port)
-	TURNPort      int           `yaml:"turn_port"`       // CT_TURN_PORT (0 disables the embedded TURN)
-	TURNPortRange string        `yaml:"turn_port_range"` // CT_TURN_PORT_RANGE "49152-65535"
-	TURNSecret    string        `yaml:"turn_secret"`     // CT_TURN_SECRET (HMAC shared secret; generated if empty)
-	TURNRealm     string        `yaml:"turn_realm"`      // CT_TURN_REALM
-	ExternalTURN  string        `yaml:"external_turn"`   // CT_EXTERNAL_TURN "turn:host:port" (disables embedded TURN)
-	TURNCredTTL   time.Duration `yaml:"turn_cred_ttl"`   // CT_TURN_CRED_TTL
+	Listen                string        `yaml:"listen"`                   // CT_LISTEN, e.g. ":8443"
+	TLSCert               string        `yaml:"tls_cert"`                 // CT_TLS_CERT
+	TLSKey                string        `yaml:"tls_key"`                  // CT_TLS_KEY
+	ACMEDomain            string        `yaml:"acme_domain"`              // CT_ACME_DOMAIN
+	ACMECacheDir          string        `yaml:"acme_cache_dir"`           // CT_ACME_CACHE_DIR
+	PublicIP              string        `yaml:"public_ip"`                // CT_PUBLIC_IP (relay/STUN address advertised to clients)
+	STUNServers           []string      `yaml:"stun_servers"`             // CT_STUN_SERVERS (comma separated; default = public_ip:turn_port)
+	TURNPort              int           `yaml:"turn_port"`                // CT_TURN_PORT (0 disables the embedded TURN)
+	TURNPortRange         string        `yaml:"turn_port_range"`          // CT_TURN_PORT_RANGE "49152-65535"
+	TURNSecret            string        `yaml:"turn_secret"`              // CT_TURN_SECRET (HMAC shared secret; generated if empty)
+	TURNRealm             string        `yaml:"turn_realm"`               // CT_TURN_REALM
+	ExternalTURN          string        `yaml:"external_turn"`            // CT_EXTERNAL_TURN "turn:host:port" (disables embedded TURN)
+	TURNCredTTL           time.Duration `yaml:"turn_cred_ttl"`            // CT_TURN_CRED_TTL
+	TURNAllowPrivatePeers bool          `yaml:"turn_allow_private_peers"` // CT_TURN_ALLOW_PRIVATE_PEERS (controlled LAN/test only)
 
 	RelayRateLimit   int           `yaml:"relay_rate_limit"`  // CT_RELAY_RATE_LIMIT bytes/sec per connection (0 = unlimited)
 	ClaimRatePerIP   float64       `yaml:"claim_rate_per_ip"` // CT_CLAIM_RATE_PER_IP claims/sec
@@ -176,6 +177,7 @@ func (c *Config) applyEnv(lookup func(string) (string, bool)) error {
 		dur("CT_MAX_ONCE_TTL", &c.MaxOnceTTL),
 		dur("CT_MAX_OPEN_TTL", &c.MaxOpenTTL),
 		boolean("CT_METRICS", &c.Metrics),
+		boolean("CT_TURN_ALLOW_PRIVATE_PEERS", &c.TURNAllowPrivatePeers),
 		boolean("CT_LOG_JSON", &c.LogJSON),
 	} {
 		if e != nil {

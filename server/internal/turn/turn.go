@@ -72,14 +72,15 @@ func VerifyCredentials(secret, username, password string, now time.Time) bool {
 
 // Options configures the embedded server.
 type Options struct {
-	PublicIP net.IP
-	ListenIP string // bind address for the listening socket and relays ("0.0.0.0")
-	Port     int
-	MinPort  uint16
-	MaxPort  uint16
-	Realm    string
-	Secret   string
-	Logger   *slog.Logger
+	PublicIP          net.IP
+	ListenIP          string // bind address for the listening socket and relays ("0.0.0.0")
+	Port              int
+	MinPort           uint16
+	MaxPort           uint16
+	Realm             string
+	Secret            string
+	Logger            *slog.Logger
+	AllowPrivatePeers bool // controlled LAN/test use only; false for public services
 }
 
 // Server wraps a pion TURN server.
@@ -126,6 +127,9 @@ func Start(o Options) (*Server, error) {
 		},
 		PacketConnConfigs: []pionturn.PacketConnConfig{{
 			PacketConn: conn,
+			PermissionHandler: func(_ net.Addr, peerIP net.IP) bool {
+				return PeerAllowed(peerIP, o.AllowPrivatePeers)
+			},
 			RelayAddressGenerator: &pionturn.RelayAddressGeneratorPortRange{
 				RelayAddress: o.PublicIP,
 				Address:      o.ListenIP,

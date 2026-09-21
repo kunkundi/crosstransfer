@@ -313,6 +313,8 @@ const char* CtVersion(void);
 
 自托管加固：落地页仅渲染规范化的有效取件码，配置 `CT_DOWNLOAD_URL` 后提供 HTTPS 下载跳转；`CT_ASSOCIATION_DIR` 可提供两个固定的 App/Universal Link 关联 JSON 文件。健康探测读取与服务相同的 YAML/环境配置并在 ACME 模式使用域名 SNI；容器为非 root 用户准备持久证书目录。域名关联内容由签名/域名配置工具生成，部署不自动推断正式身份。
 
+内嵌 TURN peer 策略：默认仅允许公共 IPv4 单播目标，拒绝私网、回环、共享地址、链路本地、组播、文档/基准测试及保留地址，避免中继到服务器内部网络。`CT_TURN_ALLOW_PRIVATE_PEERS=true` 仅供受控私网/回环测试，显式放行 RFC1918、回环和 CGNAT；链路本地、组播等仍拒绝。当前内嵌中继仅有 UDP4，不接受 IPv6 peer。外部 TURN 的策略由运营者独立配置，带宽/资源配额另行加固。
+
 ## 十一、验证
 
 - **server**：`go test`（协议状态机、取件码分配 / 过期 / 限速、TURN 凭据、中继转发）；两个 WebSocket 客户端脚本走完 create_share → claim → signal → relay → leave。
