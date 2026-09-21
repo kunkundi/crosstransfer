@@ -4,3 +4,7 @@
 *.png binary
 *.ico binary
 *.icns binary
+# Preserve original upstream line endings in hashed license evidence.
+docs/licenses/** -text
+app/assets/legal/** -text
+server/internal/legal/NOTICE.txt -text
