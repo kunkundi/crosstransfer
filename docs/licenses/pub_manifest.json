@@ -273,7 +273,8 @@
       "license": "BSD-3-Clause",
       "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
       "source_url": "https://github.com/flutter/flutter/tree/6a19cca56475dbfba1478ee68d7bd0c2ef891da1",
-      "delivery": "Flutter generated NOTICES / LicenseRegistry"
+      "delivery": "Flutter generated NOTICES / LicenseRegistry",
+      "license_sha256_windows_crlf": "a3a9fd82f800a47377f7d3f60c60a5c91cae0495be8f329031e1448ce0f5dab9"
     },
     {
       "name": "flutter_local_notifications_linux",
@@ -322,7 +323,8 @@
       "license": "BSD-3-Clause",
       "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
       "source_url": "https://github.com/flutter/flutter/tree/6a19cca56475dbfba1478ee68d7bd0c2ef891da1",
-      "delivery": "Flutter generated NOTICES / LicenseRegistry"
+      "delivery": "Flutter generated NOTICES / LicenseRegistry",
+      "license_sha256_windows_crlf": "a3a9fd82f800a47377f7d3f60c60a5c91cae0495be8f329031e1448ce0f5dab9"
     },
     {
       "name": "flutter_web_plugins",
@@ -331,7 +333,8 @@
       "license": "BSD-3-Clause",
       "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
       "source_url": "https://github.com/flutter/flutter/tree/6a19cca56475dbfba1478ee68d7bd0c2ef891da1",
-      "delivery": "Flutter generated NOTICES / LicenseRegistry"
+      "delivery": "Flutter generated NOTICES / LicenseRegistry",
+      "license_sha256_windows_crlf": "a3a9fd82f800a47377f7d3f60c60a5c91cae0495be8f329031e1448ce0f5dab9"
     },
     {
       "name": "gtk",

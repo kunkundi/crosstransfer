@@ -65,6 +65,12 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: Verify resolved dependency licenses before native compilation
+        working-directory: app
+        run: |
+          flutter pub get --enforce-lockfile
+          python ../tools/check_legal_assets.py
+          python ../tools/check_pub_notices.py
       - name: Cache installed Flutter before native compilation
         if: steps.flutter.outputs.CACHE-HIT != 'true'
         uses: actions/cache/save@v4
@@ -148,9 +154,6 @@ jobs:
         env:
           CT_NATIVE_LIB: ${{ github.workspace }}/${{ matrix.native }}
         run: |
-          flutter pub get --enforce-lockfile
-          python ../tools/check_legal_assets.py
-          python ../tools/check_pub_notices.py
           flutter analyze
           flutter test
           dart run tool/native_check.dart

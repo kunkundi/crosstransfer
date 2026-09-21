@@ -142,3 +142,7 @@ TURN 计量会对经过两个 relay socket 的同一数据分别计数，不能�
 Dockerfile 使用构建宿主运行 Go 编译器，按 BuildKit TARGETOS/TARGETARCH 交叉编译；Server CI 导出 linux/amd64 + linux/arm64 OCI 归档和 SHA-256，不上传镜像仓库。本机归档逐 blob 校验 SHA-256，并核对两份 ELF machine、镜像平台、nonroot 用户与入口。加载归档后，两个平台分别通过完整容器路由/权限检查（amd64 由 Docker Desktop 仿真运行）。本机报告 `/tmp/ct-phase5-multiarch-{amd64,arm64}.log`，产物 `dist/ctserver-linux-amd64-arm64.oci.tar`。
 
 远程 [Server 35658256979](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979) 已成功，包含 race/vet、Go 许可、容器检查及多架构导出。下载 [OCI artifact](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979/artifacts/10664868634) 后再次核对归档 SHA-256、所有 blob、两份 ELF 架构、内嵌版本 `74890367e093` 与 nonroot 入口，均通过；下载文件保留在 `dist/ci-35658256979-server/`。
+
+## Windows SDK 许可文本差异（2026-09-22）
+
+Desktop `35658256959` 的 Windows 已通过 MPL 源码门禁、OpenSSL/原生构建和 34 core / 889 断言，确认 `/MD` provider 修复有效；随后停在 pub manifest 比对。官方 Windows Flutter 3.47.5 SDK 的三项 BSD 许可使用 CRLF，原 manifest 记录了 macOS/Linux 的 LF 原文。逐字核对后将这两种原始哈希均纳入证据，未扩大许可范围或忽略文本变化；本机用官方 Windows 原文验证生成相同 manifest，并验证修改版权文字、混合换行仍会失败。新增清单差异输出，桌面 CI 将许可检查前移到原生编译前。

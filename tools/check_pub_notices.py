@@ -7,12 +7,14 @@ Flutter's generated NOTICES remains the source of the shipped Dart notices.
 --write refreshes the evidence for review; it does not approve new licenses.
 """
 import argparse
+import difflib
 import hashlib
 import json
 from pathlib import Path
 import re
 import subprocess
 import shutil
+import sys
 import tarfile
 import urllib.parse
 
@@ -58,7 +60,8 @@ def Main():
         hosted = package["source"] == "hosted"
         source_url = (f"https://pub.dev/packages/{name}/versions/{package['version']}" if hosted
                       else f"https://github.com/flutter/flutter/tree/{version['frameworkRevision']}")
-        license_text = license_file.read_text()
+        license_bytes = license_file.read_bytes()
+        license_text = license_bytes.decode("utf-8")
         if name == "sky_engine":
             license_id = "Composite Flutter engine notices; see exact bundled text and docs/LICENSE_AUDIT.md"
         elif "Mozilla Public License Version 2.0" in license_text:
@@ -74,8 +77,17 @@ def Main():
         else:
             raise AssertionError(f"unreviewed license form: {name}")
         entry = dict(name=name, version=package["version"], source=package["source"], license=license_id,
-                     license_sha256=Hash(license_file.read_bytes()), source_url=source_url,
+                     license_sha256=Hash(license_bytes), source_url=source_url,
                      delivery="Flutter generated NOTICES / LicenseRegistry")
+        if package["source"] == "sdk" and license_id == "BSD-3-Clause":
+            # Official Windows Flutter SDK archives use CRLF for these BSD
+            # notices. Record both exact reviewed forms, without changing the
+            # source files or normalizing other dependencies' license evidence.
+            lf = license_bytes.replace(b"\r\n", b"\n")
+            crlf = lf.replace(b"\n", b"\r\n")
+            assert license_bytes in (lf, crlf), f"mixed license line endings: {name}"
+            entry["license_sha256"] = Hash(lf)
+            entry["license_sha256_windows_crlf"] = Hash(crlf)
         if hosted:
             block = re.search(r"^  " + re.escape(name) + r":\n(.*?)(?=^  \w+:|\Z)", lock, re.M | re.S).group(1)
             entry["archive_sha256"] = re.search(r"sha256: [\"]?([a-f0-9]{64})", block).group(1)
@@ -100,7 +112,13 @@ def Main():
     if args.write:
         path.write_bytes(data)
     else:
-        assert path.read_bytes() == data, "pub/SDK license evidence changed; review before --write"
+        expected = path.read_bytes()
+        if expected != data:
+            sys.stderr.writelines(difflib.unified_diff(
+                expected.decode("utf-8").splitlines(keepends=True),
+                data.decode("utf-8").splitlines(keepends=True),
+                fromfile="reviewed pub manifest", tofile="resolved pub manifest"))
+            raise AssertionError("pub/SDK license evidence changed; review before --write")
     print(f"PASS: {len(entries)} pub/SDK license entries and exact dbus/gtk MPL sources")
 
 

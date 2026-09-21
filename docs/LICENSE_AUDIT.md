@@ -30,6 +30,8 @@ LLVM 例外文本提及 GPL 兼容性、FreeType 文本列出双许可，都不�
 
 原生 test-only doctest、ffigen、分析器、编译器、Gradle、CMake、xmake 与 Go 工具本身不当作产品运行库。Linux 的 GTK/GLib 和平台 C/C++ 运行库来自操作系统，最终动态依赖以发行版生成的包依赖为准。
 
+Flutter SDK 的 `flutter`、`flutter_test`、`flutter_web_plugins` BSD 文本存在官方平台差异：Windows 3.47.5 SDK 归档使用 CRLF，其他平台使用 LF。已从官方 Windows 归档读取并逐字核对，差异仅为换行。`license_sha256` 保留 LF 原文哈希 `a598db94…`，另记录 `license_sha256_windows_crlf` 的原始字节哈希 `a3a9fd82…`；门禁仅接受这两种完整形式。混合换行或文字改动仍被拒绝，其他依赖（含 engine NOTICES）继续核对唯一原始哈希，不改写 SDK 文件。
+
 ## MPL 对应源码
 
 设置 → 开源许可证可离线查看完整许可并导出以下完整源码：
@@ -56,4 +58,4 @@ LLVM 例外文本提及 GPL 兼容性、FreeType 文本列出双许可，都不�
 4. Gradle `:app:verifyRuntimeLicenses` 要求 Release 解析图与已审计坐标完全一致，并拒绝 desugaring、ML Kit、Play Services。`tools/check_android_notices.py` 重算 Maven 证据。
 5. Android 最终 APK 检查原生对齐、签名、源码/许可资产，以及 DEX 不含 `j$`、ML Kit 和已移除通知插件的类。桌面/iOS 产物检查 Flutter notices 与补充资产逐字节一致；Linux 打包另检查 GTK/GLib 只动态解析到包外的系统库。
 
-CI 已接入这些门禁，账单阻塞解除后仍须完成实际 Windows/Linux 矩阵、安装后 UI 和通知验收。
+CI 已接入这些门禁，账单阻塞已解除。macOS/Linux 的最终安装包法律资产与冷/热链接收件均已通过；Windows 矩阵继续验收。真实桌面的托盘、通知与安装器交互外观仍需人工验收。
