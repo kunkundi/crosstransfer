@@ -30,10 +30,10 @@
   - NDK 28.2 三 ABI、15 项 FFI 导出、16 KB 对齐；Application 引擎、前台服务、SAF 导入/导出、系统分享、scheme 与 App Link 配置。
   - 本机 2 项运行时 FFI、2 项 SAF/分享仪器测试、CLI 冷/热链接及后台接收通过；三 ABI Release 测试 APK 与 24 个原生库打包检查通过。
   - 完整 Actions `35654293259` 全绿：三 ABI、Release APK、6 项仪器测试和 2 项 FFI/P2P/WSS 收发。正式签名、App Link、真机和 16 KB 系统运行验收待补。
-- **阶段 5 加固进行中**，见 `docs/PHASE5_NOTES.md`：WSS SAN 身份验证、OpenSSL 3.5.8 LTS；扫码替换为 AVFoundation/ZXing，移除 ML Kit；受发送状态保护的 Imported 副本清理。本机 34 项 core / 889 断言、24 项 Dart、Android 6 项仪器测试与 iOS 5 项 XCTest 通过。严格 TURN 三轮 8 × 64 MiB、P2P/WSS 并发与限速中继均通过。
-- CI 曾因账单阻塞，现已恢复。资源配额版本 `413df38` 的 Server `35656752636`、Android `35656752565`、iOS `35656752552` 全绿；Desktop `35656752550` 的 macOS/Linux 也全部通过，含五种并发路径、许可门禁、安装包冷/热链接收件。Windows 源码验证还需隔离 `git apply` 的宿主 CRLF 设置，修复 `c6ca976` 已推送；Windows OpenSSL CRT 与安装器继续等待矩阵验证。
+- **阶段 5 主要加固与 CI 全矩阵已完成，发布验收待资源**，见 `docs/PHASE5_NOTES.md`：WSS SAN 身份验证、OpenSSL 3.5.8 LTS；扫码替换为 AVFoundation/ZXing，移除 ML Kit；受发送状态保护的 Imported 副本清理。34 项 core / 889 断言、24 项 Dart、Android 6 项仪器测试与 iOS 5 项 XCTest 通过。严格 TURN 三轮 8 × 64 MiB、P2P/WSS 并发与限速中继均通过。
+- CI 曾因账单阻塞，现已恢复。Desktop `35660167218` 在 `cc8b8e5` 上三平台全绿：34 core / 889 断言、24 Dart、FFI 双向、完整许可门禁、Release 和安装后冷/热链接收件。Windows 的 OpenSSL CRT、两类 CRLF 与官方 SDK 许可差异均已验证修复，NSIS 安装/卸载通过。Server `35658256979` 全绿并导出 amd64/arm64 OCI；最终 Android `35660167284`、iOS `35660167216` 也已全绿。
 - 许可审计中的既有宽松许可和 Linux 系统 GTK/GLib 动态链接例外已获所有者授权（2026-09-22），边界见 PLAN 与 `docs/LICENSE_AUDIT.md`。Android GPL＋Classpath desugaring 运行库已移除，不包含在授权中。
-- 已完成 App 法律页、离线 MPL 源码导出与依赖清单门禁。macOS Release 使用 `tools/build_macos_app.py` 的独立 SDK AOT 修复，详见 DESKTOP_BUILD。已补服务连接/会话/TURN socket 与双向带宽配额，本机 Go race/vet 和限速恢复回归通过。下一步：补全 CI 与真机/域名/签名验收。
+- 已完成 App 法律页、离线 MPL 源码导出与依赖清单门禁。macOS Release 使用 `tools/build_macos_app.py` 的独立 SDK AOT 修复，详见 DESKTOP_BUILD。已补服务连接/会话/TURN socket 与双向带宽配额。下一步等待正式身份/域名/签名和设备资源；Android 16 KB ARM64 镜像还需单独的 `android-sdk-arm-dbt-license` 授权，当前未安装，确认已发出。不得把模拟器/回环结果记为真机/公网发布验收。
 
 ## 硬约束（不要偏离）
 

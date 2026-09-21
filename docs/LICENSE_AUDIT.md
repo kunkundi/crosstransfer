@@ -26,7 +26,7 @@ LLVM 例外文本提及 GPL 兼容性、FreeType 文本列出双许可，都不�
 - `docs/licenses/android-runtime-modules.txt`、`android_manifest.json`：Release Maven 解析图 68 个坐标，包括 POM/父 POM、实际 AAR/JAR 与内嵌 NOTICE/LICENSE 的 SHA-256。除 4 个由 Flutter engine NOTICES 覆盖的坐标，其余核对为 Apache-2.0；完整文本与保留的内嵌声明合并到 `android-runtime.txt`。
 - `docs/licenses/go_manifest.json`、`server/internal/legal/NOTICE.txt`：固定 Go 模块、全部 15 个直接/间接模块与 Go 运行时的来源、版本和原文；静态嵌入单二进制，通过 `ctserver -licenses` 离线读取。
 - Apple 的 Podfile.lock 仅含项目原生库、Flutter，以及 iOS 的 BSD-3-Clause `open_filex`；其余插件通过 pub 固定版本的本地 Swift Package 集成，所检查的 Package.swift 没有另行拉取远程包。
-- Windows 插件直接使用系统 Win32/WinRT；`cnativeapi` 的可选 WinUI 3 默认关闭，未启用外部 WindowsAppSDK 包。GoogleTest 仅在插件测试选项开启时使用，不属于 App 分发。MSVC CRT 通过 Visual Studio 的官方 Redist 目录按平台再分发条款随包提供，实际 Windows 安装包及 DLL 清单待 CI 验证。
+- Windows 插件直接使用系统 Win32/WinRT；`cnativeapi` 的可选 WinUI 3 默认关闭，未启用外部 WindowsAppSDK 包。GoogleTest 仅在插件测试选项开启时使用，不属于 App 分发。MSVC CRT 通过 Visual Studio 的官方 Redist 目录按平台再分发条款随包提供，实际 NSIS 安装包和 DLL 清单已核对。`dartjni.dll` 来自 BSD-3-Clause 的 jni 1.0.3，其 JNI 声明/生成包装使用 AOSP 的 Apache-2.0 头文件；相应 Apache 文本也已随产品提供。
 
 原生 test-only doctest、ffigen、分析器、编译器、Gradle、CMake、xmake 与 Go 工具本身不当作产品运行库。Linux 的 GTK/GLib 和平台 C/C++ 运行库来自操作系统，最终动态依赖以发行版生成的包依赖为准。
 
@@ -58,4 +58,4 @@ Flutter SDK 的 `flutter`、`flutter_test`、`flutter_web_plugins` BSD 文本存
 4. Gradle `:app:verifyRuntimeLicenses` 要求 Release 解析图与已审计坐标完全一致，并拒绝 desugaring、ML Kit、Play Services。`tools/check_android_notices.py` 重算 Maven 证据。
 5. Android 最终 APK 检查原生对齐、签名、源码/许可资产，以及 DEX 不含 `j$`、ML Kit 和已移除通知插件的类。桌面/iOS 产物检查 Flutter notices 与补充资产逐字节一致；Linux 打包另检查 GTK/GLib 只动态解析到包外的系统库。
 
-CI 已接入这些门禁，账单阻塞已解除。macOS/Linux 的最终安装包法律资产与冷/热链接收件均已通过；Windows 矩阵继续验收。真实桌面的托盘、通知与安装器交互外观仍需人工验收。
+CI 已接入这些门禁，账单阻塞已解除。Desktop `35660167218` 的三平台最终安装包法律资产与冷/热链接收件均通过；另将下载的 Windows NSIS 解包，核对全部 20 项法律资产和原始 WebRTC PATENTS，均一致。真实桌面的托盘、通知与安装器交互外观仍需人工验收。

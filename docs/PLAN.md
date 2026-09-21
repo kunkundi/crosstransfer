@@ -305,7 +305,7 @@ const char* CtVersion(void);
 
 阶段 4 实施约定：arm64-v8a / armeabi-v7a / x86_64；SAF 选文件/目录与外部分享均先导入 App 私有持久目录，core 始终使用有效 POSIX 路径。接收到私有 Received 后由用户通过 SAF 导出，避免把 `content://` 当作文件路径。FlutterEngine 由 Application 持有，Activity 重建不销毁传输引擎；活动收发使用 dataSync 前台服务及通知，系统超时停止服务并请求暂停。App Link 的域名和正式签名证书关联待所有者提供，先验收 scheme 和本地签名测试包。
 
-**阶段 5：加固与公共服务**
+**阶段 5：加固与公共服务**（2026-09-22 主要工程加固与 CI 全矩阵完成；正式签名、域名/公网、真机及 16 KB 系统运行验收仍待资源或许可，见 `docs/PHASE5_NOTES.md`）
 13. CI 全矩阵、多接收端并发、强制 TURN、WSS 中继压测、TLS / ACME、文档、第三方许可证清单、App 内开源许可证页。
 14. 可选：SPAKE2 口令认证、浏览器接收页、libjuice 之上的打洞增强（对称 NAT 预测、中继后升级 P2P）。
 

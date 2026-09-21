@@ -1,6 +1,25 @@
 # 阶段 5 加固记录
 
-工作分支 `codex/phase5-hardening`。本阶段仍在实施，不能视为发布验收完成。
+工作分支 `codex/phase5-hardening`。主要工程加固与 CI 全矩阵已完成；正式发布和公网/真机验收仍待资源。
+
+## 当前验收状态（2026-09-22）
+
+| 范围 | 结果与证据 |
+| --- | --- |
+| Windows / macOS / Linux | [Desktop 35660167218](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218) 全绿：34 core / 889 断言、24 Dart、15 FFI 导出、双向收发、Release、安装包和冷/热链接收件。macOS/Linux 包含五种并发路径 |
+| Android | [Android 35660167284](https://github.com/kunkundi/crosstransfer/actions/runs/35660167284) 全绿：3 ABI、24 Dart、Release/许可/16 KB 静态对齐、6 项仪器测试、2 项 P2P/WSS FFI 收发 |
+| iOS | [iOS 35660167216](https://github.com/kunkundi/crosstransfer/actions/runs/35660167216) 全绿：3 个 native slice、24 Dart、未签名 device/simulator App、许可/ABI、5 项 XCTest |
+| 服务端 | [Server 35658256979](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979) 全绿：race/vet、许可、容器路由/权限与 amd64/arm64 OCI 导出；下载产物的架构/哈希另行通过核对 |
+
+客户端验证代码为 `cc8b8e5`；Server 多架构验证代码为 `7489036`，其后未修改服务端代码。下载入口：下文桌面安装包表、[Android 测试 APK](https://github.com/kunkundi/crosstransfer/actions/runs/35660167284/artifacts/10666852943)、[iOS 未签名产物](https://github.com/kunkundi/crosstransfer/actions/runs/35660167216/artifacts/10666578476)、[双架构 OCI](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979/artifacts/10664868634)。
+
+剩余验收需要以下资源或授权：
+
+- 正式应用 ID、Apple Team/App Group、签名证书/provisioning/keystore，以及实际接收域名和公开服务主机，用于签名分发、App/Universal Link、真实 TLS/ACME 与公网收发。
+- 真实手机及 Windows/Linux 桌面，用于光学扫码、系统后台到期/OEM 行为、托盘/通知和安装器交互；长期公网容量还需实际部署环境。
+- Android 16 KB ARM64 模拟器的 `android-sdk-arm-dbt-license` 额外许可尚待所有者授权；安装器未接受该许可，因此镜像未安装，未把静态 16 KB 对齐当成运行验证。完整条款保留在本机 `/tmp/ct-android-16k-license.txt`，异步确认已发出。
+
+上述资源到位后继续发布验收。PLAN 第 14 项的可选增强仍未启动。以下各节保留实施过程与历史回归记录。
 
 ## WSS 证书身份（2026-09-22）
 
@@ -146,3 +165,15 @@ Dockerfile 使用构建宿主运行 Go 编译器，按 BuildKit TARGETOS/TARGETA
 ## Windows SDK 许可文本差异（2026-09-22）
 
 Desktop `35658256959` 的 Windows 已通过 MPL 源码门禁、OpenSSL/原生构建和 34 core / 889 断言，确认 `/MD` provider 修复有效；随后停在 pub manifest 比对。官方 Windows Flutter 3.47.5 SDK 的三项 BSD 许可使用 CRLF，原 manifest 记录了 macOS/Linux 的 LF 原文。逐字核对后将这两种原始哈希均纳入证据，未扩大许可范围或忽略文本变化；本机用官方 Windows 原文验证生成相同 manifest，并验证修改版权文字、混合换行仍会失败。新增清单差异输出，桌面 CI 将许可检查前移到原生编译前。
+
+## 桌面最终矩阵（2026-09-22）
+
+代码 `cc8b8e5` 的 [Desktop 35660167218](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218) 三平台全绿。均通过 34 项 core / 889 断言、24 项 Dart、15 FFI 导出、双向 FFI/CLI、许可门禁、Release、安装后冷/热链接收件；macOS/Linux 还执行可信 WSS 与 5 种并发路径。Windows NSIS 安装和卸载通过，MPL 源码字节、OpenSSL provider CRT 和 Flutter SDK CRLF 差异均已收敛。
+
+| 安装包 | CI artifact |
+| --- | --- |
+| Windows x64 NSIS（未正式签名） | [CrossTransfer-windows-x64](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218/artifacts/10667562090) |
+| macOS universal DMG（local-test） | [CrossTransfer-macos-universal](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218/artifacts/10667578184) |
+| Linux x86_64 deb | [CrossTransfer-linux-x86_64](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218/artifacts/10667687772) |
+
+下载的 Windows installer 为 12,626,852 字节，SHA-256 `9ff3dc7b9ba2525487e3452c6bbd3d7f96c78f18663bcf5e3cc2fdf5ca64b868`。校验文件使用 Windows CRLF，可用支持该格式的读取器核对。隔离容器内解包后，20 项法律资产与 WebRTC PATENTS 原文均一致；实际 DLL 清单包含 Flutter、项目/插件库、dartjni/cnativeapi 与官方 MSVC Redist。记录在 `/tmp/ct-phase5-windows-installer-inventory.log`，安装包与解包目录在 `dist/ci-35660167218-windows/`。
