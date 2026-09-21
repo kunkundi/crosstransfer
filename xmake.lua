@@ -59,8 +59,10 @@ end
 
 local function ct_common()
     add_defines("NOMINMAX", "WIN32_LEAN_AND_MEAN")
-    if is_plat("linux") then
+    if is_plat("linux", "android") then
         add_cxflags("-fPIC")
+    end
+    if is_plat("linux") then
         add_syslinks("pthread")
     end
 end
@@ -124,6 +126,9 @@ if has_config("ct_native") then
         elseif is_plat("linux", "android") then
             add_ldflags("-Wl,--whole-archive", "$(builddir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a",
                 "-Wl,--no-whole-archive", {force = true})
+            if is_plat("android") then
+                add_ldflags("-Wl,-z,max-page-size=16384", {force = true})
+            end
         elseif is_plat("windows") then
             add_defines("CT_BUILDING_SHARED")
             add_shflags("/WHOLEARCHIVE:$(builddir)/$(plat)/$(arch)/$(mode)/crosstransfer_core.lib", {force = true})

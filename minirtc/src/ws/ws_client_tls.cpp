@@ -6,6 +6,11 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#ifdef __ANDROID__
+#include <dirent.h>
+#include <openssl/pem.h>
+#endif
+
 #ifdef _WIN32
 #include <wincrypt.h>
 #include <windows.h>
@@ -23,6 +28,39 @@
 
 namespace minirtc {
 namespace {
+
+#ifdef __ANDROID__
+bool LoadAndroidRootCertificates(SSL_CTX* ctx) {
+  // Conscrypt uses the updatable APEX store on recent Android releases.
+  // Import PEM files explicitly: Android uses legacy subject-name hashes,
+  // which do not match OpenSSL 3's hashed-directory lookup.
+  const char* directory = "/apex/com.android.conscrypt/cacerts";
+  DIR* entries = opendir(directory);
+  if (!entries) {
+    directory = "/system/etc/security/cacerts";
+    entries = opendir(directory);
+  }
+  if (!entries) return false;
+  int count = 0;
+  X509_STORE* store = SSL_CTX_get_cert_store(ctx);
+  while (const auto* entry = readdir(entries)) {
+    if (entry->d_name[0] == '.') continue;
+    const auto filename = std::string(directory) + "/" + entry->d_name;
+    BIO* input = BIO_new_file(filename.c_str(), "r");
+    if (!input) { ERR_clear_error(); continue; }
+    X509* certificate = PEM_read_bio_X509(input, nullptr, nullptr, nullptr);
+    if (certificate) {
+      if (X509_STORE_add_cert(store, certificate) == 1) ++count;
+      X509_free(certificate);
+    }
+    BIO_free(input);
+    ERR_clear_error();
+  }
+  closedir(entries);
+  LOG_INFO("Loaded {} Android system roots from {}", count, directory);
+  return count > 0;
+}
+#endif
 
 #ifdef _WIN32
 struct WindowsRootStoreLocation {
@@ -426,6 +464,10 @@ void WsClient::LoadTlsSystemRootCertificates(SSL_CTX* ssl_ctx) {
 #ifdef _WIN32
   if (!LoadWindowsRootCertificates(ssl_ctx)) {
     LOG_WARN("Unable to load Windows Root certificates");
+  }
+#elif defined(__ANDROID__)
+  if (!LoadAndroidRootCertificates(ssl_ctx)) {
+    LOG_WARN("Unable to load Android system CA certificates");
   }
 #else
 #ifdef __APPLE__

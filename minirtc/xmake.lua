@@ -29,6 +29,9 @@ if is_plat("windows") then
 elseif is_plat("linux") then
     add_cxflags("-fPIC", "-Wno-unused-variable")
     add_syslinks("pthread")
+elseif is_plat("android") then
+    add_cxflags("-fPIC", "-Wno-unused-variable")
+    add_syslinks("log", "android", "dl")
 elseif is_plat("macosx", "iphoneos") then
     add_cxflags("-Wno-unused-variable")
     add_frameworks("Security", "Foundation", "SystemConfiguration", "CoreFoundation")

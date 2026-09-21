@@ -273,7 +273,7 @@ const char* CtVersion(void);
 - 根 `xmake.lua`：`includes("minirtc")`，`crosstransfer_core`（static）、`ct_cli`（binary）、`crosstransfer_native`（shared umbrella，`-force_load` / `--whole-archive`）。
 - 桌面：`tools/build_native.sh <plat> <arch>` → `app/<plat>/native/libcrosstransfer_native.*`，Dart `DynamicLibrary.open`。
 - iOS：将 core / MiniRTC / 静态依赖合并为 `.a`，device arm64 与 simulator arm64/x86_64 包装为静态 XCFramework，通过 podspec `vendored_frameworks` 集成并保留 FFI 导出，Dart `DynamicLibrary.process()`。
-- Android（后置）：Gradle `externalNativeBuild` → `jniLibs`。
+- Android：xmake/NDK 构建三 ABI 共享库到 `jniLibs`，Gradle 构建任务验证产物并打包。NDK r28+，ELF 与 APK 按 16 KB 页面要求对齐；Android 7.0 / API 24 起。
 - 服务端：`go build` 单二进制；`Dockerfile`（distroless）、`compose.yaml`（信令 + 内嵌 TURN，主机网络）；配置 `CT_LISTEN`、`CT_TLS_CERT/KEY` 或 `CT_ACME_DOMAIN`、`CT_PUBLIC_IP`、`CT_TURN_PORT`、`CT_TURN_PORT_RANGE`、`CT_TURN_SECRET`、`CT_EXTERNAL_TURN`、`CT_RELAY_RATE_LIMIT`。
 - CI：native 三平台 + iOS 未签名；`go test` + `go vet` + 多架构镜像；`flutter build`；发布门禁包含第三方许可证清单生成与依赖许可证核对。
 
@@ -300,6 +300,8 @@ const char* CtVersion(void);
 **阶段 4：Android**
 11. 特化版 MiniRTC 补 android 平台 xmake 配方与 NDK 构建（libjuice / OpenSSL / libsrtp 交叉编译）。
 12. Runner：`jniLibs`、SAF、分享入口、App Link、前台服务。
+
+阶段 4 实施约定：arm64-v8a / armeabi-v7a / x86_64；SAF 选文件/目录与外部分享均先导入 App 私有持久目录，core 始终使用有效 POSIX 路径。接收到私有 Received 后由用户通过 SAF 导出，避免把 `content://` 当作文件路径。FlutterEngine 由 Application 持有，Activity 重建不销毁传输引擎；活动收发使用 dataSync 前台服务及通知，系统超时停止服务并请求暂停。App Link 的域名和正式签名证书关联待所有者提供，先验收 scheme 和本地签名测试包。
 
 **阶段 5：加固与公共服务**
 13. CI 全矩阵、多接收端并发、强制 TURN、WSS 中继压测、TLS / ACME、文档、第三方许可证清单、App 内开源许可证页。
