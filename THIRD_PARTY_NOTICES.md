@@ -41,6 +41,12 @@ recipients how to obtain its corresponding covered source.
 
 ## Server dependencies (Go modules, statically linked)
 
+The standalone server embeds its full module copyright/license texts and the Go
+runtime license; run `ctserver -licenses` to read them (container: `docker run
+--rm <image> -licenses`). The version/source/checksum inventory is
+`docs/licenses/go_manifest.json`; `tools/check_go_notices.py` verifies it against
+the modules selected in `server/go.mod`.
+
 | Module | License |
 | --- | --- |
 | github.com/pion/turn/v4 (+ pion/stun, pion/dtls, pion/transport, pion/logging, pion/randutil) | MIT |

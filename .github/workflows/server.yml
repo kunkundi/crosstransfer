@@ -26,6 +26,8 @@ jobs:
         run: |
           go test -race ./...
           go vet ./...
+      - name: Verify embedded Go license notices
+        run: python3 tools/check_go_notices.py
       - name: Container startup and deployment routes
         run: |
           docker build -t crosstransfer/ctserver:check server

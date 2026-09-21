@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"crosstransfer/server/internal/config"
+	"crosstransfer/server/internal/legal"
 	"crosstransfer/server/internal/metrics"
 	sig "crosstransfer/server/internal/signal"
 	"crosstransfer/server/internal/turn"
@@ -26,6 +27,10 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-licenses" {
+		fmt.Print(legal.Notices)
+		return
+	}
 	// `ctserver -healthz` probes a running instance (used by container healthchecks).
 	if len(os.Args) > 1 && os.Args[1] == "-healthz" {
 		os.Exit(healthz())
