@@ -133,6 +133,8 @@ TURN 计量会对经过两个 relay socket 的同一数据分别计数，不能�
 
 本机 iOS 最新未签名 Release App 30.1 MB 已成功，20 项法律资产、15 项 FFI 导出、扩展与 App Group 均通过。正式签名、真机、公开域名及真实 ACME 验收仍待相应资源。
 
+资源配额版本 `413df38` 的远程验收已完成：Server [35656752636](https://github.com/kunkundi/crosstransfer/actions/runs/35656752636)、Android [35656752565](https://github.com/kunkundi/crosstransfer/actions/runs/35656752565)、iOS [35656752552](https://github.com/kunkundi/crosstransfer/actions/runs/35656752552) 全绿；Desktop [35656752550](https://github.com/kunkundi/crosstransfer/actions/runs/35656752550) 中 macOS 与 Linux 全部通过。两桌面均含 34 core / 889 断言、五种并发路径、24 Dart、FFI 双向、完整法律资产与最终安装包冷/热链接收件。macOS 的 LibreSSL 证书和隔离 AOT SDK 修复均获远程确认；Linux 的系统 GTK/GLib 分发检查通过。Windows 归档验证受宿主 `core.autocrlf=true` 影响，经本机同配置复现后，用仅对子进程生效的 Git 参数修复（`c6ca976`），未放宽源码字节检查，等待下一轮 Windows 结果。
+
 资源配额版本容器 `crosstransfer/ctserver:phase5-quota-check` 构建成功；只读/非 root 运行、YAML 健康探针、固定落地/下载/关联文件、默认私有 metrics 和 ACME 卷权限回归通过。本机使用过的 Android/iOS 模拟器已关闭，SDK 与测试设备配置保留。
 
 ## 服务端多架构镜像（2026-09-22）
