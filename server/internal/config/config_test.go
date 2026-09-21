@@ -111,3 +111,36 @@ func TestDownloadURLMustBeHTTPS(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestQuotaConfigValidationAndOverrides(t *testing.T) {
+	positive := []string{"CT_MAX_CONNECTIONS", "CT_MAX_CONNECTIONS_PER_IP", "CT_MAX_SESSIONS", "CT_MAX_SESSIONS_PER_PEER", "CT_TURN_MAX_ALLOCATIONS"}
+	nonnegative := []string{"CT_RELAY_RATE_LIMIT", "CT_RELAY_GLOBAL_RATE_LIMIT", "CT_TURN_RATE_LIMIT", "CT_TURN_GLOBAL_RATE_LIMIT"}
+	for _, key := range append(positive, nonnegative...) {
+		for _, value := range []string{"-1", "7"} {
+			c := Default()
+			c.TURNPort = 0
+			if err := c.applyEnv(func(k string) (string, bool) { return value, k == key }); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.Validate(); (err == nil) != (value == "7") {
+				t.Fatalf("%s=%s: %v", key, value, err)
+			}
+		}
+	}
+	for _, key := range positive {
+		c := Default()
+		c.TURNPort = 0
+		c.applyEnv(func(k string) (string, bool) { return "0", k == key })
+		if err := c.Validate(); err == nil {
+			t.Fatal("zero resource cap accepted", key)
+		}
+	}
+	for _, key := range nonnegative {
+		c := Default()
+		c.TURNPort = 0
+		c.applyEnv(func(k string) (string, bool) { return "0", k == key })
+		if err := c.Validate(); err != nil {
+			t.Fatal("explicit unlimited rate rejected", key, err)
+		}
+	}
+}

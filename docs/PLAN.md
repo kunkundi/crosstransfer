@@ -325,6 +325,8 @@ const char* CtVersion(void);
 
 macOS Release 临时构建约定：Flutter 3.47.5 触发上游 #191575 的内部 FFI class ID AOT 崩溃；构建脚本在仓库 build 目录中复制 SDK，校验精确版本/源文件后仅为 6 个内部 FFI 类型添加 entry-point 保留标记。不得改动全局 SDK、关闭验证或启用实验窗口特性；升级 SDK 时复核并移除处理。
 
+公共服务配额约定：信令默认最多 1024 个连接、每 IP 32 个连接，升级 WebSocket 前拒绝超额请求并在断开/升级失败后释放名额；每连接仍最多 16 个分享。会话默认全局 4096、每 peer 64（含发送端保留的离线续传会话），达到上限返回 `server_busy`，不得消费 once 码，既有会话可按 token 恢复。WSS 每连接发送队列同时限制 512 帧和 4 MiB；默认中继有效载荷上限每连接 8 MiB/s、全局 64 MiB/s，超额帧按不可靠传输丢弃。内嵌 TURN 默认最多 512 个实际 relay socket，每 allocation 8 MiB/s、全局 64 MiB/s，收/发合并计数；限额和丢弃指标可观测，关闭/失败必须回收名额。连接/会话/分配上限为正数；带宽设为 0 可供运营者显式关闭。外部 TURN 仍由运营者在对应服务独立配置。
+
 ## 十一、验证
 
 - **server**：`go test`（协议状态机、取件码分配 / 过期 / 限速、TURN 凭据、中继转发）；两个 WebSocket 客户端脚本走完 create_share → claim → signal → relay → leave。

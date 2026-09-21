@@ -85,6 +85,9 @@ func run() error {
 			Secret:            cfg.TURNSecret,
 			Logger:            log,
 			AllowPrivatePeers: cfg.TURNAllowPrivatePeers,
+			MaxAllocations:    cfg.TURNMaxAllocations,
+			RateLimit:         cfg.TURNRateLimit,
+			GlobalRateLimit:   cfg.TURNGlobalRateLimit,
 		})
 		if err != nil {
 			return err
@@ -96,29 +99,34 @@ func run() error {
 	}
 
 	hub := sig.NewHub(sig.Options{
-		STUNURIs:         cfg.STUNURIs(),
-		TURNURI:          cfg.TURNURI(),
-		TURNSecret:       cfg.TURNSecret,
-		TURNCredTTL:      cfg.TURNCredTTL,
-		HeartbeatSec:     cfg.HeartbeatSec,
-		DefaultShareTTL:  cfg.DefaultShareTTL,
-		MaxOnceTTL:       cfg.MaxOnceTTL,
-		MaxOpenTTL:       cfg.MaxOpenTTL,
-		ClaimRatePerIP:   cfg.ClaimRatePerIP,
-		ClaimBurstPerIP:  cfg.ClaimBurstPerIP,
-		ClaimRateGlobal:  cfg.ClaimRateGlobal,
-		ClaimBurstGlobal: cfg.ClaimBurstGlobal,
-		ClaimFailDelay:   cfg.ClaimFailDelay,
-		RelayRateLimit:   cfg.RelayRateLimit,
-		Logger:           log,
+		STUNURIs:             cfg.STUNURIs(),
+		TURNURI:              cfg.TURNURI(),
+		TURNSecret:           cfg.TURNSecret,
+		TURNCredTTL:          cfg.TURNCredTTL,
+		HeartbeatSec:         cfg.HeartbeatSec,
+		DefaultShareTTL:      cfg.DefaultShareTTL,
+		MaxOnceTTL:           cfg.MaxOnceTTL,
+		MaxOpenTTL:           cfg.MaxOpenTTL,
+		ClaimRatePerIP:       cfg.ClaimRatePerIP,
+		ClaimBurstPerIP:      cfg.ClaimBurstPerIP,
+		ClaimRateGlobal:      cfg.ClaimRateGlobal,
+		ClaimBurstGlobal:     cfg.ClaimBurstGlobal,
+		ClaimFailDelay:       cfg.ClaimFailDelay,
+		RelayRateLimit:       cfg.RelayRateLimit,
+		RelayGlobalRateLimit: cfg.RelayGlobalRateLimit,
+		MaxSessions:          cfg.MaxSessions,
+		MaxSessionsPerPeer:   cfg.MaxSessionsPerPeer,
+		Logger:               log,
 	})
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", sig.ServeWS(hub, sig.WSOptions{
-		MaxMessageSize: cfg.MaxMessageSize,
-		HeartbeatSec:   cfg.HeartbeatSec,
-		TrustProxy:     os.Getenv("CT_TRUST_PROXY") == "1",
-		Logger:         log,
+		MaxConnections:      cfg.MaxConnections,
+		MaxConnectionsPerIP: cfg.MaxConnectionsPerIP,
+		MaxMessageSize:      cfg.MaxMessageSize,
+		HeartbeatSec:        cfg.HeartbeatSec,
+		TrustProxy:          os.Getenv("CT_TRUST_PROXY") == "1",
+		Logger:              log,
 	}))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		st := hub.Stats()

@@ -201,3 +201,89 @@ func TestWebSocketRejectsOversize(t *testing.T) {
 		t.Fatal("expected connection close on oversize message")
 	}
 }
+
+func TestWebSocketConnectionCapacityAndRelease(t *testing.T) {
+	hub := NewHub(Options{})
+	srv := httptest.NewServer(ServeWS(hub, WSOptions{MaxConnections: 2, MaxConnectionsPerIP: 1, TrustProxy: true}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
+	connect := func(ip string) (*websocket.Conn, int) {
+		conn, response, err := websocket.Dial(ctx, url, &websocket.DialOptions{HTTPHeader: http.Header{"X-Forwarded-For": []string{ip}}})
+		if err != nil {
+			if response == nil {
+				t.Fatal(err)
+			}
+			if response.Header.Get("Retry-After") != "5" {
+				t.Fatal("missing retry hint")
+			}
+			return nil, response.StatusCode
+		}
+		t.Cleanup(func() { conn.CloseNow() })
+		return conn, http.StatusSwitchingProtocols
+	}
+	first, status := connect("192.0.2.1")
+	if status != 101 {
+		t.Fatal(status)
+	}
+	if _, status = connect("192.0.2.1"); status != 503 {
+		t.Fatal("per-IP cap", status)
+	}
+	if _, status = connect("192.0.2.2"); status != 101 {
+		t.Fatal(status)
+	}
+	if _, status = connect("192.0.2.3"); status != 503 {
+		t.Fatal("global cap", status)
+	}
+	first.CloseNow()
+	for {
+		if _, status = connect("192.0.2.1"); status == 101 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("closed connection did not free slot")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	if hub.Stats().ConnectionsLimited < 2 {
+		t.Fatal(hub.Stats())
+	}
+}
+
+func TestWebSocketFailedUpgradeReleasesCapacity(t *testing.T) {
+	hub := NewHub(Options{})
+	handler := ServeWS(hub, WSOptions{MaxConnections: 1, MaxConnectionsPerIP: 1})
+	for i := 0; i < 3; i++ {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "http://example.com/ws", nil))
+		if w.Code == 503 {
+			t.Fatal("failed HTTP upgrade leaked a slot")
+		}
+	}
+}
+
+func TestWebSocketQueueByteBudget(t *testing.T) {
+	sink := &wsSink{out: make(chan outMsg, outQueue), closed: make(chan struct{})}
+	data := make([]byte, 1<<20)
+	for i := 0; i < 8; i++ {
+		sink.SendBinary(data)
+	}
+	if len(sink.out) != 4 || sink.Dropped() != 4 || sink.queuedBytes.Load() != MaxQueuedBytes {
+		t.Fatal("byte budget exceeded")
+	}
+	m := <-sink.out
+	sink.queuedBytes.Add(-int64(len(m.data)))
+	sink.SendBinary(data)
+	if len(sink.out) != 4 || sink.queuedBytes.Load() != MaxQueuedBytes {
+		t.Fatal("drained byte budget not reusable")
+	}
+	sink.SendText([]byte("control"))
+	select {
+	case <-sink.closed:
+	default:
+		t.Fatal("overflowed reliable control must close peer")
+	}
+}

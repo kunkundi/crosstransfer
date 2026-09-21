@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"crosstransfer/server/internal/codes"
@@ -30,55 +31,63 @@ type Sink interface {
 
 // Options configures a Hub.
 type Options struct {
-	STUNURIs         []string
-	TURNURI          string
-	TURNSecret       string
-	TURNCredTTL      time.Duration
-	HeartbeatSec     int
-	DefaultShareTTL  time.Duration
-	MaxOnceTTL       time.Duration
-	MaxOpenTTL       time.Duration
-	MaxSharesPerPeer int
-	ClaimRatePerIP   float64
-	ClaimBurstPerIP  int
-	ClaimRateGlobal  float64
-	ClaimBurstGlobal int
-	ClaimFailDelay   time.Duration
-	RelayRateLimit   int // bytes/sec per connection
-	Logger           *slog.Logger
-	Now              func() time.Time
+	STUNURIs             []string
+	TURNURI              string
+	TURNSecret           string
+	TURNCredTTL          time.Duration
+	HeartbeatSec         int
+	DefaultShareTTL      time.Duration
+	MaxOnceTTL           time.Duration
+	MaxOpenTTL           time.Duration
+	MaxSharesPerPeer     int
+	MaxSessions          int
+	MaxSessionsPerPeer   int
+	ClaimRatePerIP       float64
+	ClaimBurstPerIP      int
+	ClaimRateGlobal      float64
+	ClaimBurstGlobal     int
+	ClaimFailDelay       time.Duration
+	RelayRateLimit       int // bytes/sec per connection
+	RelayGlobalRateLimit int // aggregate bytes/sec, 0 disables
+	Logger               *slog.Logger
+	Now                  func() time.Time
 	// Sleep is used to apply the constant failure delay; injectable for tests.
 	Sleep func(time.Duration)
 }
 
 // Hub is the in-memory signaling state machine: peers, shares, sessions.
 type Hub struct {
-	opt      Options
-	log      *slog.Logger
-	mu       sync.Mutex
-	peers    map[string]*Peer
-	shares   map[string]*Share
-	sessions map[string]*Session
-	tokens   map[string]*Session // resume token → session
-	codes    *codes.Registry
-	global   *rate.Limiter
-	perIP    map[string]*ipLimiter
-	stats    Stats
-	closed   bool
+	opt          Options
+	log          *slog.Logger
+	mu           sync.Mutex
+	peers        map[string]*Peer
+	shares       map[string]*Share
+	sessions     map[string]*Session
+	tokens       map[string]*Session // resume token → session
+	codes        *codes.Registry
+	global       *rate.Limiter
+	perIP        map[string]*ipLimiter
+	stats        Stats
+	closed       bool
+	relayGlobal  *relay.Limiter
+	queueDropped atomic.Uint64
 }
 
 // Stats is a snapshot of counters for /metrics and /healthz.
 type Stats struct {
-	Peers          int
-	Shares         int
-	Sessions       int
-	ClaimsOK       uint64
-	ClaimsFailed   uint64
-	ClaimsLimited  uint64
-	RelayFrames    uint64
-	RelayBytes     uint64
-	RelayDropped   uint64
-	SignalForwards uint64
+	Peers              int
+	Shares             int
+	Sessions           int
+	ClaimsOK           uint64
+	ClaimsFailed       uint64
+	ClaimsLimited      uint64
+	RelayFrames        uint64
+	RelayBytes         uint64
+	RelayDropped       uint64
+	SignalForwards     uint64
+	ConnectionsLimited uint64
+	SessionsLimited    uint64
+	RelayQueueDropped  uint64
 }
 
 type ipLimiter struct {
@@ -148,18 +157,25 @@ func NewHub(o Options) *Hub {
 	if o.MaxSharesPerPeer <= 0 {
 		o.MaxSharesPerPeer = 16
 	}
+	if o.MaxSessions <= 0 {
+		o.MaxSessions = 4096
+	}
+	if o.MaxSessionsPerPeer <= 0 {
+		o.MaxSessionsPerPeer = 64
+	}
 	if o.TURNCredTTL <= 0 {
 		o.TURNCredTTL = 10 * time.Minute
 	}
 	h := &Hub{
-		opt:      o,
-		log:      o.Logger,
-		peers:    make(map[string]*Peer),
-		shares:   make(map[string]*Share),
-		sessions: make(map[string]*Session),
-		tokens:   make(map[string]*Session),
-		codes:    codes.NewRegistry(),
-		perIP:    make(map[string]*ipLimiter),
+		opt:         o,
+		log:         o.Logger,
+		peers:       make(map[string]*Peer),
+		shares:      make(map[string]*Share),
+		sessions:    make(map[string]*Session),
+		tokens:      make(map[string]*Session),
+		codes:       codes.NewRegistry(),
+		perIP:       make(map[string]*ipLimiter),
+		relayGlobal: relay.NewLimiter(o.RelayGlobalRateLimit),
 	}
 	if o.ClaimRateGlobal > 0 {
 		h.global = rate.NewLimiter(rate.Limit(o.ClaimRateGlobal), max(o.ClaimBurstGlobal, 1))
@@ -259,6 +275,7 @@ func (h *Hub) Stats() Stats {
 	st.Peers = len(h.peers)
 	st.Shares = len(h.shares)
 	st.Sessions = len(h.sessions)
+	st.RelayQueueDropped = h.queueDropped.Load()
 	return st
 }
 
@@ -331,7 +348,7 @@ func (h *Hub) HandleBinary(p *Peer, frame []byte) {
 		h.mu.Unlock()
 		return // peer offline; drop silently (unreliable path)
 	}
-	if !p.relay.Allow(len(frame), h.opt.Now()) {
+	if !p.relay.Allow(len(frame), h.opt.Now()) || !h.relayGlobal.Allow(len(frame), h.opt.Now()) {
 		h.stats.RelayDropped++
 		h.mu.Unlock()
 		return
@@ -573,6 +590,12 @@ func (h *Hub) onClaim(p *Peer, env Envelope, data []byte) {
 			p.sendError(env.ID, CodeShareBusy, "session already has a receiver")
 			return
 		}
+		if len(p.sessions) >= h.opt.MaxSessionsPerPeer {
+			h.stats.SessionsLimited++
+			h.mu.Unlock()
+			p.sendError(env.ID, CodeServerBusy, "session capacity reached")
+			return
+		}
 		sess.Receiver = p
 		p.sessions[sess.ID] = sess
 		h.stats.ClaimsOK++
@@ -606,6 +629,13 @@ func (h *Hub) onClaim(p *Peer, env Envelope, data []byte) {
 	if s.Owner == p {
 		h.mu.Unlock()
 		p.sendError(env.ID, CodeBadRequest, "cannot claim own share")
+		return
+	}
+	if len(h.sessions) >= h.opt.MaxSessions || len(p.sessions) >= h.opt.MaxSessionsPerPeer ||
+		len(s.Owner.sessions) >= h.opt.MaxSessionsPerPeer {
+		h.stats.SessionsLimited++
+		h.mu.Unlock()
+		p.sendError(env.ID, CodeServerBusy, "session capacity reached")
 		return
 	}
 	sess := &Session{

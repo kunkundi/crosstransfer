@@ -105,3 +105,32 @@ Android 通知聚合插件带入 `desugar_jdk_libs 2.1.4`（GPL-2.0 with Classpa
 本轮最终产物验证：Android Release APK 85.5 MB，15 个原生库、3 个引擎 ABI、64 位 ELF/ZIP 16 KB 对齐、测试签名、20 项法律/源码资产通过，DEX 不含已移除运行库；模拟器 P2P/WSS 中继两项实际 FFI 收发再次通过。iOS 模拟器 App 重建后 20 项法律资产、15 项 FFI 导出、分享扩展和 App Group 一致性通过。
 
 macOS local-test DMG 的 ad-hoc 签名、镜像校验、法律资产通过。系统 Launch Services 启动后，冷启动和热启动链接收件均验证所有 SHA-256、中文路径与空目录。原验收脚本直接执行二进制可能未注册为运行中的 App，随后 `open -a` 会另起未隔离实例；已改用专门的 Launch Services 启动器传递隔离环境，并在结束时只关闭自己启动的应用。该测试修复通过新 DMG 复测，未把原超时当作成功。
+
+
+## 服务容量和带宽配额（2026-09-22）
+
+按照 PLAN 增加信令连接全局/每 IP 上限、会话全局/每 peer 上限，以及内嵌 TURN 实际 relay socket 上限。WebSocket 升级失败与断开释放名额；会话满时不消费 once 码，已占用名额的会话仍可按 token 恢复。WSS 发送队列限制 512 帧且不超过 4 MiB；中继报文满时丢弃，可靠控制消息无法排队则关闭慢连接。
+
+TURN relay socket 的检查与创建在同一把锁内，底层绑定失败不消耗名额，Close 通过 once 保证只释放一次。每 allocation 和全局令牌桶覆盖收/发两个方向，超额按 UDP 丢包处理，未改变原协议。WSS 新增独立全局限速。数量上限为正、带宽 0 显式关闭；默认值与计量口径记录在 SELF_HOSTING 的配额表。新增容量拒绝、实际 socket、有效载荷字节及队列/限速丢弃指标。
+
+完整 `go test -race ./...` 与 `go vet ./...` 通过。新增验证包括真实 WebSocket 503 与释放、失败升级不泄漏、发送队列字节限制、once 码保留/续传与恢复、跨 peer 全局 WSS 限速、32 个并发 socket 申请只允许 2 个、底层绑定失败/重复 Close，以及真实 TURN Allocate → 拒绝 → Refresh(0) → 再分配 → 服务关闭回收。
+
+本机用 `/usr/bin/openssl`（LibreSSL）生成临时 CA，Python 严格证书验证保持开启。补全 SKI/AKI 后，4 接收端 ×（8 MiB + 814 字节）的 5 场景全部通过；每场景校验 33,557,688 字节，peer/share/session 均回收为零。报告 `dist/load-phase5-quotas.json`：
+
+| 路径 | 耗时 | 聚合 MiB/s | 限速丢弃 |
+| --- | ---: | ---: | ---: |
+| P2P | 2.228 s | 14.361 | 0 |
+| TURN 默认配额 | 2.731 s | 11.719 | 0 |
+| TURN 每 allocation 1 MiB/s、全局 2 MiB/s | 61.777 s | 0.518 | 36,576 |
+| WSS | 1.943 s | 16.471 | 0 |
+| WSS 每连接 1 MiB/s | 39.294 s | 0.814 | 31,678 |
+
+TURN 计量会对经过两个 relay socket 的同一数据分别计数，不能将配置字节率等同于端到端文件吞吐。该结果为回环完整性/恢复验证，不代表公网容量。对应限速场景已加入默认 CI 回归。
+
+## 远程矩阵恢复（2026-09-22）
+
+推送 `62c43f4` 后 GitHub 已重新执行任务，无需手动重跑。Server `35654293364` 成功；Desktop `35654293360` 中 Linux 全流程成功（34 项 core、24 项 Dart、并发路径、可信 WSS、FFI、deb 和安装后收件）。Windows 的源码比对失败来自脚本生成文本使用平台 CRLF，已改为固定 UTF-8/LF；macOS 并发测试的临时证书缺少 AKI，已显式加入 SKI/AKI，且本机 LibreSSL 严格验证复测通过。两项工具修复为 `726bc03`，仍需下一轮矩阵确认。Android 三 ABI 原生构建已成功，App 模拟器步骤和 iOS 模拟器步骤仍在执行。
+
+本机 iOS 最新未签名 Release App 30.1 MB 已成功，20 项法律资产、15 项 FFI 导出、扩展与 App Group 均通过。正式签名、真机、公开域名及真实 ACME 验收仍待相应资源。
+
+资源配额版本容器 `crosstransfer/ctserver:phase5-quota-check` 构建成功；只读/非 root 运行、YAML 健康探针、固定落地/下载/关联文件、默认私有 metrics 和 ACME 卷权限回归通过。本机使用过的 Android/iOS 模拟器已关闭，SDK 与测试设备配置保留。

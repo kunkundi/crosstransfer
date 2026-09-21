@@ -16,8 +16,10 @@ import (
 
 // WSOptions configures the WebSocket endpoint.
 type WSOptions struct {
-	MaxMessageSize int64
-	HeartbeatSec   int
+	MaxConnections      int
+	MaxConnectionsPerIP int
+	MaxMessageSize      int64
+	HeartbeatSec        int
 	// TrustProxy enables X-Forwarded-For / X-Real-IP for client IP detection.
 	TrustProxy bool
 	Logger     *slog.Logger
@@ -26,12 +28,14 @@ type WSOptions struct {
 // wsSink is a Sink backed by a coder/websocket connection with an outbound
 // queue drained by a dedicated writer goroutine.
 type wsSink struct {
-	conn    *websocket.Conn
-	out     chan outMsg
-	closed  chan struct{}
-	once    sync.Once
-	reason  string
-	dropped atomic.Uint64
+	conn         *websocket.Conn
+	out          chan outMsg
+	closed       chan struct{}
+	once         sync.Once
+	reason       string
+	dropped      atomic.Uint64
+	queuedBytes  atomic.Int64
+	queueDropped *atomic.Uint64
 }
 
 type outMsg struct {
@@ -40,16 +44,28 @@ type outMsg struct {
 }
 
 const outQueue = 512
+const MaxQueuedBytes = 4 << 20
 
 func (s *wsSink) enqueue(m outMsg) {
+	if s.queuedBytes.Add(int64(len(m.data))) > MaxQueuedBytes {
+		s.queuedBytes.Add(-int64(len(m.data)))
+		if m.typ == websocket.MessageBinary {
+			s.RecordDrop()
+		} else {
+			s.Kick("send queue byte limit")
+		}
+		return
+	}
 	select {
 	case <-s.closed:
+		s.queuedBytes.Add(-int64(len(m.data)))
 	case s.out <- m:
 	default:
+		s.queuedBytes.Add(-int64(len(m.data)))
 		if m.typ == websocket.MessageBinary {
 			// Relay frames are unreliable by contract: drop under pressure so
 			// the peers' congestion control sees loss instead of a dead link.
-			s.dropped.Add(1)
+			s.RecordDrop()
 			return
 		}
 		// A control message could not be queued: the client is not reading.
@@ -59,6 +75,13 @@ func (s *wsSink) enqueue(m outMsg) {
 
 // Dropped returns the number of relay frames discarded by this sink.
 func (s *wsSink) Dropped() uint64 { return s.dropped.Load() }
+
+func (s *wsSink) RecordDrop() {
+	s.dropped.Add(1)
+	if s.queueDropped != nil {
+		s.queueDropped.Add(1)
+	}
+}
 
 func (s *wsSink) SendText(msg []byte)     { s.enqueue(outMsg{websocket.MessageText, msg}) }
 func (s *wsSink) SendBinary(frame []byte) { s.enqueue(outMsg{websocket.MessageBinary, frame}) }
@@ -71,6 +94,15 @@ func (s *wsSink) Kick(reason string) {
 
 // ServeWS returns the HTTP handler for /ws.
 func ServeWS(h *Hub, o WSOptions) http.Handler {
+	if o.MaxConnections <= 0 {
+		o.MaxConnections = 1024
+	}
+	if o.MaxConnectionsPerIP <= 0 {
+		o.MaxConnectionsPerIP = 32
+	}
+	var slots sync.Mutex
+	active := 0
+	perIP := make(map[string]int)
 	log := o.Logger
 	if log == nil {
 		log = slog.Default()
@@ -80,6 +112,29 @@ func ServeWS(h *Hub, o WSOptions) http.Handler {
 		heartbeat = 30 * time.Second
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := clientIP(r, o.TrustProxy)
+		slots.Lock()
+		if active >= o.MaxConnections || perIP[ip] >= o.MaxConnectionsPerIP {
+			slots.Unlock()
+			h.mu.Lock()
+			h.stats.ConnectionsLimited++
+			h.mu.Unlock()
+			w.Header().Set("Retry-After", "5")
+			http.Error(w, "signaling capacity reached", http.StatusServiceUnavailable)
+			return
+		}
+		active++
+		perIP[ip]++
+		slots.Unlock()
+		defer func() {
+			slots.Lock()
+			active--
+			perIP[ip]--
+			if perIP[ip] == 0 {
+				delete(perIP, ip)
+			}
+			slots.Unlock()
+		}()
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			Subprotocols:       []string{"ct-signal-v1"},
 			InsecureSkipVerify: true, // native clients; no browser origin policy
@@ -92,8 +147,8 @@ func ServeWS(h *Hub, o WSOptions) http.Handler {
 		if o.MaxMessageSize > 0 {
 			conn.SetReadLimit(o.MaxMessageSize)
 		}
-		sink := &wsSink{conn: conn, out: make(chan outMsg, outQueue), closed: make(chan struct{})}
-		peer := h.Connect(clientIP(r, o.TrustProxy), sink)
+		sink := &wsSink{conn: conn, out: make(chan outMsg, outQueue), closed: make(chan struct{}), queueDropped: &h.queueDropped}
+		peer := h.Connect(ip, sink)
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
@@ -108,6 +163,7 @@ func ServeWS(h *Hub, o WSOptions) http.Handler {
 				case <-ctx.Done():
 					return
 				case m := <-sink.out:
+					sink.queuedBytes.Add(-int64(len(m.data)))
 					wctx, wcancel := context.WithTimeout(ctx, 10*time.Second)
 					err := conn.Write(wctx, m.typ, m.data)
 					wcancel()

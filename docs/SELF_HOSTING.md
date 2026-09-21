@@ -55,7 +55,7 @@ CT_RELAY_RATE_LIMIT=4194304
 CT_LOG_JSON=true
 ```
 
-使用密码管理器或 `openssl rand -hex 32` 生成独立随机 secret。不要使用示例字符串。`CT_RELAY_RATE_LIMIT` 的单位为**每连接每秒字节**，示例为 4 MiB/s；它不限制 TURN 带宽，也不是总服务吞吐配额。
+使用密码管理器或 `openssl rand -hex 32` 生成独立随机 secret。不要使用示例字符串。`CT_RELAY_RATE_LIMIT` 的单位为**每连接每秒字节**，示例为 4 MiB/s；`CT_RELAY_GLOBAL_RATE_LIMIT` 单独约束全部 WSS 中继。TURN 使用自己的两项带宽设置，见下面配额表。
 
 ```sh
 docker compose build
@@ -73,7 +73,7 @@ docker compose logs --tail=100 ctserver
 - 内置 TURN 只支持 UDP；UDP 被封锁时客户端使用 WSS 中继。跨公网部署的 `CT_PUBLIC_IP` 必须是该主机实际可达的地址，端口范围同时在云安全组与主机防火墙放行。
 - 外部 coturn：设置 `CT_EXTERNAL_TURN=turn:turn.example.com:3478?transport=udp`，两端使用相同的 `static-auth-secret` / `CT_TURN_SECRET`；这会关闭内置 TURN。配置外部 TURN 的用户/全局配额及禁止内网、回环等目标的权限策略。
 - 内置 TURN 默认拒绝私网、回环、CGNAT、链路本地、组播及特殊用途目标，当前中继只支持 IPv4。仅受控内网/回环测试可设置 `CT_TURN_ALLOW_PRIVATE_PEERS=true` 放行 RFC1918、回环和 CGNAT；链路本地（含常见云元数据地址）等仍拒绝。`tools/start_server.sh` 为本机开发默认启用此开关，公网部署不要使用该脚本的默认配置。
-- 内置 TURN 的公共服务带宽/资源配额尚未完成；对公网开放前应完成这项加固，或使用配置好访问策略的外部 TURN。目标 IP 过滤不能替代出站防火墙，也不能保护使用公网地址的内部服务。不要把 WSS 限速误当作 TURN 限速。
+- 内置 TURN 的 socket 数量与有效载荷带宽有独立配额。目标 IP 过滤不能替代出站防火墙，也不能保护使用公网地址的内部服务。
 - 只有后端端口无法被公网直连、且可信代理**覆盖**客户端提供的转发头时，才设置 `CT_TRUST_PROXY=1`。否则保持关闭，避免绕过按 IP 的取件限速。
 - `/healthz` 返回存活、版本、连接/分享/会话/TURN 数量。`ctserver -healthz` 使用相同的 YAML/环境设置，并为 ACME 提供正确的 SNI；此本机存活探针不验证服务端证书，不代表公网证书验收。
 - `CT_METRICS=true` 开启 Prometheus 文本 `/metrics`。该路由没有独立鉴权，应由内部代理访问策略保护。默认关闭。
@@ -102,3 +102,34 @@ https://transfer.example.com/.well-known/assetlinks.json
 4. 从公网检查证书完整链和 SAN、关联 JSON、取件页面和下载链接；从限制 UDP 的网络验证 WSS 回退。
 
 本机证据与未完成项见 [阶段 5 记录](PHASE5_NOTES.md)。模拟器、回环与静态 16 KB 对齐检查不替代真实设备、真实网络或已签名分发验收。
+
+
+## 资源与带宽配额
+
+| 环境变量 | 默认值 | 作用 |
+| --- | ---: | --- |
+| CT_MAX_CONNECTIONS | 1024 | 同时占用的信令 WebSocket 名额，含正在升级的请求 |
+| CT_MAX_CONNECTIONS_PER_IP | 32 | 单个客户端 IP 的连接名额；需按共享 NAT 用户规模调整 |
+| CT_MAX_SESSIONS | 4096 | 全部会话，含等待接收端续传的会话 |
+| CT_MAX_SESSIONS_PER_PEER | 64 | 每个 peer 参与/持有的会话，发送端离线接收者仍占名额 |
+| CT_TURN_MAX_ALLOCATIONS | 512 | 内嵌 TURN 实际 relay socket 数；创建与检查在同一锁内 |
+| CT_RELAY_RATE_LIMIT | 8388608 | 单连接 WSS 中继 payload 字节/秒 |
+| CT_RELAY_GLOBAL_RATE_LIMIT | 67108864 | 所有 WSS 中继 payload 字节/秒 |
+| CT_TURN_RATE_LIMIT | 8388608 | 每 allocation 收发合计 payload 字节/秒 |
+| CT_TURN_GLOBAL_RATE_LIMIT | 67108864 | 所有 TURN relay socket 收发合计 payload 字节/秒 |
+
+数量必须为正；带宽值为 0 表示运营者显式关闭该限速，负值启动失败。令牌桶突发允许一秒流量，至少 64 KiB，以容纳完整 UDP 报文。TURN 从发送端 allocation 到接收端 allocation 的同一数据会在两个 relay socket 各计一次；计量不包含 IP/UDP、STUN 等网络开销，不能直接当作云厂商账单字节。
+
+连接满时返回 HTTP 503 和 `Retry-After: 5`，还未建立 WebSocket；升级失败和断开释放连接名额。新会话满时返回 `server_busy`，once 码不消耗；原会话持有名额，接收端可用 token 恢复，关闭分享或过期才彻底释放。每连接分享数保持最多 16。WSS 发送队列同时限制 512 帧和 4 MiB：中继帧满时丢弃，可靠控制消息无法排队则关闭慢连接。
+
+TURN 满时返回分配失败，实际 socket 关闭才释放配额，重复 Close 不会重复释放。客户端未显式发 Refresh(0) 时，其 allocation 可能保留到 TURN lifetime 结束，因此并发预算需要包含刚离线的 allocation。全局和单 allocation 限速丢弃报文，现有 KCP/SACK 负责恢复；WSS 限速同理。
+
+启用受网络限制的 `/metrics` 后，可观察 `ct_connections_limited_total`、`ct_sessions_limited_total`、`ct_turn_relay_sockets`、`ct_turn_capacity_rejected_total`、`ct_turn_payload_bytes_total`、`ct_turn_rate_dropped_total`、`ct_relay_dropped_total` 与 `ct_relay_queue_dropped_total`。按实际机器内存、网络出口和共享 NAT 用户数调低或调高默认容量；外部 coturn 不受本进程 TURN 配额控制。
+
+回归命令（使用隔离的临时 CA、服务和状态目录）：
+
+```sh
+python3 tools/run_transfer_load.py --cli build/macosx/arm64/release/ct_cli --receivers 4 --mib 8 --cases turn-limited relay-limited --output dist/limited-load.json
+```
+
+此命令检查 SHA-256、实际数据路径、配额确实丢弃过报文以及 peer/share/session 回收。它是本机功能回归，公网部署仍需真实链路与长期容量观察。

@@ -77,14 +77,18 @@ def RunCase(args, work, server, source, expected, name):
     env = {k: v for k, v in os.environ.items() if not k.startswith(("CT_", "MINIRTC_TEST_"))}
     env["SSL_CERT_FILE"] = str(work / "root.pem")
     rate = args.relay_rate if name == "relay-limited" else 0
+    turn_rate = args.turn_rate if name == "turn-limited" else 8 << 20
+    turn_global_rate = 2 * args.turn_rate if name == "turn-limited" else 64 << 20
     service_env = dict(env, CT_LISTEN=endpoint, CT_TURN_PORT="0", CT_LOG_LEVEL="error",
                        CT_TLS_CERT=str(work / "server.pem"), CT_TLS_KEY=str(work / "server.key"),
                        CT_METRICS="true", CT_CLAIM_BURST_PER_IP=str(args.receivers + 1),
+                       CT_MAX_CONNECTIONS_PER_IP=str(args.receivers + 1),
                        CT_RELAY_RATE_LIMIT=str(rate))
-    if name == "turn":
+    if name.startswith("turn"):
         service_env.update(CT_TURN_PORT=str(FreePort(socket.SOCK_DGRAM)),
                            CT_PUBLIC_IP="127.0.0.1", CT_TURN_ALLOW_PRIVATE_PEERS="true",
-                           CT_TURN_SECRET="isolated-load-test-only")
+                           CT_TURN_SECRET="isolated-load-test-only",
+                           CT_TURN_RATE_LIMIT=str(turn_rate), CT_TURN_GLOBAL_RATE_LIMIT=str(turn_global_rate))
 
     def Start(label, command, process_env=env):
         log = (case / f"{label}.log").open("w")
@@ -130,7 +134,7 @@ def RunCase(args, work, server, source, expected, name):
                     raise TimeoutError("server startup timed out")
                 time.sleep(0.1)
         common = ["--server", endpoint, "--tls", "--json", "--log-level", "warn",
-                  "--timeout", str(args.timeout), "--turn", "force" if name == "turn" else "off",
+                  "--timeout", str(args.timeout), "--turn", "force" if name.startswith("turn") else "off",
                   "--relay", "force" if name.startswith("relay") else "off"]
         sender = Start("sender", [str(args.cli), "share", str(source), "--mode", "open",
                                   "--wait", str(args.receivers), "--ttl", str(args.timeout + 60),
@@ -160,7 +164,7 @@ def RunCase(args, work, server, source, expected, name):
                 raise TimeoutError(f"{name} concurrent transfer timed out")
             time.sleep(0.2)
         elapsed = time.monotonic() - started
-        expected_path = "relay" if name.startswith("relay") else name
+        expected_path = "relay" if name.startswith("relay") else ("turn" if name.startswith("turn") else name)
         for index in range(args.receivers):
             label = f"receiver-{index}"
             received = case / label / source.name
@@ -185,8 +189,11 @@ def RunCase(args, work, server, source, expected, name):
         assert metrics["ct_claims_ok_total"] == args.receivers
         assert metrics["ct_claims_rate_limited_total"] == 0
         assert peak_metrics["ct_sessions"] == args.receivers, "test did not overlap every receiver"
-        if name == "turn":
+        if name.startswith("turn"):
             assert peak_metrics["ct_turn_allocations"] > 0, "no actual TURN allocations"
+            assert peak_metrics["ct_turn_relay_sockets"] <= 512, "TURN socket capacity exceeded"
+        if name == "turn-limited":
+            assert metrics["ct_turn_rate_dropped_total"] > 0, "load did not exercise TURN rate limiting"
         assert (metrics["ct_relay_bytes_total"] > 0) == name.startswith("relay"), "wrong server data route"
         if name == "relay-limited":
             assert metrics["ct_relay_dropped_total"] > 0, "load did not exercise relay rate limiting"
@@ -194,7 +201,9 @@ def RunCase(args, work, server, source, expected, name):
         result = dict(case=name, receivers=args.receivers, verified_bytes=total_bytes,
                       elapsed_seconds=round(elapsed, 3), aggregate_mib_per_second=round(total_bytes / elapsed / (1 << 20), 3),
                       peak_rss_bytes=peak_rss, peak_metrics=peak_metrics, final_metrics=metrics,
-                      relay_rate_bytes_per_second=rate)
+                      relay_rate_bytes_per_second=rate,
+                      turn_rate_bytes_per_second=turn_rate if name.startswith("turn") else 0,
+                      turn_global_rate_bytes_per_second=turn_global_rate if name.startswith("turn") else 0)
         print(json.dumps(result, ensure_ascii=False), flush=True)
         return result
     except BaseException:
@@ -229,14 +238,16 @@ def Main():
     parser.add_argument("--mib", type=int, default=16, help="payload MiB per receiver")
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--relay-rate", type=int, default=1024 * 1024)
-    parser.add_argument("--cases", nargs="+", default=["p2p", "turn", "relay", "relay-limited"],
-                        choices=["p2p", "turn", "relay", "relay-limited"])
+    parser.add_argument("--turn-rate", type=int, default=1024 * 1024,
+                        help="turn-limited per-allocation rate; aggregate budget is twice this value")
+    parser.add_argument("--cases", nargs="+", default=["p2p", "turn", "turn-limited", "relay", "relay-limited"],
+                        choices=["p2p", "turn", "turn-limited", "relay", "relay-limited"])
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if os.name == "nt" or not 2 <= args.receivers <= 32 or not 1 <= args.mib <= 1024:
         parser.error("requires macOS/Linux, 2–32 receivers, 1–1024 MiB")
-    if args.timeout < 30 or args.relay_rate <= 0:
-        parser.error("timeout must be >=30 seconds; relay rate must be positive")
+    if args.timeout < 30 or args.relay_rate <= 0 or args.turn_rate <= 0:
+        parser.error("timeout must be >=30 seconds; rate limits must be positive")
     args.cli = args.cli.resolve(strict=True)
     if args.output:
         args.output = args.output.resolve()

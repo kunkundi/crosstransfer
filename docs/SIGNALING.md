@@ -61,3 +61,8 @@ a=x-data-stream:<name> <ssrc> <reliable 0|1>
 ```
 
 流名与可靠性两端必须一致。接收端（offerer）是 DTLS client。
+
+
+### 服务容量拒绝
+
+`/ws` 在全局/每 IP 连接数达到配置上限时返回 HTTP 503 与 `Retry-After: 5`。尚未完成 WebSocket 升级，不会发 JSON welcome。会话达到全局或每 peer 上限时，claim 返回 `error`，`code: "server_busy"`；该失败不消费 once 码，也不创建 resume token。已持有名额的暂停会话仍可由有空余 peer 会话名额的接收端续传。具体默认值与 payload 限速见 SELF_HOSTING 的资源配额表。

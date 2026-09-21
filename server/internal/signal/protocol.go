@@ -27,6 +27,7 @@ const (
 	CodePeerOffline    = "peer_offline"
 	CodeInternal       = "internal"
 	CodeTooManyShares  = "too_many_shares"
+	CodeServerBusy     = "server_busy"
 )
 
 // Session end / share close reasons.

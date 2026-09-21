@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"crosstransfer/server/internal/relay"
 	"github.com/pion/logging"
 	pionturn "github.com/pion/turn/v4"
 )
@@ -81,6 +82,9 @@ type Options struct {
 	Secret            string
 	Logger            *slog.Logger
 	AllowPrivatePeers bool // controlled LAN/test use only; false for public services
+	MaxAllocations    int  // actual relay sockets, defaults to 512
+	RateLimit         int  // payload bytes/sec per allocation, both directions; 0 disables
+	GlobalRateLimit   int  // aggregate payload bytes/sec; 0 disables
 }
 
 // Server wraps a pion TURN server.
@@ -88,10 +92,17 @@ type Server struct {
 	inner *pionturn.Server
 	conn  net.PacketConn
 	log   *slog.Logger
+	quota *relayQuota
 }
 
 // Start binds the UDP socket and starts serving.
 func Start(o Options) (*Server, error) {
+	if o.MaxAllocations <= 0 {
+		o.MaxAllocations = 512
+	}
+	if o.RateLimit < 0 || o.GlobalRateLimit < 0 {
+		return nil, errors.New("turn: rate limits must not be negative")
+	}
 	if o.PublicIP == nil {
 		return nil, errors.New("turn: public IP required")
 	}
@@ -108,6 +119,11 @@ func Start(o Options) (*Server, error) {
 	secret := o.Secret
 	realm := o.Realm
 	lf := &slogFactory{log: o.Logger}
+	quota := &relayQuota{
+		base:    &pionturn.RelayAddressGeneratorPortRange{RelayAddress: o.PublicIP, Address: o.ListenIP, MinPort: o.MinPort, MaxPort: o.MaxPort},
+		maximum: o.MaxAllocations, perAllocationRate: o.RateLimit,
+		global: relay.NewLimiter(o.GlobalRateLimit), now: time.Now,
+	}
 	inner, err := pionturn.NewServer(pionturn.ServerConfig{
 		Realm:         realm,
 		LoggerFactory: lf,
@@ -130,12 +146,7 @@ func Start(o Options) (*Server, error) {
 			PermissionHandler: func(_ net.Addr, peerIP net.IP) bool {
 				return PeerAllowed(peerIP, o.AllowPrivatePeers)
 			},
-			RelayAddressGenerator: &pionturn.RelayAddressGeneratorPortRange{
-				RelayAddress: o.PublicIP,
-				Address:      o.ListenIP,
-				MinPort:      o.MinPort,
-				MaxPort:      o.MaxPort,
-			},
+			RelayAddressGenerator: quota,
 		}},
 	})
 	if err != nil {
@@ -143,7 +154,15 @@ func Start(o Options) (*Server, error) {
 		return nil, fmt.Errorf("turn: %w", err)
 	}
 	o.Logger.Info("embedded TURN started", "listen", conn.LocalAddr().String(), "relay_ip", o.PublicIP.String(), "ports", fmt.Sprintf("%d-%d", o.MinPort, o.MaxPort))
-	return &Server{inner: inner, conn: conn, log: o.Logger}, nil
+	return &Server{inner: inner, conn: conn, log: o.Logger, quota: quota}, nil
+}
+
+// QuotaStats reports resource rejection and payload drop counters.
+func (s *Server) QuotaStats() QuotaStats {
+	if s == nil {
+		return QuotaStats{}
+	}
+	return s.quota.Stats()
 }
 
 // Close stops the server.

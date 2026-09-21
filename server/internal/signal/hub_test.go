@@ -467,3 +467,95 @@ func TestMaxShares(t *testing.T) {
 		t.Fatal("limit not enforced")
 	}
 }
+
+func TestSessionCapacityKeepsOnceCodeAndAllowsResume(t *testing.T) {
+	for _, global := range []bool{true, false} {
+		t.Run(fmt.Sprint("global=", global), func(t *testing.T) {
+			e := newEnv(t, func(o *Options) {
+				if global {
+					o.MaxSessions = 1
+				} else {
+					o.MaxSessionsPerPeer = 1
+				}
+			})
+			sender, ss := e.connect(t, "1")
+			r1, rs1 := e.connect(t, "2")
+			r2, rs2 := e.connect(t, "3")
+			first, openCode := e.createShare(t, sender, ss, "open")
+			_, onceCode := e.createShare(t, sender, ss, "once")
+			e.hub.HandleText(r1, []byte(fmt.Sprintf(`{"type":"claim","code":%q}`, openCode)))
+			start := expect(t, rs1.pop(t), "session_start")
+			ss.pop(t)
+			e.hub.Disconnect(r1)
+			ss.pop(t)
+			e.hub.HandleText(r2, []byte(fmt.Sprintf(`{"type":"claim","code":%q}`, onceCode)))
+			if got := expect(t, rs2.pop(t), "error"); got["code"] != CodeServerBusy {
+				t.Fatal(got)
+			}
+			if _, err := e.hub.codes.Lookup(onceCode, e.now); err != nil {
+				t.Fatal("capacity failure consumed once code", err)
+			}
+			e.hub.HandleText(r2, []byte(fmt.Sprintf(`{"type":"claim","resume_token":%q}`, start["resume_token"])))
+			resumed := expect(t, rs2.pop(t), "session_start")
+			if resumed["session_id"] != start["session_id"] || resumed["resumed"] != true {
+				t.Fatal(resumed)
+			}
+			ss.pop(t)
+			e.hub.HandleText(sender, []byte(fmt.Sprintf(`{"type":"close_share","share_id":%q}`, first)))
+			ss.pop(t)
+			rs2.pop(t)
+			e.hub.HandleText(r2, []byte(fmt.Sprintf(`{"type":"claim","code":%q}`, onceCode)))
+			expect(t, rs2.pop(t), "session_start")
+			if e.hub.Stats().Sessions != 1 || e.hub.Stats().SessionsLimited != 1 {
+				t.Fatal(e.hub.Stats())
+			}
+			e.hub.Shutdown()
+			if e.hub.Stats().Sessions != 0 || len(e.hub.tokens) != 0 {
+				t.Fatal("session slots not released")
+			}
+		})
+	}
+}
+
+func TestReceiverSessionCapacity(t *testing.T) {
+	e := newEnv(t, func(o *Options) { o.MaxSessionsPerPeer = 1 })
+	a, sa := e.connect(t, "1")
+	b, sb := e.connect(t, "2")
+	r, sr := e.connect(t, "3")
+	_, codeA := e.createShare(t, a, sa, "once")
+	_, codeB := e.createShare(t, b, sb, "once")
+	e.hub.HandleText(r, []byte(fmt.Sprintf(`{"type":"claim","code":%q}`, codeA)))
+	expect(t, sr.pop(t), "session_start")
+	e.hub.HandleText(r, []byte(fmt.Sprintf(`{"type":"claim","code":%q}`, codeB)))
+	if got := expect(t, sr.pop(t), "error"); got["code"] != CodeServerBusy {
+		t.Fatal(got)
+	}
+	if _, err := e.hub.codes.Lookup(codeB, e.now); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRelayGlobalLimitAcrossPeers(t *testing.T) {
+	e := newEnv(t, func(o *Options) { o.RelayGlobalRateLimit = 64 << 10 })
+	sender, ss := e.connect(t, "1")
+	r1, _ := e.connect(t, "2")
+	r2, _ := e.connect(t, "3")
+	_, code := e.createShare(t, sender, ss, "open")
+	frames := make([][]byte, 0, 2)
+	for _, r := range []*Peer{r1, r2} {
+		e.hub.HandleText(r, []byte(fmt.Sprintf(`{"type":"claim","code":%q}`, code)))
+		start := expect(t, r.sink.(*fakeSink).pop(t), "session_start")
+		frame, _ := relay.Encode(start["session_id"].(string), make([]byte, 40000))
+		frames = append(frames, frame)
+	}
+	e.hub.HandleBinary(r1, frames[0])
+	e.hub.HandleBinary(r2, frames[1])
+	if len(ss.bins) != 1 || e.hub.Stats().RelayDropped != 1 {
+		t.Fatal(e.hub.Stats())
+	}
+	e.now = e.now.Add(time.Second)
+	e.hub.HandleBinary(r2, frames[1])
+	if len(ss.bins) != 2 {
+		t.Fatal("global budget did not replenish")
+	}
+}

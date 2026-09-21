@@ -34,6 +34,15 @@ type Config struct {
 	TURNCredTTL           time.Duration `yaml:"turn_cred_ttl"`            // CT_TURN_CRED_TTL
 	TURNAllowPrivatePeers bool          `yaml:"turn_allow_private_peers"` // CT_TURN_ALLOW_PRIVATE_PEERS (controlled LAN/test only)
 
+	MaxConnections       int `yaml:"max_connections"`
+	MaxConnectionsPerIP  int `yaml:"max_connections_per_ip"`
+	MaxSessions          int `yaml:"max_sessions"`
+	MaxSessionsPerPeer   int `yaml:"max_sessions_per_peer"`
+	TURNMaxAllocations   int `yaml:"turn_max_allocations"`
+	TURNRateLimit        int `yaml:"turn_rate_limit"`
+	TURNGlobalRateLimit  int `yaml:"turn_global_rate_limit"`
+	RelayGlobalRateLimit int `yaml:"relay_global_rate_limit"`
+
 	RelayRateLimit   int           `yaml:"relay_rate_limit"`  // CT_RELAY_RATE_LIMIT bytes/sec per connection (0 = unlimited)
 	ClaimRatePerIP   float64       `yaml:"claim_rate_per_ip"` // CT_CLAIM_RATE_PER_IP claims/sec
 	ClaimBurstPerIP  int           `yaml:"claim_burst_per_ip"`
@@ -55,23 +64,31 @@ type Config struct {
 // Default returns the built-in defaults.
 func Default() Config {
 	return Config{
-		Listen:           ":8080",
-		TURNPort:         3478,
-		TURNPortRange:    "49152-65535",
-		TURNRealm:        "crosstransfer",
-		TURNCredTTL:      10 * time.Minute,
-		RelayRateLimit:   0,
-		ClaimRatePerIP:   1,
-		ClaimBurstPerIP:  5,
-		ClaimRateGlobal:  200,
-		ClaimBurstGlobal: 400,
-		ClaimFailDelay:   500 * time.Millisecond,
-		HeartbeatSec:     30,
-		DefaultShareTTL:  10 * time.Minute,
-		MaxOnceTTL:       24 * time.Hour,
-		MaxOpenTTL:       24 * time.Hour,
-		MaxMessageSize:   1 << 20,
-		LogLevel:         "info",
+		Listen:               ":8080",
+		TURNPort:             3478,
+		TURNPortRange:        "49152-65535",
+		TURNRealm:            "crosstransfer",
+		TURNCredTTL:          10 * time.Minute,
+		MaxConnections:       1024,
+		MaxConnectionsPerIP:  32,
+		MaxSessions:          4096,
+		MaxSessionsPerPeer:   64,
+		TURNMaxAllocations:   512,
+		TURNRateLimit:        8 << 20,
+		TURNGlobalRateLimit:  64 << 20,
+		RelayGlobalRateLimit: 64 << 20,
+		RelayRateLimit:       8 << 20,
+		ClaimRatePerIP:       1,
+		ClaimBurstPerIP:      5,
+		ClaimRateGlobal:      200,
+		ClaimBurstGlobal:     400,
+		ClaimFailDelay:       500 * time.Millisecond,
+		HeartbeatSec:         30,
+		DefaultShareTTL:      10 * time.Minute,
+		MaxOnceTTL:           24 * time.Hour,
+		MaxOpenTTL:           24 * time.Hour,
+		MaxMessageSize:       1 << 20,
+		LogLevel:             "info",
 	}
 }
 
@@ -165,6 +182,14 @@ func (c *Config) applyEnv(lookup func(string) (string, bool)) error {
 
 	for _, e := range []error{
 		integer("CT_TURN_PORT", &c.TURNPort),
+		integer("CT_MAX_CONNECTIONS", &c.MaxConnections),
+		integer("CT_MAX_CONNECTIONS_PER_IP", &c.MaxConnectionsPerIP),
+		integer("CT_MAX_SESSIONS", &c.MaxSessions),
+		integer("CT_MAX_SESSIONS_PER_PEER", &c.MaxSessionsPerPeer),
+		integer("CT_TURN_MAX_ALLOCATIONS", &c.TURNMaxAllocations),
+		integer("CT_TURN_RATE_LIMIT", &c.TURNRateLimit),
+		integer("CT_TURN_GLOBAL_RATE_LIMIT", &c.TURNGlobalRateLimit),
+		integer("CT_RELAY_GLOBAL_RATE_LIMIT", &c.RelayGlobalRateLimit),
 		integer("CT_RELAY_RATE_LIMIT", &c.RelayRateLimit),
 		integer("CT_CLAIM_BURST_PER_IP", &c.ClaimBurstPerIP),
 		integer("CT_CLAIM_BURST_GLOBAL", &c.ClaimBurstGlobal),
@@ -218,6 +243,23 @@ func (c *Config) Validate() error {
 		}
 		if _, _, err := c.TURNPorts(); err != nil {
 			return err
+		}
+	}
+	for name, value := range map[string]int{
+		"max_connections": c.MaxConnections, "max_connections_per_ip": c.MaxConnectionsPerIP,
+		"max_sessions": c.MaxSessions, "max_sessions_per_peer": c.MaxSessionsPerPeer,
+		"turn_max_allocations": c.TURNMaxAllocations,
+	} {
+		if value <= 0 {
+			return fmt.Errorf("%s must be positive", name)
+		}
+	}
+	for name, value := range map[string]int{
+		"relay_rate_limit": c.RelayRateLimit, "relay_global_rate_limit": c.RelayGlobalRateLimit,
+		"turn_rate_limit": c.TURNRateLimit, "turn_global_rate_limit": c.TURNGlobalRateLimit,
+	} {
+		if value < 0 {
+			return fmt.Errorf("%s must not be negative", name)
 		}
 	}
 	if c.HeartbeatSec <= 0 {
