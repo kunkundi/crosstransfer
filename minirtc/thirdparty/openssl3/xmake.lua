@@ -108,6 +108,10 @@ package("openssl3")
         -- the other dependencies and the Flutter FFI DLL.
         if package:has_runtime("MD", "MDd") then
             io.replace("Configurations/10-main.conf", "/MT", "/MD", {plain = true})
+            -- no-shared leaves provider cflags without a CRT switch. MSVC then
+            -- defaults to /MT while libcrypto references /MD's UCRT imports.
+            -- Apply the requested runtime to providers and applications too.
+            table.insert(configs, package:has_runtime("MDd") and "/MDd" or "/MD")
         end
         if package:is_debug() or package:has_runtime("MDd", "MTd") then
             table.insert(configs, "--debug")
