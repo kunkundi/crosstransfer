@@ -23,6 +23,14 @@ jobs:
       CT_ANDROID_ABIS: ${{ matrix.abi }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: false
+          packages: ''
       - uses: xmake-io/github-action-setup-xmake@v1
         with:
           xmake-version: '3.1.0'
@@ -33,7 +41,8 @@ jobs:
           restore-keys: android-native-v1-${{ matrix.abi }}-
       - name: NDK and native engine
         run: |
-          sdkmanager 'ndk;28.2.13676358'
+          # The project owner authorized these SDK/NDK license terms.
+          yes y | sdkmanager 'ndk;28.2.13676358' || test -f "$ANDROID_HOME/ndk/28.2.13676358/source.properties"
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
           tools/build_android_native.sh
           python3 tools/check_android_native.py "app/android/app/src/main/jniLibs/$CT_ANDROID_ABIS/libcrosstransfer_native.so"

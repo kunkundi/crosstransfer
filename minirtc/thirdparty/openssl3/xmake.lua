@@ -292,6 +292,12 @@ package("openssl3")
 
         import("configure.patch")(package)
         local buildenvs = import("package.tools.autoconf").buildenvs(package)
+        if package:is_plat("android") then
+            -- Configure otherwise picks the host ranlib. Apple's ranlib
+            -- rewrites the ELF archive index as Mach-O and breaks NDK linking.
+            buildenvs.RANLIB = path.join(path.directory(buildenvs.AR), is_host("windows") and "llvm-ranlib.exe" or "llvm-ranlib")
+            table.insert(configs, "no-tests")
+        end
         if (package:is_plat("android") and is_host("windows")) or
             package:is_plat("wasm") then
 
