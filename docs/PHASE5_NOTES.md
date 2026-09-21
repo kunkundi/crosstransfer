@@ -18,6 +18,8 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 阶段 3 桌面回归 `35634141872` 中 Linux 与 macOS 成功，Windows 在 OpenSSL 安装失败后未退出，最终触发 60 分钟任务超时；不能将此轮记为全绿。Windows 配方改用 nmake，构建脚本对每次 xmake 调用设 20 分钟上限并终止超时进程树，CI 始终保留依赖安装失败日志。旧日志不足以确认 JOM 安装失败的完整根因，新流程还需 Windows CI 验证。
 
+本轮回归 `35641577661`：macOS universal 的原生测试、可信 WSS、FFI ⇄ CLI、Dart、Flutter Release 和 DMG 全部通过。Linux 在新增 TLS 测试编译时发现 `<ostream>` 缺失（GCC 无法输出断言中的智能指针），已补齐；macOS 的 3 项 TLS / 543 断言单独复测通过。Windows 诊断产物定位到 `legacy.dll` 的 30 个 `__imp_*` UCRT 符号未解析：静态 libcrypto 已切 `/MD`，provider 对象却未设置 CRT，仍默认 `/MT`。已向 OpenSSL Configure 全局传递所选 `/MD`/`/MDd`，覆盖 provider 和应用对象，待下一轮 Windows 验证。
+
 ## 继续实施
 
 ### 移动扫码依赖替换（2026-09-22）
