@@ -29,7 +29,7 @@
 - **阶段 4 Android 主要实现与本机自动化验收已完成**，见 `docs/PHASE4_NOTES.md`、`docs/ANDROID_BUILD.md`：
   - NDK 28.2 三 ABI、15 项 FFI 导出、16 KB 对齐；Application 引擎、前台服务、SAF 导入/导出、系统分享、scheme 与 App Link 配置。
   - 本机 2 项运行时 FFI、2 项 SAF/分享仪器测试、CLI 冷/热链接及后台接收通过；三 ABI Release 测试 APK 与 24 个原生库打包检查通过。
-  - 原生三架构 Actions `35636445939` 全绿；完整 APK/模拟器 CI 待记录结果。正式签名、App Link、真机和 16 KB 系统运行验收待补。
+  - 完整 Actions `35654293259` 全绿：三 ABI、Release APK、6 项仪器测试和 2 项 FFI/P2P/WSS 收发。正式签名、App Link、真机和 16 KB 系统运行验收待补。
 - **阶段 5 加固进行中**，见 `docs/PHASE5_NOTES.md`：WSS SAN 身份验证、OpenSSL 3.5.8 LTS；扫码替换为 AVFoundation/ZXing，移除 ML Kit；受发送状态保护的 Imported 副本清理。本机 34 项 core / 889 断言、24 项 Dart、Android 6 项仪器测试与 iOS 5 项 XCTest 通过。严格 TURN 三轮 8 × 64 MiB、P2P/WSS 并发与限速中继均通过。
 - CI 曾因账单阻塞，推送 `62c43f4` 后已恢复：Server `35654293364` 成功，Desktop `35654293360` 的 Linux 全流程成功。Windows 源码校验的 CRLF 与 macOS 测试证书 AKI 已修复为 `726bc03`，待矩阵确认；Windows OpenSSL CRT 修复尚未完成远程验证。Android `35654293259` 已全绿；iOS `35654293285` 也已全绿，含 5 项 XCTest。
 - 许可审计中的既有宽松许可和 Linux 系统 GTK/GLib 动态链接例外已获所有者授权（2026-09-22），边界见 PLAN 与 `docs/LICENSE_AUDIT.md`。Android GPL＋Classpath desugaring 运行库已移除，不包含在授权中。

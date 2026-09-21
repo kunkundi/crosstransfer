@@ -41,4 +41,4 @@
 - 未连接真实 iPhone/iPad，摄像头实扫、系统实际后台时间耗尽、锁屏网络、Universal Link 域名关联与通知真机行为尚未验收。
 - 导入文件在主 App Documents/Imported 中保留，用户可通过“文件”管理；自动配额/陈旧临时文件回收留给阶段 5 加固。
 
-下一步：补真机/域名验收，并按 PLAN.md 阶段 4 移植 Android NDK 和 Runner。阶段 5 继续完整许可证清单、公共服务部署与全平台加固。
+阶段 5 补充：通知、扫码、导入清理和许可证分发已加固，[Actions 35654293285](https://github.com/kunkundi/crosstransfer/actions/runs/35654293285) 完整通过，含 24 项 Dart、device/simulator App、法律资产/ABI 与 5 项 XCTest。Android 移植已完成；当前继续真机/域名/签名与公共服务验收，详见 [阶段 5 记录](PHASE5_NOTES.md)。

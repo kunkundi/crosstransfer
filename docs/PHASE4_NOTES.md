@@ -26,7 +26,7 @@
 | SAF / 系统分享桥接 | 2 项仪器测试通过：目录导入/导出完整性、源删除后副本有效、系统多文件分享重名不覆盖、Inbox 确认保留源文件 |
 | Release APK | 三 ABI，约 99.3 MB；24 个原生库，所有 64 位 ELF 与 ZIP 16 KB 对齐、有效调试签名 |
 
-记录：`dist/android-receive.png`；本机仪器测试报告 `app/build/app/reports/androidTests/connected/debug/`。远程原生三架构 [Actions 35636445939](https://github.com/kunkundi/crosstransfer/actions/runs/35636445939) 全绿；完整 [Actions 35639558763](https://github.com/kunkundi/crosstransfer/actions/runs/35639558763) 的原生三架构、Flutter 检查和 Release APK 验证通过，模拟器镜像安装因 runner 磁盘耗尽失败，运行时测试未执行。阶段 5 已调整 runner 磁盘准备，待重跑结果。
+记录：`dist/android-receive.png`；本机仪器测试报告 `app/build/app/reports/androidTests/connected/debug/`。远程原生三架构 [Actions 35636445939](https://github.com/kunkundi/crosstransfer/actions/runs/35636445939) 全绿；完整 [Actions 35639558763](https://github.com/kunkundi/crosstransfer/actions/runs/35639558763) 的原生三架构、Flutter 检查和 Release APK 验证通过，模拟器镜像安装因 runner 磁盘耗尽失败，运行时测试未执行。阶段 5 调整 runner 磁盘准备后，[Actions 35654293259](https://github.com/kunkundi/crosstransfer/actions/runs/35654293259) 已完整通过：3 ABI、24 项 Dart、85.5 MB Release APK、许可门禁、6 项仪器测试与 2 项 FFI/P2P/WSS 实际收发。阶段 5 的当前变更与证据见 [加固记录](PHASE5_NOTES.md)。
 
 验收边界与后续：
 
