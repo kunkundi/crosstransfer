@@ -235,6 +235,7 @@ void WsClient::SetStatus(WsStatus status) {
 }
 
 int WsClient::Connect(const std::string& uri) {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (shutdown_.load()) return -1;
   uri_ = uri;
   secure_ = uri.rfind("wss://", 0) == 0;
@@ -242,17 +243,15 @@ int WsClient::Connect(const std::string& uri) {
     LOG_ERROR("Unsupported WebSocket URI: {}", uri);
     return -1;
   }
-  std::lock_guard<std::mutex> lock(mutex_);
   StartEndpointLocked();
   return endpoint_ ? 0 : -1;
 }
 
 void WsClient::StartEndpointLocked() {
-  // Retire the previous endpoint (if any) on a helper thread so a reconnect
-  // can be issued from an I/O callback without joining ourselves.
+  // Stop the old endpoint without joining an I/O callback under mutex_. Its
+  // thread owns the endpoint until Run() returns; Shutdown() joins the thread.
   if (endpoint_) {
-    auto old = std::move(endpoint_);
-    old->Stop();
+    endpoint_->Stop();
     old_threads_.push_back(std::move(io_thread_));
   }
   ++generation_;
@@ -261,16 +260,16 @@ void WsClient::StartEndpointLocked() {
   SetStatus(WsStatus::kConnecting);
   std::weak_ptr<WsClient> weak = weak_from_this();
   if (secure_) {
-    endpoint_ = std::make_unique<EndpointImpl<TlsConfig>>(weak);
+    endpoint_ = std::make_shared<EndpointImpl<TlsConfig>>(weak);
   } else {
-    endpoint_ = std::make_unique<EndpointImpl<PlainConfig>>(weak);
+    endpoint_ = std::make_shared<EndpointImpl<PlainConfig>>(weak);
   }
   if (endpoint_->Connect(uri_) != 0) {
     endpoint_.reset();
     SetStatus(WsStatus::kFailed);
     return;
   }
-  WsEndpoint* ep = endpoint_.get();
+  auto ep = endpoint_;
   io_thread_ = std::thread([ep]() { ep->Run(); });
   if (!ping_thread_.joinable()) {
     ping_thread_ = std::thread([this]() { PingLoop(); });
@@ -280,7 +279,7 @@ void WsClient::StartEndpointLocked() {
 void WsClient::Shutdown() {
   if (shutdown_.exchange(true)) return;
   LOG_INFO("WebSocket shutdown");
-  std::unique_ptr<WsEndpoint> ep;
+  std::shared_ptr<WsEndpoint> ep;
   std::thread io, ping, reconnect;
   std::vector<std::thread> old;
   {
@@ -317,15 +316,12 @@ bool WsClient::SendBinary(const uint8_t* data, size_t size) {
 }
 
 void WsClient::PingLoop() {
-  std::mutex m;
+  // All waits on cv_ must use the same mutex (also used by Shutdown()).
+  std::unique_lock<std::mutex> lock(mutex_);
   while (!shutdown_.load()) {
-    {
-      std::unique_lock<std::mutex> lk(m);
-      cv_.wait_for(lk, std::chrono::seconds(kPingIntervalSec),
-                   [this] { return shutdown_.load(); });
-    }
+    cv_.wait_for(lock, std::chrono::seconds(kPingIntervalSec),
+                 [this] { return shutdown_.load(); });
     if (shutdown_.load()) break;
-    std::lock_guard<std::mutex> lock(mutex_);
     if (endpoint_ && open_.load()) endpoint_->Ping();
   }
 }
@@ -338,16 +334,14 @@ void WsClient::ScheduleReconnect() {
   LOG_INFO("WebSocket reconnect in {} s (attempt {})", delay, attempt + 1);
   SetStatus(WsStatus::kReconnecting);
   std::lock_guard<std::mutex> lock(mutex_);
+  if (shutdown_.load() || generation_.load() != gen) return;
   if (reconnect_thread_.joinable()) {
     old_threads_.push_back(std::move(reconnect_thread_));
   }
   reconnect_thread_ = std::thread([this, delay, gen]() {
-    std::mutex m;
-    std::unique_lock<std::mutex> lk(m);
-    cv_.wait_for(lk, std::chrono::seconds(delay),
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait_for(lock, std::chrono::seconds(delay),
                  [this] { return shutdown_.load(); });
-    if (shutdown_.load() || generation_.load() != gen) return;
-    std::lock_guard<std::mutex> lock(mutex_);
     if (shutdown_.load() || generation_.load() != gen) return;
     StartEndpointLocked();
   });

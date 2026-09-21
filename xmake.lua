@@ -88,7 +88,7 @@ if has_config("ct_tests") and not is_plat("iphoneos") then
         set_default(false)
         ct_common()
         add_deps("crosstransfer_core")
-        add_packages("nlohmann_json", "spdlog", "openssl3", "doctest")
+        add_packages("nlohmann_json", "spdlog", "openssl3", "doctest", "asio")
         add_includedirs("core/src")
         add_files("core/tests/*.cpp")
     target_end()

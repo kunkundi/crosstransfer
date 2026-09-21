@@ -33,7 +33,7 @@ const char* WsStatusName(WsStatus s);
 class WsEndpoint;  // internal
 
 // WebSocket client (ws:// and wss://) with automatic reconnect, ping keepalive
-// and text + binary frames. Callbacks run on the I/O thread.
+// and text + binary frames. Callbacks run on connection/I/O worker threads.
 class WsClient : public std::enable_shared_from_this<WsClient> {
  public:
   struct Callbacks {
@@ -72,7 +72,6 @@ class WsClient : public std::enable_shared_from_this<WsClient> {
   void SetStatus(WsStatus status);
   void ScheduleReconnect();
   void StartEndpointLocked();
-  void StopEndpoint(std::unique_ptr<WsEndpoint> endpoint);
   void PingLoop();
 
   Callbacks callbacks_;
@@ -80,7 +79,9 @@ class WsClient : public std::enable_shared_from_this<WsClient> {
   bool secure_ = false;
 
   std::mutex mutex_;
-  std::unique_ptr<WsEndpoint> endpoint_;
+  // Each I/O thread retains its endpoint until Run() returns, including after
+  // a reconnect replaces endpoint_.
+  std::shared_ptr<WsEndpoint> endpoint_;
   std::thread io_thread_;
   std::thread ping_thread_;
   std::thread reconnect_thread_;
