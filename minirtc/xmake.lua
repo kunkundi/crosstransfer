@@ -25,7 +25,7 @@ add_packages("asio", "nlohmann_json", "spdlog", "websocketpp", "libsrtp", "kcp",
 
 if is_plat("windows") then
     add_defines("_WEBSOCKETPP_CPP11_INTERNAL_")
-    set_runtimes("MT")
+    set_runtimes(is_mode("debug") and "MDd" or "MD")
 elseif is_plat("linux") then
     add_cxflags("-fPIC", "-Wno-unused-variable")
     add_syslinks("pthread")

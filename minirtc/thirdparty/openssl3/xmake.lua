@@ -1,5 +1,5 @@
 -- Local override of xmake-repo's openssl3 (Apache-2.0): explicit Configure
--- target on macOS so cross-arch builds work. Keep in sync when bumping.
+-- target on macOS and the requested Windows CRT. Keep in sync when bumping.
 package("openssl3")
     set_homepage("https://www.openssl.org/")
     set_description("A robust, commercial-grade, and full-featured toolkit for TLS and SSL.")
@@ -138,6 +138,19 @@ package("openssl3")
                 io.replace("Configurations/50-win-clang-cl.conf", "/Zi", "", {plain = true})
             end
             io.replace("util/copy.pl", "if (-d $dest)", "if (! -e $_) { next; }\n\tif (-d $dest)", {plain = true})
+        end
+
+        -- OpenSSL's no-shared target hardcodes /MT even when the consuming
+        -- package requests /MD. Keep its static archives on the same CRT as
+        -- the other dependencies and the Flutter FFI DLL.
+        if package:has_runtime("MD", "MDd") then
+            io.replace("Configurations/10-main.conf", "/MT", "/MD", {plain = true})
+        end
+        if package:is_debug() or package:has_runtime("MDd", "MTd") then
+            table.insert(configs, "--debug")
+            local runtime = package:has_runtime("MDd") and "MDd" or "MTd"
+            io.replace("Configurations/10-main.conf", '"/MD /Zl"', '"/' .. runtime .. ' /Zl"', {plain = true})
+            io.replace("Configurations/10-main.conf", '"/MT /Zl"', '"/' .. runtime .. ' /Zl"', {plain = true})
         end
 
         os.vrunv("perl", configs)

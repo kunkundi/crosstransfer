@@ -11,6 +11,11 @@ add_rules("mode.release", "mode.debug")
 set_languages("c++17")
 set_encodings("utf-8")
 
+-- Match Flutter's Windows CRT and propagate it to all native dependencies.
+if is_plat("windows") then
+    set_runtimes(is_mode("debug") and "MDd" or "MD")
+end
+
 -- macOS deployment floor for the Flutter app is 12.0 (see app/macos/Podfile);
 -- pass `--target_minver=12.0` at configure time (tools/build_native.sh does).
 
@@ -44,9 +49,7 @@ end
 
 local function ct_common()
     add_defines("NOMINMAX", "WIN32_LEAN_AND_MEAN")
-    if is_plat("windows") then
-        set_runtimes("MT")
-    elseif is_plat("linux") then
+    if is_plat("linux") then
         add_cxflags("-fPIC")
         add_syslinks("pthread")
     end
