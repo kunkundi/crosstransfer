@@ -78,7 +78,7 @@ target("minirtc")
         "src/transport", "src/transport/paced_sender", "src/pc")
     if is_plat("windows") then
         add_syslinks("Shell32", "Advapi32", "Dnsapi", "Shlwapi", "Crypt32",
-            "ws2_32", "User32", "Secur32", "Bcrypt", "iphlpapi")
+            "ws2_32", "User32", "Secur32", "Bcrypt", "iphlpapi", "winmm")
     end
     add_installfiles("src/api/minirtc.h", {prefixdir = "include"})
 
