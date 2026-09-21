@@ -15,7 +15,7 @@ PACKED="$STAGE/image/CrossTransfer.app"
 test -f "$PACKED/Contents/Frameworks/libcrosstransfer_native.dylib"
 # Reject a universal executable paired with a single-architecture core.
 for ARCH in $(lipo -archs "$PACKED/Contents/MacOS/crosstransfer"); do
-  lipo -verify_arch "$ARCH" "$PACKED/Contents/Frameworks/libcrosstransfer_native.dylib"
+  lipo "$PACKED/Contents/Frameworks/libcrosstransfer_native.dylib" -verify_arch "$ARCH"
 done
 mkdir -p "$PACKED/Contents/Resources/legal"
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$PACKED/Contents/Resources/legal/"

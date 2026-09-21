@@ -4,6 +4,7 @@
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
@@ -47,7 +48,18 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
     final dir = await FilePicker.getDirectoryPath(
         dialogTitle: ref.read(sProvider)('settings.choose_dir'),
         initialDirectory: _saveDir.isEmpty ? null : _saveDir);
-    if (dir != null) setState(() => _saveDirOverride = dir);
+    if (mounted && dir != null) setState(() => _saveDirOverride = dir);
+  }
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted || data?.text == null) return;
+    _input.text = data!.text!;
+    _start();
+  }
+
+  void _onChanged(String value) {
+    if (extractTakeCode(value) != null) _start();
   }
 
   void _start() {
@@ -87,7 +99,11 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
       if (next == null) return;
       _input.text = formatTakeCode(next);
       _focus.requestFocus();
-      Future.microtask(() => ref.read(pendingReceiveProvider.notifier).set(null));
+      Future.microtask(() {
+        if (!mounted) return;
+        ref.read(pendingReceiveProvider.notifier).set(null);
+        _start();
+      });
     });
 
     return ListView(
@@ -109,12 +125,18 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                     controller: _input,
                     focusNode: _focus,
                     autofocus: true,
+                    onChanged: _onChanged,
                     onSubmitted: (_) => _start(),
                     style: theme.textTheme.titleMedium?.copyWith(
                         fontFeatures: const [FontFeature.tabularFigures()]),
                     decoration: InputDecoration(
                       hintText: s('recv.input_hint'),
                       prefixIcon: const Icon(Icons.qr_code_2),
+                      suffixIcon: IconButton(
+                        tooltip: s('recv.paste'),
+                        onPressed: _paste,
+                        icon: const Icon(Icons.content_paste),
+                      ),
                       errorText: _error,
                       border: const OutlineInputBorder(),
                     ),

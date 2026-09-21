@@ -27,6 +27,8 @@ void main() {
       expect(extractTakeCode('http://ct.example.com/r/mxt3xf8sk2'), 'MXT3XF8SK2');
       expect(extractTakeCode('https://ct.example.com/other'), isNull);
       expect(extractTakeCode('MXT3X-F8SK2'), 'MXT3XF8SK2');
+      expect(extractTakeCode('crosstransfer://r/MXT3XF8SK2!'), isNull);
+      expect(extractTakeCode('crosstransfer://r/MXT3XF8SK22222'), isNull);
     });
 
     test('formats canonical codes', () {

@@ -2,6 +2,7 @@
 """Cross-platform Dart FFI <-> CLI transfers against an isolated Go server."""
 import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -28,6 +29,7 @@ def Main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cli', required=True)
     parser.add_argument('--native', required=True)
+    parser.add_argument('--app', help='Windows/Linux packaged executable; test cold and warm scheme activation')
     args = parser.parse_args()
     cli, native = str(Path(args.cli).resolve()), str(Path(args.native).resolve())
     processes, logs = [], []
@@ -56,7 +58,7 @@ def Main():
                 port = sock.getsockname()[1]
             endpoint = f'127.0.0.1:{port}'
             server_env = dict(env, CT_LISTEN=endpoint, CT_PUBLIC_IP='127.0.0.1',
-                              CT_TURN_SECRET='local-test-only', CT_LOG_LEVEL='error')
+                              CT_TURN_PORT='0', CT_TURN_SECRET='local-test-only', CT_LOG_LEVEL='error')
             Start('server', [str(server)], server_env)
 
             def Healthy():
@@ -74,14 +76,29 @@ def Main():
                 (source / name).write_bytes(os.urandom(size))
             common = ['--server', endpoint, '--timeout', '120', '--log-level', 'warn']
             ffi = [dart, 'run', 'tool/ffi_smoke.dart']
-            for direction in ('ffi-to-cli', 'cli-to-ffi'):
+            directions = ('app-cold', 'app-warm') if args.app else ('ffi-to-cli', 'cli-to-ffi')
+            app_process = None
+            app_data = work / 'app-data'
+            app_dest = work / 'received-by-app'
+            if args.app:
+                app_data.mkdir()
+                app_dest.mkdir()
+                (app_data / 'config.json').write_text(json.dumps({
+                    'server': {'host': '127.0.0.1', 'port': port, 'tls': False},
+                    'save_dir': str(app_dest), 'log_level': 'warn',
+                }), encoding='utf-8')
+            for direction in directions:
                 dest = work / direction
                 dest.mkdir()
+                if direction == 'app-warm':
+                    warm_source = work / 'tree-warm'
+                    shutil.copytree(source, warm_source)
+                    source = warm_source
                 if direction == 'ffi-to-cli':
                     sender, log = Start(direction + '-send', ffi + ['share', str(source), '--server', endpoint])
                 else:
                     sender, log = Start(direction + '-send', [cli, 'share', str(source),
-                        '--data-dir', str(work / 'cli-send')] + common)
+                        '--data-dir', str(work / ('cli-send-' + direction))] + common)
 
                 def Code():
                     if sender.poll() is not None:
@@ -92,16 +109,34 @@ def Main():
                     return None
 
                 code = WaitFor(Code)
-                if direction == 'ffi-to-cli':
+                if args.app:
+                    app_env = dict(env, CT_DATA_DIR=str(app_data))
+                    # The shipped app must load its bundled library, not the
+                    # development override used by the headless Dart client.
+                    app_env.pop('CT_NATIVE_LIB', None)
+                    activated, _ = Start(direction + '-app',
+                        [str(Path(args.app).resolve()), f'crosstransfer://r/{code}'], app_env)
+                    if app_process is None:
+                        app_process = activated
+                    else:
+                        assert activated.wait(timeout=15) == 0, 'second instance did not forward the link'
+                    dest = app_dest
+                    WaitFor(lambda: all((dest / source.name / f.relative_to(source)).exists()
+                                       for f in source.rglob('*')), timeout=120)
+                    assert app_process.poll() is None, 'desktop application exited unexpectedly'
+                    if sender.wait(timeout=30) != 0:
+                        raise RuntimeError(f'{direction} sender failed')
+                elif direction == 'ffi-to-cli':
                     receiver, _ = Start(direction + '-recv', [cli, 'receive', code, '--dir', str(dest),
                         '--data-dir', str(work / 'cli-recv')] + common)
                 else:
                     receiver, _ = Start(direction + '-recv', ffi + ['receive', code, str(dest), '--server', endpoint])
-                for process in (receiver, sender):
-                    if process.wait(timeout=150) != 0:
-                        raise RuntimeError(f'{direction} process exited {process.returncode}')
+                if not args.app:
+                    for process in (receiver, sender):
+                        if process.wait(timeout=150) != 0:
+                            raise RuntimeError(f'{direction} process exited {process.returncode}')
                 for original in source.rglob('*'):
-                    received = dest / 'tree' / original.relative_to(source)
+                    received = dest / source.name / original.relative_to(source)
                     if original.is_dir():
                         assert received.is_dir(), received
                     else:

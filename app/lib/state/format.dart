@@ -59,7 +59,8 @@ String? extractTakeCode(String input) {
   if (lower.startsWith('http://') ||
       lower.startsWith('https://') ||
       lower.startsWith('crosstransfer:')) {
-    final m = RegExp(r'/r/([0-9A-Za-z\-_ ]{10,12})').firstMatch(s);
+    // Take the entire segment: never accept a valid prefix of a longer code.
+    final m = RegExp(r'/r/([^/?#]+)').firstMatch(s);
     if (m == null) return null;
     s = m.group(1)!;
   }

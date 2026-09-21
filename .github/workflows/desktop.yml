@@ -91,13 +91,27 @@ jobs:
         run: tools/package_macos.sh
       - name: Package deb
         if: runner.os == 'Linux'
-        run: tools/package_linux.sh
+        run: |
+          tools/package_linux.sh
+          sudo apt-get install -y ./dist/*.deb
+          test "$(xdg-mime query default x-scheme-handler/crosstransfer)" = com.crosstransfer.crosstransfer.desktop
+          xvfb-run -a dbus-run-session -- python tools/desktop_e2e.py --cli '${{ matrix.cli }}' --native '${{ matrix.native }}' --app /opt/crosstransfer/crosstransfer
       - name: Package NSIS
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
           ./tools/package_windows.ps1 -MakeNsis "${env:ProgramFiles(x86)}/NSIS/makensis.exe"
+          $Installer = (Get-ChildItem dist/*-setup.exe).FullName
+          $Result = Start-Process $Installer -ArgumentList '/S' -Wait -PassThru
+          if ($Result.ExitCode -ne 0) { throw 'Installer failed' }
+          $Installed = "$env:LOCALAPPDATA/Programs/CrossTransfer"
+          $Protocol = (Get-Item 'HKCU:/Software/Classes/crosstransfer/shell/open/command').GetValue('')
+          if (!$Protocol.Contains('crosstransfer.exe')) { throw 'Scheme registration missing' }
+          python tools/desktop_e2e.py --cli '${{ matrix.cli }}' --native '${{ matrix.native }}' --app "$Installed/crosstransfer.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed app scheme/transfer test failed' }
+          $Result = Start-Process "$Installed/Uninstall.exe" -ArgumentList '/S' -Wait -PassThru
+          if ($Result.ExitCode -ne 0) { throw 'Uninstaller failed' }
       - uses: actions/upload-artifact@v4
         with:
           name: CrossTransfer-${{ matrix.platform }}-${{ matrix.arch }}
