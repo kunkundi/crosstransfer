@@ -47,6 +47,8 @@ Pop-Location
 
 `build_native.ps1 -Arch arm64` 可用于 native 移植检查，但本阶段的 Windows Flutter 安装器与 CI 验收目标为 x64。
 
+Windows 原生目标及依赖统一使用动态 MSVC CRT（release 为 `/MD`，debug 为 `/MDd`），与 Flutter runner 保持一致。OpenSSL 仍静态链接，但本地配方会覆盖其 `no-shared` 默认的 `/MT` 编译选项，避免与其他依赖混用运行库。
+
 ## Linux（Ubuntu 24.04 / 对应 Debian 兼容环境）
 
 ```sh

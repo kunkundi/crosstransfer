@@ -6,23 +6,22 @@
 
 - `docs/PLAN.md`：完整规划 v7，包含所有已确认的设计决策、协议、依赖许可证边界、实施阶段与验证矩阵。**任何实施都以它为准**；改设计先改它。
 
-## 当前状态（2026-09-21）
+## 当前状态（2026-09-22）
 
 - 远程仓库 `github.com/kunkundi/crosstransfer`，主分支 `main`。
 - **阶段 0 已完成**（服务端 + 特化版 MiniRTC + 数据路径改造），记录见 `docs/PHASE0_NOTES.md`：
   - `server/`：Go 信令 / 取件码 / 内嵌 TURN（pion/turn）/ WSS 中继 / healthz / metrics；`go test -race ./...` 全绿；Dockerfile + compose + `.env.example`。协议实现说明见 `docs/SIGNALING.md`。
-  - `minirtc/`：已裁剪为数据专用（约 2.5 万行，源自 `kunkundi/minirtc` commit `a25a3b4`）。ICE 用 libjuice + miniupnpc，无 glib / libnice / 媒体依赖。C API 在 `minirtc/src/api/minirtc.h`（`MiniRtc*`）。macOS arm64、iOS arm64、Linux arm64 编译通过；Windows 尚未实测。
+  - `minirtc/`：已裁剪为数据专用（约 2.5 万行，源自 `kunkundi/minirtc` commit `a25a3b4`）。ICE 用 libjuice + miniupnpc，无 glib / libnice / 媒体依赖。C API 在 `minirtc/src/api/minirtc.h`（`MiniRtc*`）。macOS arm64、iOS arm64、Linux arm64 编译通过；阶段 2 新增 Windows x64 / Linux x86_64 / macOS universal 构建与收发验收。
 - **阶段 1 已完成**（`core/` + `ct_cli`），记录见 `docs/PHASE1_NOTES.md`，两端协议见 `docs/TRANSFER_PROTOCOL.md`：
-  - 根 `xmake.lua`：`crosstransfer_core`（static）、`ct_cli`、`core_tests`（doctest，27 用例全绿）、可选 `crosstransfer_native`（shared，未验证）。
+  - 根 `xmake.lua`：`crosstransfer_core`（static）、`ct_cli`、`core_tests`（doctest，27 用例全绿）、可选 `crosstransfer_native`（shared，三桌面平台已验证）。
   - `core/include/crosstransfer/ct_api.h` 是唯一公开头（`CtCreate` … `CtVersion`，事件为 JSON 回调），阶段 2 的 ffigen 输入。
   - 端到端脚本在 `tools/`：`run_cli_e2e.sh`（P2P / TURN / 中继 / 丢包）、`run_cli_resume.sh`（kill -9 后续传）、`run_cli_open.sh`（open 模式双接收端）、`repeat_e2e.sh`。1 GiB 回环 156 s、峰值 RSS 35 MB。
-- **阶段 2 进行中**（桌面 Flutter），macOS 部分已完成，记录见 `docs/PHASE2_NOTES.md`：
-  - Flutter 3.47.5 已装（Homebrew cask），CocoaPods 已装。
-  - `app/`：Flutter 桌面工程（macOS / Windows / Linux 目标）。`lib/ffi/`（ffigen 绑定 + `CoreClient`）、`lib/state/`（Riverpod 3）、`lib/ui/`（发送 / 接收 / 设置）、`lib/platform/`（托盘、通知、scheme 链接、路径）、`lib/i18n/`。`flutter analyze` 零问题，`flutter test` 通过。
-  - `tools/build_native.sh` 构建 `crosstransfer_native` 并复制到 `app/<plat>/native/`；macOS 经 Podfile 的 `vendored_libraries` 嵌入 app。`tools/linux_build_native.sh` 在 Ubuntu 容器里构建 Linux `.so`。
-  - 已验证：App ⇄ `ct_cli` 双向传输、`crosstransfer://` 链接直达、关窗隐藏到托盘、`flutter build macos --release`。
-  - macOS 最低版本 12.0，不用 App Sandbox（走公证 dmg 分发）。
-- 下一步：Windows（需 Windows 机器：先 `xmake` 验证 minirtc / core / native，再 `flutter build windows`）、Linux 桌面验证、打包（dmg / NSIS / deb）。
+- **阶段 2 工程验收已完成**（桌面 Flutter），记录见 `docs/PHASE2_NOTES.md`，构建操作见 `docs/DESKTOP_BUILD.md`：
+  - `app/`：FFI / Riverpod、发送 / 接收 / 设置、中英文、拖放、二维码、scheme 链接、托盘、通知；补齐完整码自动接收、粘贴、冷/热启动转发和用户配置保留。
+  - Windows x64、Linux x86_64、macOS universal 的 Actions 验收全绿：27 项 core tests / 299 断言、9 项 Flutter tests、15 个 FFI 导出、FFI ⇄ CLI 传输、Flutter release、安装后的首次/热启动链接收件。验收 run `35626385301`，代码提交 `2a1d761`，工作分支 `codex/phase2-desktop`。
+  - 构建脚本 `tools/build_native.sh` / `tools/build_native.ps1`；打包脚本 `tools/package_macos.sh` / `tools/package_windows.ps1` / `tools/package_linux.sh`，产出 DMG / NSIS / deb 与 SHA-256。Windows 原生依赖统一动态 CRT，安装器携带运行库；Linux 自动计算 ELF 依赖。
+  - macOS 最低 12.0、不启用 App Sandbox；当前 DMG 为 `local-test`。正式 Developer ID 签名/公证流程已提供，尚无发布证书；真实 Windows/Linux 桌面的托盘、通知与安装器交互外观仍需人工验收。
+- 下一步：阶段 3 iOS；公开发布前补齐证书/公证与真实桌面外观验收。阶段 4 Android、阶段 5 公共服务与加固沿用规划。
 
 ## 硬约束（不要偏离）
 

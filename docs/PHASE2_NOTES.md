@@ -1,4 +1,22 @@
-# 阶段 2 实施记录（2026-09-21，macOS 部分）
+# 阶段 2 实施记录
+
+## 2026-09-22 续作
+
+构建与安装包操作见 [`DESKTOP_BUILD.md`](DESKTOP_BUILD.md)，工作分支 `codex/phase2-desktop`。
+
+- 补齐 DMG、NSIS、deb 打包脚本；Windows 按当前用户安装，注册 URI、快捷方式、卸载项并携带 MSVC CRT；Linux 安装 desktop/MIME 注册并从 ELF 计算运行依赖；macOS 支持本地测试签名以及配置 Developer ID / notarytool 后的发布流程。
+- Windows 在共享库编译来源处导出全部 `Ct*`，排除静态库中的重复 native 锚点，修复 C++17 UTF-8 路径转换、MSVC 位扫描头文件、多媒体时钟依赖；原生库及静态 OpenSSL 统一使用与 Flutter 一致的动态 CRT；新增 PowerShell native 构建入口。
+- Windows 使用 app_links 的已有实例转发；Linux 使用单实例 GApplication 并将命令行交给 app_links；缺失 native 库时 CMake 直接失败。
+- 接收页新增粘贴按钮、完整码自动提交、OS 链接直接接收；避免冷启动链接重复投递，拒绝将过长/非法链接截成有效码。通知权限请求不再阻塞启动，托盘安装失败时保留正常关闭行为，重启保留用户选择的日志级别，“打开目录”始终打开实际保存目录。
+- 修复干净环境 OpenSSL 配方缺失 `configure/patch.lua`；Linux native 脚本保留真实构建退出码。锁定的 cnativeapi 0.3.0 已用 D-Bus StatusNotifierItem，无需旧记录中的 libayatana-appindicator 依赖。
+- 新增三平台 Actions：native/core tests、Dart analyze/test、公开 ABI 检查、FFI ⇄ CLI 文件传输、Flutter release、安装包生成和安装后的链接收件；失败后保留已安装依赖缓存。
+- 本机验证：27 项 core tests / 299 个断言、9 项 Flutter tests、15 个公开 FFI 符号及异步回调；FFI ⇄ CLI 双向传输；从通用架构 DMG 运行 App，通过首次和热启动链接完成收件并校验 SHA-256（含中文路径、空文件、空目录）。DMG 签名结构与镜像校验通过。
+- 三平台验收通过：[Desktop Phase 2 / 35626385301](https://github.com/kunkundi/crosstransfer/actions/runs/35626385301)，代码提交 `2a1d761`。Windows x64、Linux x86_64、macOS universal 均通过 core tests（27 / 299）、Flutter tests（9）、15 个 FFI 导出、双向传输、release 构建、安装包及首次/热启动链接收件；Windows 静默安装、scheme 注册和卸载也通过。ABI 检查用子进程持有原生日志，父进程待退出后清理，兼容 Windows 文件锁。
+- 发布边界：本机只有 Apple Development 证书，当前 DMG 明确标记 `local-test`，尚未执行 Developer ID 公证。真实 Windows/Linux 桌面的托盘外观、通知权限提示和安装器交互仍须人工观察；无头 CI 验证实际程序启动、协议激活与传输。
+
+以下保留最初 macOS 实施记录作为历史；与上述续作冲突的待办以新记录为准。
+
+## 初次实施（2026-09-21，macOS 部分）
 
 ## 环境
 

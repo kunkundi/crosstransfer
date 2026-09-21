@@ -38,7 +38,7 @@
 | 许可 | 项目、`minirtc/` 特化版、`server/` 均为专有许可。MiniRTC 版权人（dijunkun = kunkundi）为用户本人；`qos/aimd_rate_control.cc` 中一处外部贡献的一行初始化修复在特化版中重写。仓库根放 `LICENSE`（专有）与 `THIRD_PARTY_NOTICES.md`（汇总依赖许可证文本，随产品分发，App 内提供开源许可证页） |
 | 公共服务 | 第一版提供自托管部署；公共服务器域名后定 |
 
-环境：本机有 xmake 3.1.0、Xcode、Go 1.25；**未安装 Flutter / Dart**。MiniRTC 基线 `/Users/dijunkun/crossdesk/deps/submodules/minirtc` commit `a25a3b4`，已复制到 `minirtc/`；仓库已 `git init`，尚未裁剪。
+环境（2026-09-22）：本机有 xmake 3.1.0、Xcode、Go 1.25、Flutter 3.47.5 / Dart 3.13.4、CocoaPods。MiniRTC 基线 commit `a25a3b4` 已复制并裁剪为数据专用版本；桌面构建与验收入口见 `docs/DESKTOP_BUILD.md`。
 
 ## 二、总体架构
 
@@ -289,7 +289,7 @@ const char* CtVersion(void);
 5. ctrl / 块 / sack 编解码、Sweep/Repair 发送器、位图接收器、SHA-256、续传；单元测试。
 6. `ct_cli share` / `ct_cli receive` 两进程经本地 server 端到端。
 
-**阶段 2：桌面 Flutter**（macOS → Windows → Linux）
+**阶段 2：桌面 Flutter**（macOS → Windows → Linux；2026-09-22 工程验收完成，记录见 `docs/PHASE2_NOTES.md`）
 7. 安装 Flutter、`flutter create`、ffigen、`CoreClient` 与 providers。
 8. 三个页面、拖拽、二维码、链接 scheme、托盘、通知。
 9. 三平台 native 集成与打包（dmg / pkg、NSIS、deb）。
