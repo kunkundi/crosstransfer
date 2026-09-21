@@ -1,0 +1,25 @@
+services:
+  ctserver:
+    build: .
+    image: crosstransfer/ctserver:local
+    # Host networking so the embedded TURN relay port range needs no per-port mapping.
+    network_mode: host
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CT_LISTEN: ${CT_LISTEN:-:8080}
+      CT_PUBLIC_IP: ${CT_PUBLIC_IP:?set the public IP of this host}
+      CT_TURN_PORT: ${CT_TURN_PORT:-3478}
+      CT_TURN_PORT_RANGE: ${CT_TURN_PORT_RANGE:-49152-65535}
+      CT_TURN_SECRET: ${CT_TURN_SECRET:?set a long random secret}
+      CT_LOG_JSON: "true"
+    volumes:
+      - acme:/var/lib/ctserver/acme
+    healthcheck:
+      test: ["/ctserver", "-healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  acme:
