@@ -540,7 +540,7 @@ void PeerConnection::StartSession(const SessionPtr& s) {
       if (auto sp = lock_session()) OnIceGatheringDone(sp);
     });
   };
-  // Data path stays on the libjuice thread (no session state changes there).
+  // The ICE receive worker delivers outside libjuice's internal connection lock.
   cb.on_recv = [this, lock_session](const uint8_t* d, size_t n) {
     if (auto sp = lock_session()) OnPathDatagram(sp, d, n);
   };
@@ -724,13 +724,15 @@ void PeerConnection::OnIceState(const SessionPtr& s, IceState state) {
         first = !s->path_ready;
         s->path_ready = true;
       }
-      if (first) {
-        const bool relay = s->ice->SelectedPairUsesRelay();
+      // Nomination may replace the initially connected candidate pair. Keep
+      // the reported path and congestion profile in sync with the final pair.
+      const bool relay = s->ice->SelectedPairUsesRelay();
+      if (first || (s->data->Estimate().path == MINIRTC_PATH_TURN) != relay) {
         LOG_INFO("[{}] selected pair {} ({})", s->id,
                  s->ice->SelectedPairDescription(), relay ? "TURN" : "P2P");
         s->data->SetRelayPath(relay);
-        OnPathReady(s);
       }
+      if (first) OnPathReady(s);
       break;
     }
     case IceState::kFailed: {

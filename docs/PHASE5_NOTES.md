@@ -53,6 +53,8 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 ## 剩余工作
 
+TURN 停顿已复现并采集进程线程栈（本机 `/tmp/ct-turn-deadlock.sample`）。源码中 `agent_send` 的 TURN 分支需要连接锁，原收包路径在同一连接锁内进入传输层，形成与发送/反馈锁的反向等待。ICE 封装已增加有界收包队列和独立交付线程，Close 等待交付结束；新测试用真实本地 ICE 连接阻塞上层回调，同时验证 libjuice API 仍可返回，20 断言通过。复测大流量未再停顿，但发现原强制 TURN 候选过滤可以退回 prflx/P2P；将该模式补成真正中继限制后再做完整验收。
+
 内置 TURN 增加默认 peer 访问策略（参考 [IANA IPv4 特殊用途地址表](https://www.iana.org/assignments/iana-ipv4-special-registry/)）：拒绝私网/回环/CGNAT、链路本地、组播、文档/基准测试和保留地址；IPv6 peer 因当前仅 UDP4 中继而拒绝。受控测试可显式开放 RFC1918、回环、CGNAT，但不能放开链路本地。新增地址边界、IPv4-mapped IPv6 和真实 TURN Allocate/CreatePermission/双向数据测试；默认策略确实阻止回环数据，测试开关下双向数据通过。完整 Go race/vet 通过。
 
 2026-09-22 的最新远程回归（提交 `4475140`，Desktop `35644512582`、Android `35644512598`、iOS `35644512727`）均被 GitHub 拒绝启动：账户付款或 Actions 支出上限需要所有者处理。不是代码执行失败；在账单状态恢复前不反复重跑。Windows CRT 修复与最后的 Linux 回归尚未获得远程验证。

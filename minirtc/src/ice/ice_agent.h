@@ -8,6 +8,8 @@
 #include <juice/juice.h>
 
 #include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -46,8 +48,8 @@ enum class IceState {
 
 const char* IceStateName(IceState s);
 
-// Thin C++ wrapper around a libjuice agent. All callbacks are invoked from
-// libjuice's own thread; the owner must synchronise.
+// State/candidate callbacks run on libjuice's thread. Received datagrams are
+// delivered in order by our worker, outside libjuice's connection lock.
 class IceAgent {
  public:
   struct Callbacks {
@@ -86,6 +88,7 @@ class IceAgent {
   static void OnCandidateStatic(juice_agent_t*, const char*, void*);
   static void OnGatheringDoneStatic(juice_agent_t*, void*);
   static void OnRecvStatic(juice_agent_t*, const char*, size_t, void*);
+  void ReceiveLoop();
 
   void StartUpnpMapping(uint16_t local_port);
   void StopUpnpMapping();
@@ -106,6 +109,14 @@ class IceAgent {
   // takes it exclusively to retire agent_. Holding it exclusively around a
   // juice_* call would invert the lock order against the callback thread.
   mutable std::shared_mutex mutex_;
+
+  std::thread receive_thread_;
+  std::mutex receive_mutex_;
+  std::condition_variable receive_cv_;
+  std::deque<std::vector<uint8_t>> receive_queue_;
+  size_t receive_bytes_ = 0;
+  static constexpr size_t kMaxReceiveBytes = 4u * 1024u * 1024u;
+  static constexpr size_t kMaxReceivePackets = 4096;
 
   // UPnP
   std::thread upnp_thread_;

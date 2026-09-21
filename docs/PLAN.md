@@ -315,6 +315,8 @@ const char* CtVersion(void);
 
 内嵌 TURN peer 策略：默认仅允许公共 IPv4 单播目标，拒绝私网、回环、共享地址、链路本地、组播、文档/基准测试及保留地址，避免中继到服务器内部网络。`CT_TURN_ALLOW_PRIVATE_PEERS=true` 仅供受控私网/回环测试，显式放行 RFC1918、回环和 CGNAT；链路本地、组播等仍拒绝。当前内嵌中继仅有 UDP4，不接受 IPv6 peer。外部 TURN 的策略由运营者独立配置，带宽/资源配额另行加固。
 
+并发 TURN 加固：libjuice 接收回调持有内部连接锁，而 TURN 发送也需要该锁；不得在此回调中进入持有发送/反馈/DTLS 锁的传输代码。ICE 封装将收包复制到每 agent 的有界队列（最多 4 MiB、4096 包），由独立线程按序交付，满时按 UDP 丢包处理。关闭时先禁用新发送/收包并停止 libjuice，再清空队列、等待交付线程退出；应用结束后不得残留回调。
+
 ## 十一、验证
 
 - **server**：`go test`（协议状态机、取件码分配 / 过期 / 限速、TURN 凭据、中继转发）；两个 WebSocket 客户端脚本走完 create_share → claim → signal → relay → leave。

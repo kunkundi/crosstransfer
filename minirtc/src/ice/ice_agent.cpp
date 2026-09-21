@@ -157,6 +157,7 @@ IceAgent::IceAgent(const IceConfig& config, Callbacks callbacks)
     LOG_ERROR("juice_create failed");
     state_ = IceState::kFailed;
   } else {
+    receive_thread_ = std::thread([this] { ReceiveLoop(); });
     LOG_INFO("ICE agent created stun=[{}] turn_servers={} turn_mode={}",
              stun_host_, turn_servers_.size(), static_cast<int>(config_.turn_mode));
   }
@@ -176,6 +177,13 @@ void IceAgent::Close() {
   if (agent) {
     juice_destroy(agent);
   }
+  {
+    std::lock_guard<std::mutex> lock(receive_mutex_);
+    receive_queue_.clear();
+    receive_bytes_ = 0;
+  }
+  receive_cv_.notify_all();
+  if (receive_thread_.joinable()) receive_thread_.join();
 }
 
 std::string IceAgent::LocalDescription() const {
@@ -241,8 +249,9 @@ int IceAgent::SetRemoteGatheringDone() {
 
 int IceAgent::Send(const uint8_t* data, size_t size) {
   if (closed_.load() || !data || size == 0) return -1;
-  // juice_send only reads an atomic selected entry and takes the connection
-  // send lock; agent_ is stable until Close().
+  // TURN sends also take libjuice's connection lock. Receive callbacks must
+  // not hold that lock while entering the transport's own locks.
+  std::shared_lock<std::shared_mutex> lock(mutex_);
   juice_agent_t* agent = agent_;
   if (!agent) return -1;
   const IceState st = state_.load();
@@ -310,8 +319,29 @@ void IceAgent::OnRecvStatic(juice_agent_t*, const char* data, size_t size,
                             void* user) {
   auto* self = static_cast<IceAgent*>(user);
   if (!self || self->closed_.load() || !data || size == 0) return;
-  if (self->callbacks_.on_recv)
-    self->callbacks_.on_recv(reinterpret_cast<const uint8_t*>(data), size);
+  {
+    std::lock_guard<std::mutex> lock(self->receive_mutex_);
+    if (self->closed_.load() || size > kMaxReceiveBytes - self->receive_bytes_ ||
+        self->receive_queue_.size() >= kMaxReceivePackets) return;
+    self->receive_queue_.emplace_back(data, data + size);
+    self->receive_bytes_ += size;
+  }
+  self->receive_cv_.notify_one();
+}
+
+void IceAgent::ReceiveLoop() {
+  for (;;) {
+    std::vector<uint8_t> datagram;
+    {
+      std::unique_lock<std::mutex> lock(receive_mutex_);
+      receive_cv_.wait(lock, [this] { return closed_.load() || !receive_queue_.empty(); });
+      if (closed_.load()) return;
+      datagram = std::move(receive_queue_.front());
+      receive_queue_.pop_front();
+      receive_bytes_ -= datagram.size();
+    }
+    if (!closed_.load() && callbacks_.on_recv) callbacks_.on_recv(datagram.data(), datagram.size());
+  }
 }
 
 // ---------------------------------------------------------------------------
