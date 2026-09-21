@@ -87,3 +87,20 @@ func TestApplyEnvBadValue(t *testing.T) {
 		t.Fatal("expected parse error")
 	}
 }
+
+func TestDownloadURLMustBeHTTPS(t *testing.T) {
+	for _, value := range []string{"javascript:alert(1)", "//example.test/path", "http://example.test", "https://user:pass@example.test"} {
+		cfg := Default()
+		cfg.TURNPort = 0
+		cfg.DownloadURL = value
+		if cfg.Validate() == nil {
+			t.Fatal(value)
+		}
+	}
+	cfg := Default()
+	cfg.TURNPort = 0
+	cfg.DownloadURL = "https://downloads.example.test/app"
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

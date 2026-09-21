@@ -6,9 +6,11 @@ RUN go mod download
 COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/ctserver ./cmd/ctserver
+RUN mkdir -p /out/acme
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/ctserver /ctserver
+COPY --from=build --chown=65532:65532 /out/acme /var/lib/ctserver/acme
 # Signaling (HTTP/WSS) and TURN (UDP) ports; the relay port range is host-networked.
 EXPOSE 8080/tcp 3478/udp
 USER nonroot:nonroot

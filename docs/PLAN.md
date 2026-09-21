@@ -311,6 +311,8 @@ const char* CtVersion(void);
 
 导入副本清理：设置页显示 Imported 的占用和可清理批次，用户确认后只删除本次预览列出的 UUID 批次；进行中/暂停的发送、未处理 Inbox 和正在导入的文件必须保留。清理期间禁止新建/恢复发送，原生文件操作串行化并在删除前重新检查 Inbox。不得遍历符号链接或删除 Received、用户源文件及任意传入路径。
 
+自托管加固：落地页仅渲染规范化的有效取件码，配置 `CT_DOWNLOAD_URL` 后提供 HTTPS 下载跳转；`CT_ASSOCIATION_DIR` 可提供两个固定的 App/Universal Link 关联 JSON 文件。健康探测读取与服务相同的 YAML/环境配置并在 ACME 模式使用域名 SNI；容器为非 root 用户准备持久证书目录。域名关联内容由签名/域名配置工具生成，部署不自动推断正式身份。
+
 ## 十一、验证
 
 - **server**：`go test`（协议状态机、取件码分配 / 过期 / 限速、TURN 凭据、中继转发）；两个 WebSocket 客户端脚本走完 create_share → claim → signal → relay → leave。

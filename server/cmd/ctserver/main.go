@@ -37,24 +37,11 @@ func main() {
 }
 
 func healthz() int {
-	addr := os.Getenv("CT_LISTEN")
-	if addr == "" {
-		addr = ":8080"
-	}
-	if strings.HasPrefix(addr, ":") {
-		addr = "127.0.0.1" + addr
-	}
-	scheme := "http"
-	if os.Getenv("CT_TLS_CERT") != "" || os.Getenv("CT_ACME_DOMAIN") != "" {
-		scheme = "https"
-	}
-	client := &http.Client{Timeout: 3 * time.Second, Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(scheme + "://" + addr + "/healthz")
-	if err != nil || resp.StatusCode != http.StatusOK {
+	cfg, err := config.Load()
+	if err != nil {
 		return 1
 	}
-	resp.Body.Close()
-	return 0
+	return ProbeHealth(cfg)
 }
 
 func run() error {
@@ -133,13 +120,9 @@ func run() error {
 	if cfg.Metrics {
 		mux.Handle("/metrics", metrics.Handler(hub, turnSrv))
 	}
-	// Landing page for https://<domain>/r/<code>: the app opens the link
-	// itself; the browser only sees "open in app / download".
-	mux.HandleFunc("/r/", func(w http.ResponseWriter, r *http.Request) {
-		code := strings.TrimPrefix(r.URL.Path, "/r/")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, landingHTML, code)
-	})
+	if err := RegisterPublicHTTP(mux, cfg); err != nil {
+		return err
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Listen,
@@ -230,14 +213,3 @@ func newLogger(cfg config.Config) *slog.Logger {
 	}
 	return slog.New(slog.NewTextHandler(os.Stdout, opts))
 }
-
-const landingHTML = `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CrossTransfer</title>
-<style>body{font-family:system-ui,sans-serif;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f6f7f9;color:#1a1a1a}
-main{text-align:center;padding:32px;max-width:420px}code{font-size:1.6em;letter-spacing:.12em;display:block;margin:16px 0}
-a.btn{display:inline-block;margin:8px;padding:12px 20px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none}</style></head>
-<body><main><h1>CrossTransfer</h1><p>Take-code / 取件码</p><code>%[1]s</code>
-<a class="btn" href="crosstransfer://r/%[1]s">Open in app / 用 App 打开</a>
-<p><a href="/download">Download CrossTransfer / 下载</a></p></main></body></html>
-`

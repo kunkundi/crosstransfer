@@ -5,6 +5,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -15,6 +16,9 @@ import (
 
 // Config is the complete server configuration.
 type Config struct {
+	DownloadURL    string `yaml:"download_url"`    // CT_DOWNLOAD_URL, HTTPS release/download page
+	AssociationDir string `yaml:"association_dir"` // CT_ASSOCIATION_DIR, generated platform association JSON
+
 	Listen        string        `yaml:"listen"`          // CT_LISTEN, e.g. ":8443"
 	TLSCert       string        `yaml:"tls_cert"`        // CT_TLS_CERT
 	TLSKey        string        `yaml:"tls_key"`         // CT_TLS_KEY
@@ -136,6 +140,8 @@ func (c *Config) applyEnv(lookup func(string) (string, bool)) error {
 		return nil
 	}
 
+	str("CT_DOWNLOAD_URL", &c.DownloadURL)
+	str("CT_ASSOCIATION_DIR", &c.AssociationDir)
 	str("CT_LISTEN", &c.Listen)
 	str("CT_TLS_CERT", &c.TLSCert)
 	str("CT_TLS_KEY", &c.TLSKey)
@@ -188,6 +194,13 @@ func (c *Config) applyEnv(lookup func(string) (string, bool)) error {
 
 // Validate checks cross-field constraints.
 func (c *Config) Validate() error {
+	if c.DownloadURL != "" {
+		u, err := url.Parse(c.DownloadURL)
+		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+			return errors.New("download_url must be an absolute HTTPS URL without credentials")
+		}
+	}
+
 	if c.Listen == "" {
 		return errors.New("listen address is empty")
 	}
