@@ -5,46 +5,9 @@ package("openssl3")
     set_description("A robust, commercial-grade, and full-featured toolkit for TLS and SSL.")
     set_license("Apache-2.0")
 
-    add_urls("https://github.com/openssl/openssl/archive/refs/tags/openssl-$(version).zip")
-
-    add_versions("3.6.3", "e24124cb19d26f2045f53d3ee94871288136242931d001c71646c2403cfedee3")
-    add_versions("3.6.2", "599a1053292f6aec83da0f98ecd48c587fdb3184f6d18a25ecc9a9ffbc024bb4")
-    add_versions("3.6.1", "b5fb172237ed3b1b47a9f7f15d3a40f9e9563f59f544b7078780ee27279a3c0f")
-    add_versions("3.6.0", "273d989d1157f0bd494054e1b799b6bdba39d4acaff6dfcb8db02656f1b454dd")
-    add_versions("3.5.7", "aefd8a46c45e05858cc32c97ee5c8e6966254b7fd972051aa582e0a4bbe3b5c1")
-    add_versions("3.5.6", "6a21a7ee475ff4fd25dc020045d3c9eb14729056ee207885e4cfa959bf449e27")
-    add_versions("3.5.5", "00d0b9dbe230bf7adac34e6da4557ca8874bf1411547f7e13d86bdb4342c04f8")
-    add_versions("3.5.4", "6e6ca87952a3908282bae88c6e6a5d38bc6fc25d5570218866e5f2d206c03be1")
-    add_versions("3.5.1", "9a1472b5e2a019f69da7527f381b873e3287348f3ad91783f83fff4e091ea4a8")
-    add_versions("3.4.6", "508db124a24203a6ba755aa95f68b206145e3aa6846f9c44e6f2ee1faca66be6")
-    add_versions("3.4.5", "be09c6aa135d39620bce7a89f11630e31699a65d2939226b644600b736eb4a63")
-    add_versions("3.4.4", "df15282cfd91ff525bebe91783e7a1912cdd6303627a6ca7caf50ce449bc85bb")
-    add_versions("3.4.2", "d313ac2ee07ad0d9c6e9203c56a485b3ecacac61c18fe450fe3c1d4db540ad71")
-    add_versions("3.3.7", "9daf79eef0b94d3dd3cb49968ec777c42151ef9ce067632af5d820369fb3b176")
-    add_versions("3.3.6", "9b604f79c0e7311ac97904d603d13c84425c35bfd83d73f9037c9cbf99bb262b")
-    add_versions("3.3.4", "88c892a670df8924889f3bfd2f2dde822e1573a23dc4176556cb5170b40693ea")
-    add_versions("3.3.2", "4cda357946f9dd5541b565dba35348d614288e88aeb499045018970c789c9d61")
-    add_versions("3.3.1", "307284f39bfb7061229c57e263e707655aa80aa9950bf6def28ed63fec91a726")
-    add_versions("3.2.6", "8d65844c317bf9c95420bc625d54cff40a82b5a7b0d0b15abb8a74ab299431a9")
-    add_versions("3.2.5", "08a3fe150bd69a83ac64e222bdccf0698c493a94e161e4d080c82d1f308dc4e1")
-    add_versions("3.1.8", "bbd5cbd8cc8ea852d31c001a9b767eadef0548b098e132b580a1f0c80d1778b7")
-    add_versions("3.0.21", "df3842f650bab371489eb67d8b04fdf4ef659573ec03c069326af034a82105a5")
-    add_versions("3.0.20", "5cc5b6e497cfa75ef61e8c4783212c3c374a47a144844c1c70fb0634127008aa")
-    add_versions("3.0.19", "82ff998847ee1346fefa7b6aa9402fbd0c81e971ad88793e44b21a39f2be1790")
-    add_versions("3.0.17", "1129500758754ce4ff7eba7e46403dd56d5aa0a4e517a8fff7dac6fe120d0461")
-    add_versions("3.0.14", "9590b9ae18c4de183be74dfc9da5be1f1e8f85dd631a78bc74c0ebc3d7e27a93")
-    add_versions("3.0.7", "fcb37203c6bf7376cfd3aeb0be057937b7611e998b6c0d664abde928c8af3eb7")
-    add_versions("3.0.6", "9b45be41df0d6e9cf9e340a64525177662f22808ac69aee6bfb29c511284dae4")
-    add_versions("3.0.5", "4313c91fb0412e6a600493eb7c59bd555c4ff2ea7caa247a98c8456ad6f9fc74")
-    add_versions("3.0.4", "5b690a5c00e639f3817e2ee15c23c36874a1f91fa8c3a83bda3276d3d6345b76")
-    add_versions("3.0.3", "9bc56fd035f980cf74605264b04d84497df657c4f7ca68bfa77512e745f6c1a6")
-    add_versions("3.0.2", "ce3cbb41411731852e52bf96c06f097405c81ebf60ba81e0b9ca05d41dc92681")
-    add_versions("3.0.1", "53d8121af1c33c62a05a5370e9ba40fcc237717b79a7d99009b0c00c79bd7d78")
-    add_versions("3.0.0", "1bdb33f131af75330de94475563c62d6908ac1c18586f7f4aa209b96b0bfc2f9")
-
-    -- https://github.com/microsoft/vcpkg/blob/11faa3f168ec2a2f77510b92a42fb5c8a7e28bd8/ports/openssl/command-line-length.patch
-    add_patches("3.3.2", path.join(os.scriptdir(), "patches", "3.3.2", "command-line-length.patch"), "e969153046f22d6abbdedce19191361f20edf3814b3ee47fb79a306967e03d81")
-    -- https://github.com/openssl/openssl/issues/28745
+    -- Pin the maintained 3.5 LTS release and its official release-asset SHA-256.
+    add_urls("https://github.com/openssl/openssl/releases/download/openssl-$(version)/openssl-$(version).tar.gz")
+    add_versions("3.5.8", "a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2")
 
     on_fetch("fetch")
 
@@ -58,7 +21,7 @@ package("openssl3")
 
     -- @see https://github.com/xmake-io/xmake-repo/pull/7797#issuecomment-3153471643
     if is_plat("windows") then
-        add_configs("jom", {description = "Try using jom to compile in parallel.", default = true, type = "boolean"})
+        add_configs("jom", {description = "Try using jom to compile in parallel.", default = false, type = "boolean"})
     end
 
     on_load(function (package)

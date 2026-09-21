@@ -12,6 +12,12 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 新增 `tools/run_tls_e2e.py`：临时 Go TLS 信令服务和两个真实 CLI 经强制 WSS 中继传送 1 MiB+37 B 中文文件，SHA-256 一致；同一受信 CA 签发的错误主机名证书在分享注册前被拒绝。临时 CA 只通过子进程 `SSL_CERT_FILE` 使用，不改系统证书库；macOS/Linux CI 执行此项，Windows 执行内存握手测试。
 
+## OpenSSL LTS 与 Windows 构建诊断（2026-09-22）
+
+所有原生目标统一固定 **OpenSSL 3.5.8**，使用官方发布归档与 SHA-256，替换原 3.3.2。3.5 为 LTS，支持至 2030 年 4 月，见 [官方版本与支持期限](https://openssl-library.org/source/)。升级后 macOS arm64 的 31 项核心测试 / 848 断言和上述两项 WSS 端到端测试通过；其他架构交由本分支 Actions 回归。
+
+阶段 3 桌面回归 `35634141872` 中 Linux 与 macOS 成功，Windows 在 OpenSSL 安装失败后未退出，最终触发 60 分钟任务超时；不能将此轮记为全绿。Windows 配方改用 nmake，构建脚本对每次 xmake 调用设 20 分钟上限并终止超时进程树，CI 始终保留依赖安装失败日志。旧日志不足以确认 JOM 安装失败的完整根因，新流程还需 Windows CI 验证。
+
 ## 继续实施
 
 - 全平台远程回归与 Windows 慢构建诊断。

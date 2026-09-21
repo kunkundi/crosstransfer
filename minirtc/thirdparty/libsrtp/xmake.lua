@@ -35,7 +35,7 @@ package("libsrtp")
 
     on_load(function (package)
         if package:config("openssl") then
-            package:add("deps", "openssl3 3.3.2")
+            package:add("deps", "openssl3 3.5.8")
         end
         if package:config("mbedtls") then
             package:add("deps", "mbedtls")

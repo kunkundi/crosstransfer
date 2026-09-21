@@ -19,7 +19,7 @@ add_requires("asio 1.32.0", "nlohmann_json 3.11.3", "spdlog 1.14.1",
     "websocketpp 0.8.2", "libsrtp v2.7.0", "kcp 1.7",
     "libjuice v1.7.2", "miniupnpc 2.3.3",
     {system = false, configs = {shared = false}})
-add_requireconfs("libsrtp.openssl3", {version = "3.3.2", override = true, configs = {shared = false}})
+add_requireconfs("libsrtp.openssl3", {version = "3.5.8", override = true, configs = {shared = false}})
 add_packages("asio", "nlohmann_json", "spdlog", "websocketpp", "libsrtp", "kcp",
     "libjuice", "miniupnpc")
 

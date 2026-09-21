@@ -33,7 +33,7 @@ includes("minirtc")
 
 add_requires("nlohmann_json 3.11.3", "spdlog 1.14.1",
     {system = false, configs = {shared = false}})
-add_requires("openssl3 3.3.2", {system = false, configs = {shared = false}})
+add_requires("openssl3 3.5.8", {system = false, configs = {shared = false}})
 
 option("ct_cli")
     set_default(true)

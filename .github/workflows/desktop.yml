@@ -76,6 +76,26 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./tools/build_native.ps1
+      - name: Preserve Windows dependency diagnostics
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $cacheRoot = Join-Path $env:LOCALAPPDATA '.xmake/cache/packages'
+          if (Test-Path $cacheRoot) {
+            Get-ChildItem $cacheRoot -Recurse -File -Filter '*.txt' | Where-Object { $_.FullName -match 'installdir.failed[\\/]logs' } | ForEach-Object {
+              $relative = [IO.Path]::GetRelativePath($cacheRoot, $_.FullName)
+              $target = Join-Path 'dist/native-build-logs' $relative
+              New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+              Copy-Item $_.FullName $target
+              Get-Content $_.FullName -Tail 60
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Windows'
+        with:
+          name: windows-native-diagnostics
+          path: dist/native-build-logs/
+          if-no-files-found: ignore
       - name: Native core (Linux)
         if: runner.os == 'Linux'
         run: tools/build_native.sh linux x86_64
