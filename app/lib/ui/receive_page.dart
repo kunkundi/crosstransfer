@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:path/path.dart' as p;
 
 import '../ffi/core_client.dart';
 import '../state/format.dart';
@@ -203,7 +202,6 @@ class _ReceiveCard extends ConsumerWidget {
         : null;
     final paused = r.state == 'paused';
     final running = r.state == 'transferring' || r.state == 'verifying' || paused;
-    final dest = r.metaName.isNotEmpty ? p.join(r.saveDir, r.metaName) : r.saveDir;
     // A rejected code never becomes valid again; only offer retry when the
     // core kept a resume token or the failure was transient.
     const permanent = {'code_not_found', 'code_expired', 'share_closed', 'user'};
@@ -273,7 +271,9 @@ class _ReceiveCard extends ConsumerWidget {
               if (r.state == 'completed')
                 IconButton(
                   tooltip: s('recv.open_dir'),
-                  onPressed: () => OpenFilex.open(dest),
+                  // Open the containing folder, including when the share was
+                  // a single file or the receiver renamed a colliding root.
+                  onPressed: () => OpenFilex.open(r.saveDir),
                   icon: const Icon(Icons.folder_open),
                 ),
               if (r.isActive)
