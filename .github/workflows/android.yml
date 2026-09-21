@@ -2,9 +2,23 @@ name: Android Phase 4
 on:
   push:
     branches: [main, 'codex/phase4-android', 'codex/phase5-hardening']
-    paths-ignore: ['**.md']
+    paths: &android-paths
+      - 'app/**'
+      - 'core/**'
+      - 'minirtc/**'
+      - 'server/**'
+      - 'xmake.lua'
+      - '.gitattributes'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
+      - 'docs/licenses/**'
+      - 'tools/*android*'
+      - 'tools/check_legal_assets.py'
+      - 'tools/check_pub_notices.py'
+      - 'tools/check_flutter_legal_bundle.py'
+      - '.github/workflows/android.yml'
   pull_request:
-    paths-ignore: ['**.md']
+    paths: *android-paths
   workflow_dispatch:
 permissions:
   contents: read

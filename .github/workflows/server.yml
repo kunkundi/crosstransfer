@@ -2,9 +2,15 @@ name: Server hardening
 on:
   push:
     branches: [main, 'codex/phase5-hardening']
-    paths: ['server/**', 'tools/check_server_container.py', '.github/workflows/server.yml']
+    paths: &server-paths
+      - 'server/**'
+      - 'tools/check_server_container.py'
+      - 'tools/check_go_notices.py'
+      - 'docs/licenses/go_manifest.json'
+      - '.gitattributes'
+      - '.github/workflows/server.yml'
   pull_request:
-    paths: ['server/**', 'tools/check_server_container.py', '.github/workflows/server.yml']
+    paths: *server-paths
   workflow_dispatch:
 permissions:
   contents: read

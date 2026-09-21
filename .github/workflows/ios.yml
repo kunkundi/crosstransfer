@@ -2,9 +2,23 @@ name: iOS Phase 3
 on:
   push:
     branches: [main, 'codex/phase3-ios', 'codex/phase5-hardening']
-    paths-ignore: ['**.md']
+    paths: &ios-paths
+      - 'app/**'
+      - 'core/**'
+      - 'minirtc/**'
+      - 'server/**'
+      - 'xmake.lua'
+      - '.gitattributes'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
+      - 'docs/licenses/**'
+      - 'tools/*ios*'
+      - 'tools/check_legal_assets.py'
+      - 'tools/check_pub_notices.py'
+      - 'tools/check_flutter_legal_bundle.py'
+      - '.github/workflows/ios.yml'
   pull_request:
-    paths-ignore: ['**.md']
+    paths: *ios-paths
   workflow_dispatch:
 permissions:
   contents: read

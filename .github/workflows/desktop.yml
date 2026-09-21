@@ -2,9 +2,22 @@ name: Desktop Phase 2
 on:
   push:
     branches: [main, 'codex/phase2-desktop', 'codex/phase5-hardening']
-    paths-ignore: ['**.md']
+    paths: &desktop-paths
+      - 'app/**'
+      - 'core/**'
+      - 'minirtc/**'
+      - 'cli/**'
+      - 'server/**'
+      - 'tools/**'
+      - 'packaging/**'
+      - 'xmake.lua'
+      - '.gitattributes'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
+      - 'docs/licenses/**'
+      - '.github/workflows/desktop.yml'
   pull_request:
-    paths-ignore: ['**.md']
+    paths: *desktop-paths
   workflow_dispatch:
 permissions:
   contents: read
