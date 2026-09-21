@@ -129,7 +129,7 @@ TURN 计量会对经过两个 relay socket 的同一数据分别计数，不能�
 
 ## 远程矩阵恢复（2026-09-22）
 
-推送 `62c43f4` 后 GitHub 已重新执行任务，无需手动重跑。Server `35654293364` 成功；Desktop `35654293360` 中 Linux 全流程成功（34 项 core、24 项 Dart、并发路径、可信 WSS、FFI、deb 和安装后收件）。Windows 的源码比对失败来自脚本生成文本使用平台 CRLF，已改为固定 UTF-8/LF；macOS 并发测试的临时证书缺少 AKI，已显式加入 SKI/AKI，且本机 LibreSSL 严格验证复测通过。两项工具修复为 `726bc03`，仍需下一轮矩阵确认。Android `35654293259` 已全部成功：三 ABI 原生库、24 项 Dart、Release APK/许可门禁、6 项仪器测试与 P2P/WSS 两项 FFI 实际收发。iOS `35654293285` 的功能验证步骤已通过，正在保存构建缓存，最终任务状态仍待确认。
+推送 `62c43f4` 后 GitHub 已重新执行任务，无需手动重跑。Server `35654293364` 成功；Desktop `35654293360` 中 Linux 全流程成功（34 项 core、24 项 Dart、并发路径、可信 WSS、FFI、deb 和安装后收件）。Windows 的源码比对失败来自脚本生成文本使用平台 CRLF，已改为固定 UTF-8/LF；macOS 并发测试的临时证书缺少 AKI，已显式加入 SKI/AKI，且本机 LibreSSL 严格验证复测通过。两项工具修复为 `726bc03`，仍需下一轮矩阵确认。Android `35654293259` 已全部成功：三 ABI 原生库、24 项 Dart、Release APK/许可门禁、6 项仪器测试与 P2P/WSS 两项 FFI 实际收发。iOS `35654293285` 也已全部成功：device/simulator 原生库、Dart、未签名 Release、模拟器 App、资产/ABI 检查和 5 项 XCTest。
 
 本机 iOS 最新未签名 Release App 30.1 MB 已成功，20 项法律资产、15 项 FFI 导出、扩展与 App Group 均通过。正式签名、真机、公开域名及真实 ACME 验收仍待相应资源。
 
