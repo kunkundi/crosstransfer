@@ -57,4 +57,4 @@ python3 tools/ios_e2e.py --device booted
 
 `.github/workflows/ios.yml` 提供未签名真机构建、模拟器构建、Dart 检查，以及 `tools/test_ios_native.sh <UDID>` 原生运行时测试（15 个 FFI 符号、P2P、强制 WSS 中继、连续失败重连/退出；含空文件/目录和中文路径的完整性校验）。scheme 的首次系统确认属于本地交互验收。相机实拍、系统分享菜单、锁屏后系统真实到期、通知权限和 Universal Link 最终都需要签名真机验收；模拟器不能证明这些行为在真机上全部通过。
 
-实现依据：[Apple 后台执行时间](https://developer.apple.com/documentation/uikit/extending-your-app-s-background-execution-time)、[Apple Share Extension](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/Share.html)、[mobile_scanner](https://pub.dev/packages/mobile_scanner)。
+实现依据：[Apple 后台执行时间](https://developer.apple.com/documentation/uikit/extending-your-app-s-background-execution-time)、[Apple Share Extension](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/Share.html)、[AVFoundation 二维码元数据](https://developer.apple.com/documentation/avfoundation/avcapturemetadataoutput)。

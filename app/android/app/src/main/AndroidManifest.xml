@@ -47,6 +47,7 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+        <activity android:name=".QrCaptureActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/zxing_CaptureTheme" />
         <service android:name=".TransferService" android:exported="false" android:foregroundServiceType="dataSync" android:stopWithTask="false" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

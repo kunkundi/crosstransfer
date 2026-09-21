@@ -18,7 +18,7 @@ by the release pipeline (`tools/` in later phases).
 | --- | --- | --- | --- |
 | libjuice | 1.7.2 | MPL-2.0 | ICE / STUN / TURN-UDP |
 | miniupnpc | 2.3.3 | BSD-3-Clause | UPnP IGD port mapping |
-| OpenSSL | 3.3.2 | Apache-2.0 | DTLS, TLS for WSS |
+| OpenSSL | 3.5.8 | Apache-2.0 | DTLS, TLS for WSS |
 | libsrtp | 2.7.0 | BSD-3-Clause | SRTP / SRTCP |
 | KCP | 1.7 | MIT | reliable stream |
 | websocketpp | 0.8.2 | BSD-3-Clause | WebSocket client |
@@ -46,36 +46,11 @@ glib, gupnp / gssdp / libsoup / libxml2 / libpsl, libnice (LGPL) and all media
 codecs (openh264, dav1d, SVT-AV1, aom, libyuv, NVIDIA codec SDK, openfec,
 libopus) as well as libdatachannel are not part of this project.
 
-## Flutter QR scanner added in Phase 3
+## Mobile QR scanning
 
-mobile_scanner 7.4.2 — BSD-3-Clause. Source: https://github.com/juliansteenbakker/mobile_scanner
-
-BSD 3-Clause License
-
-Copyright (c) 2022, Julian Steenbakker
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its
-   contributors may be used to endorse or promote products derived from
-   this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Android uses ZXing Android Embedded 4.3.0 (Journey Mobile, Inc. and contributors)
+and ZXing Core 3.4.1 (ZXing authors), both Apache-2.0. Full upstream license texts:
+`docs/licenses/zxing-android-embedded.txt` and `docs/licenses/zxing-core.txt`.
+Sources: https://github.com/journeyapps/zxing-android-embedded and https://github.com/zxing/zxing.
+iOS uses the system AVFoundation framework. mobile_scanner and Google ML Kit
+are no longer included.

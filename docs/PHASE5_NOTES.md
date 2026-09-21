@@ -20,6 +20,17 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 ## 继续实施
 
+### 移动扫码依赖替换（2026-09-22）
+
+`mobile_scanner` 的 Android 实现间接带入 ML Kit，受 [额外 Google API 条款](https://developers.google.com/ml-kit/terms) 约束，超出计划的依赖许可范围。已移除插件：iOS 采用系统 AVFoundation QR 元数据，Android 采用 ZXing Android Embedded 4.3.0 / Core 3.4.1（Apache-2.0），完整许可位于 `docs/licenses/`。两端原生界面管理相机生命周期和授权，Dart 统一校验取件码、取消和重试。真机光学实扫仍待设备验收。
+
+- Dart 静态分析无问题，17 项测试通过，含 4 项扫码流程测试。
+- Android 4 项仪器测试通过（原 2 项 SAF/分享，加二维码图像解码/桥接和取消/拒绝授权），P2P 与强制中继的 2 项运行时测试通过。
+- OpenSSL 3.5.8 三 ABI 重建与检查通过；测试签名 Release APK 约 84.4 MB，15 个原生库，64 位 ELF 与 ZIP 16 KB 对齐检查通过。Gradle Release 依赖树不再包含 ML Kit / Play Services。
+- iOS device arm64、simulator arm64/x86_64 静态库与模拟器 App 编译通过，15 项 FFI 符号及 App Group 检查通过；4 项 XCTest 全部通过，记录 `dist/ios-native-20260922-030706.xcresult`。
+
+## 待完成
+
 - 全平台远程回归与 Windows 慢构建诊断。
 - 完整传递依赖许可审计、App 内开源许可证页及分发清单。
 - 移动端导入副本的占用提示/清理。

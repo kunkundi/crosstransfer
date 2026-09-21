@@ -12,6 +12,13 @@ import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.client.android.Intents
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.junit.After
@@ -130,5 +137,33 @@ class MobileBridgeTest {
         Request("AcknowledgeInbox", item["id"]).Await()
         assertFalse(File(app.filesDir, "Inbox/${item["id"]}.json").exists())
         assertTrue(paths.all { it.exists() })
+    }
+
+    @Test fun QrDecoderAndBridgeReturnExactLink() {
+        val link = "crosstransfer://r/MXT3XF8SK2"
+        val matrix = QRCodeWriter().encode(link, BarcodeFormat.QR_CODE, 256, 256)
+        val pixels = IntArray(256 * 256) { i -> if (matrix.get(i % 256, i / 256)) 0xff000000.toInt() else 0xffffffff.toInt() }
+        val bitmap = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(256, 256, pixels)))
+        val decoded = QRCodeReader().decode(bitmap).text
+        assertEquals(link, decoded)
+        val monitor = instrumentation.addMonitor(IntentFilter(Intents.Scan.ACTION),
+            Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().putExtra(Intents.Scan.RESULT, decoded)), true)
+        try { assertEquals(link, Request("ScanCode", mapOf("title" to "Scan QR code")).Await()) }
+        finally { instrumentation.removeMonitor(monitor) }
+    }
+
+    @Test fun QrCancellationAndPermissionFailureCompleteRequest() {
+        for (permission in listOf(false, true)) {
+            val data = Intent().putExtra(Intents.Scan.MISSING_CAMERA_PERMISSION, permission)
+            val monitor = instrumentation.addMonitor(IntentFilter(Intents.Scan.ACTION),
+                Instrumentation.ActivityResult(Activity.RESULT_CANCELED, data), true)
+            try {
+                val result = Request("ScanCode", mapOf("title" to "Scan QR code"))
+                if (permission) {
+                    assertTrue(result.ready.await(15, TimeUnit.SECONDS))
+                    assertTrue(result.failure.orEmpty().startsWith("camera:"))
+                } else assertNull(result.Await())
+            } finally { instrumentation.removeMonitor(monitor) }
+        }
     }
 }

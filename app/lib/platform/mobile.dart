@@ -39,6 +39,16 @@ class MobilePlatform {
     if (isMobile) await channel.invokeMethod<void>('ShareLink', link);
   }
 
+  static Future<String?> scanCode({
+    required String title,
+    required String cancel,
+  }) => channel.invokeMethod<String>('ScanCode', {
+    'title': title,
+    'cancel': cancel,
+  });
+
+  static Future<void> cancelScan() => channel.invokeMethod<void>('CancelScan');
+
   static Future<void> exportDirectory(String path) async {
     if (isMobile) await channel.invokeMethod<void>('ExportDirectory', path);
   }

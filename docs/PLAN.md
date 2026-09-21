@@ -256,7 +256,7 @@ const char* CtVersion(void);
 
 ## 八、Flutter 应用
 
-依赖：`ffi`、`ffigen`、`flutter_riverpod`、`path_provider`、`file_picker`、`desktop_drop`、`qr_flutter`、`mobile_scanner`、`app_links`、`tray_manager` + `window_manager`、`flutter_local_notifications`、`open_filex`（均为 BSD / MIT）。
+依赖：`ffi`、`ffigen`、`flutter_riverpod`、`path_provider`、`file_picker`、`desktop_drop`、`qr_flutter`、`app_links`、`tray_manager` + `window_manager`、`flutter_local_notifications`、`open_filex`（BSD / MIT）。扫码通过平台桥接：iOS 使用系统 AVFoundation，Android 使用 ZXing Android Embedded 4.3.0（Apache-2.0）。阶段 5 移除 `mobile_scanner`，其 Android 传递依赖 ML Kit 受额外 Google API 条款约束，不符合本项目已选定的依赖许可证范围。相机授权、取消、前后台生命周期由原生扫描界面管理，Dart 统一校验取件码并展示错误/重试。
 
 页面：
 

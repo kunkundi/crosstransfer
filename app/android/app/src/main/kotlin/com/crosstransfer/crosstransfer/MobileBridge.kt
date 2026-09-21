@@ -8,6 +8,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import com.google.zxing.client.android.Intents
+import com.journeyapps.barcodescanner.ScanOptions
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -27,6 +29,7 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
     private val worker = Executors.newSingleThreadExecutor()
     private var activity = WeakReference<Activity>(null)
     private var pending: MethodChannel.Result? = null
+    private var pending_code: Int? = null
     private var export_source: File? = null
     private var transfer_active = false
     private var io_count = 0
@@ -77,6 +80,21 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
         try {
             when (call.method) {
                 "SetTransferActive" -> { transfer_active = call.arguments == true; UpdateService(); result.success(null) }
+                "ScanCode" -> {
+                    val options = ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                        .setBeepEnabled(false).setOrientationLocked(false)
+                        .setPrompt(call.argument<String>("title").orEmpty())
+                        .setCaptureActivity(QrCaptureActivity::class.java)
+                    Launch(options.createScanIntent(app), SCAN, result)
+                }
+                "CancelScan" -> {
+                    if (pending_code == SCAN) {
+                        activity.get()?.finishActivity(SCAN)
+                        // Keep the pending request until onActivityResult so a
+                        // late cancellation cannot complete a newly opened scan.
+                    }
+                    result.success(null)
+                }
                 "ReadInbox" -> Work(result, active = false) { ReadInbox() }
                 "AcknowledgeInbox" -> {
                     val id = UUID.fromString(call.arguments as String).toString()
@@ -108,18 +126,26 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
 
     private fun RequireActivity(): Activity = activity.get() ?: error("Open CrossTransfer to continue")
     private fun Launch(intent: Intent, code: Int, result: MethodChannel.Result) {
-        check(pending == null) { "Another document picker is open" }
+        check(pending == null) { "Another platform action is open" }
         RequireActivity().startActivityForResult(intent, code)
         pending = result
+        pending_code = code
     }
 
     fun ActivityResult(code: Int, status: Int, data: Intent?): Boolean {
-        if (code !in setOf(PICK_FILES, PICK_FOLDER, EXPORT)) return false
+        if (code !in setOf(PICK_FILES, PICK_FOLDER, EXPORT, SCAN)) return false
+        if (pending_code != code) return true
         val result = pending
         pending = null
+        pending_code = null
         val source = export_source
         export_source = null
         if (result == null) return true
+        if (code == SCAN) {
+            if (data?.getBooleanExtra(Intents.Scan.MISSING_CAMERA_PERMISSION, false) == true) result.error("camera", "Camera permission denied", null)
+            else result.success(if (status == Activity.RESULT_OK) data?.getStringExtra(Intents.Scan.RESULT) else null)
+            return true
+        }
         if (status != Activity.RESULT_OK || data == null) { result.success(null); return true }
         val epoch = cancel_epoch.get()
         when (code) {
@@ -298,5 +324,6 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
         private const val PICK_FILES = 7011
         private const val PICK_FOLDER = 7012
         private const val EXPORT = 7013
+        private const val SCAN = 7014
     }
 }

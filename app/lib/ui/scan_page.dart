@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../platform/mobile.dart';
 import '../state/format.dart';
 import '../state/providers.dart';
 
@@ -13,35 +13,53 @@ class ScanPage extends ConsumerStatefulWidget {
   ConsumerState<ScanPage> createState() => _ScanPageState();
 }
 
-class _ScanPageState extends ConsumerState<ScanPage>
-    with WidgetsBindingObserver {
-  final _controller = MobileScannerController(
-    autoStart: false,
-    formats: const [BarcodeFormat.qrCode],
-  );
-  bool _done = false;
+class _ScanPageState extends ConsumerState<ScanPage> {
+  bool _scanning = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    unawaited(_controller.start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_scan());
+    });
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_controller.value.hasCameraPermission) return;
-    if (state == AppLifecycleState.resumed && !_done) {
-      unawaited(_controller.start());
-    } else if (state != AppLifecycleState.resumed) {
-      unawaited(_controller.stop());
+  Future<void> _scan() async {
+    if (_scanning) return;
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    final s = ref.read(sProvider);
+    try {
+      final raw = await MobilePlatform.scanCode(
+        title: s('recv.scan'),
+        cancel: s('common.cancel'),
+      );
+      if (!mounted) return;
+      if (raw == null) {
+        Navigator.of(context).pop();
+        return;
+      }
+      final code = extractTakeCode(raw);
+      if (code != null) {
+        Navigator.of(context).pop(code);
+        return;
+      }
+      setState(() => _error = 'recv.invalid');
+    } catch (_) {
+      if (mounted) setState(() => _error = 'recv.camera_error');
+    } finally {
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    unawaited(_controller.dispose());
+    if (_scanning) {
+      unawaited(MobilePlatform.cancelScan().catchError((Object _) {}));
+    }
     super.dispose();
   }
 
@@ -50,22 +68,23 @@ class _ScanPageState extends ConsumerState<ScanPage>
     final s = ref.watch(sProvider);
     return Scaffold(
       appBar: AppBar(title: Text(s('recv.scan'))),
-      body: MobileScanner(
-        controller: _controller,
-        onDetect: (capture) {
-          if (_done) return;
-          for (final barcode in capture.barcodes) {
-            final code = extractTakeCode(barcode.rawValue ?? '');
-            if (code == null) continue;
-            _done = true;
-            Navigator.of(context).pop(code);
-            break;
-          }
-        },
-        errorBuilder: (context, error) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(s('recv.camera_error'), textAlign: TextAlign.center),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_scanning) const CircularProgressIndicator(),
+              if (_error != null) ...[
+                Text(s(_error!), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _scan,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: Text(s('recv.scan')),
+                ),
+              ],
+            ],
           ),
         ),
       ),
