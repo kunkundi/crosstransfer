@@ -2,7 +2,6 @@
 // CT_NATIVE_LIB=<absolute library path> dart run tool/native_check.dart
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:crosstransfer/ffi/core_client.dart';
