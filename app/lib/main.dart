@@ -40,11 +40,11 @@ Future<void> main() async {
   final firstRun = !File('${paths.dataDir}/config.json').existsSync();
   final createConfig = <String, dynamic>{
     'data_dir': paths.dataDir,
-    'log_level': kDebugMode ? 'debug' : 'info',
     'app_version': kAppVersion,
     'platform': AppPaths.platformName,
   };
   if (firstRun) {
+    createConfig['log_level'] = kDebugMode ? 'debug' : 'info';
     createConfig['save_dir'] = paths.defaultSaveDir;
     if (kDebugMode && kDevServerHost.isNotEmpty) {
       createConfig['server'] = {

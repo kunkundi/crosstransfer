@@ -69,7 +69,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libayatana-appindicator3-dev libnotify-dev libsecret-1-dev libjsoncpp-dev libstdc++-14-dev desktop-file-utils dpkg-dev xvfb dbus-x11 xdotool
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev libstdc++-14-dev desktop-file-utils dpkg-dev xvfb dbus-x11
       - name: Native core (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

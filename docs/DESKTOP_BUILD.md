@@ -51,7 +51,7 @@ Pop-Location
 
 ```sh
 sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev \
-  libayatana-appindicator3-dev libnotify-dev libsecret-1-dev libjsoncpp-dev \
+  libsecret-1-dev libjsoncpp-dev \
   libstdc++-14-dev desktop-file-utils dpkg-dev
 tools/build_native.sh linux
 cd app
@@ -66,7 +66,7 @@ sudo apt-get install ./dist/crosstransfer_*.deb
 
 打包在目标架构的 Linux 上执行。支持 amd64 / arm64，使用 `dpkg-shlibdeps` 从可执行文件及所有插件计算系统依赖。程序放在 `/opt/crosstransfer`，共享库放在 `lib/`，安装 `.desktop` 和 `x-scheme-handler/crosstransfer` MIME 注册。GTK 使用单实例 GApplication，热启动链接送往原窗口。
 
-`tools/linux_build_native.sh` 仅构建 native 库，不是完整 Linux 桌面构建。无状态通知服务/系统托盘的精简 Linux 环境可能不显示通知或托盘，真实桌面外观仍需人工验收。
+`tools/linux_build_native.sh` 仅构建 native 库，不是完整 Linux 桌面构建。锁定的 cnativeapi 0.3.0 通过 D-Bus StatusNotifierItem 实现托盘，不需要 libayatana-appindicator。无通知服务/系统托盘的精简 Linux 环境可能不显示通知或托盘，真实桌面外观仍需人工验收。
 
 ## 验收
 

@@ -7,6 +7,7 @@
 
 #include "transfer/ctrl_codec.h"
 #include "transfer/manifest.h"
+#include "transfer/path_sanitize.h"
 #include "transfer/protocol.h"
 
 using namespace ct;
@@ -70,13 +71,14 @@ TEST_CASE("manifest build, serialize, validate") {
   std::ofstream(dir / "root" / "a.txt") << "hello";
   std::ofstream(dir / "root" / "sub" / "b.bin") << std::string(3000, 'b');
   std::ofstream(dir / "single.dat") << "";
-  std::ofstream(dir / "\xE4\xB8\xAD\xE6\x96\x87.txt") << "zh";
+  const auto chinese = dir / paths::FromUtf8("\xE4\xB8\xAD\xE6\x96\x87.txt");
+  std::ofstream(chinese) << "zh";
 
   Manifest m;
   std::vector<std::filesystem::path> abs;
   std::string err;
-  REQUIRE(BuildManifest({(dir / "root").string(), (dir / "single.dat").string(),
-                         (dir / "\xE4\xB8\xAD\xE6\x96\x87.txt").string()},
+  REQUIRE(BuildManifest({paths::ToUtf8(dir / "root"), paths::ToUtf8(dir / "single.dat"),
+                         paths::ToUtf8(chinese)},
                         &m, &abs, &err));
   CHECK(m.roots.size() == 3);
   CHECK(m.files.size() == 4);
