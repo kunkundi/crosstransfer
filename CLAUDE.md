@@ -8,13 +8,16 @@
 
 ## 当前状态（2026-09-21）
 
-- 仓库已 `git init`，尚无任何提交。
-- **阶段 0 已完成**（服务端 + 特化版 MiniRTC + 数据路径改造）：
+- 远程仓库 `github.com/kunkundi/crosstransfer`，主分支 `main`。
+- **阶段 0 已完成**（服务端 + 特化版 MiniRTC + 数据路径改造），记录见 `docs/PHASE0_NOTES.md`：
   - `server/`：Go 信令 / 取件码 / 内嵌 TURN（pion/turn）/ WSS 中继 / healthz / metrics；`go test -race ./...` 全绿；Dockerfile + compose + `.env.example`。协议实现说明见 `docs/SIGNALING.md`。
-  - `minirtc/`：已裁剪为数据专用（约 2.5 万行，源自 `kunkundi/minirtc` commit `a25a3b4`）。ICE 用 libjuice + miniupnpc（本仓库 `thirdparty/miniupnpc` 配方），无 glib / libnice / 媒体依赖。新 C API 在 `minirtc/src/api/minirtc.h`。macOS arm64、iOS arm64、Linux arm64（Ubuntu 24.04 容器）编译通过；Windows 尚未实测（本机无 MSVC/MinGW）。
-  - `minirtc/examples/data_echo` + `examples/run_echo.sh`：经本地 server 跑通 P2P、强制 TURN、WSS 中继、无 SRTP、5% 丢包、8 Mbit/s 限速（BWE 收敛）。
-- `core/`、`cli/`、`app/`、`tools/` 尚未创建。
-- 下一步：阶段 1（`core/` + `ct_cli`）。
+  - `minirtc/`：已裁剪为数据专用（约 2.5 万行，源自 `kunkundi/minirtc` commit `a25a3b4`）。ICE 用 libjuice + miniupnpc，无 glib / libnice / 媒体依赖。C API 在 `minirtc/src/api/minirtc.h`（`MiniRtc*`）。macOS arm64、iOS arm64、Linux arm64 编译通过；Windows 尚未实测。
+- **阶段 1 已完成**（`core/` + `ct_cli`），记录见 `docs/PHASE1_NOTES.md`，两端协议见 `docs/TRANSFER_PROTOCOL.md`：
+  - 根 `xmake.lua`：`crosstransfer_core`（static）、`ct_cli`、`core_tests`（doctest，27 用例全绿）、可选 `crosstransfer_native`（shared，未验证）。
+  - `core/include/crosstransfer/ct_api.h` 是唯一公开头（`CtCreate` … `CtVersion`，事件为 JSON 回调），阶段 2 的 ffigen 输入。
+  - 端到端脚本在 `tools/`：`run_cli_e2e.sh`（P2P / TURN / 中继 / 丢包）、`run_cli_resume.sh`（kill -9 后续传）、`run_cli_open.sh`（open 模式双接收端）、`repeat_e2e.sh`。1 GiB 回环 156 s、峰值 RSS 35 MB。
+- `app/` 尚未创建。
+- 下一步：阶段 2（桌面 Flutter，macOS → Windows → Linux）。先安装 Flutter，再验证 `crosstransfer_native` 共享库与 ffigen。
 
 ## 硬约束（不要偏离）
 
@@ -38,8 +41,12 @@
 ## 本地验证
 
 ```sh
-cd server && go build -o /tmp/ctserver ./cmd/ctserver
-CT_LISTEN=127.0.0.1:8080 CT_PUBLIC_IP=127.0.0.1 CT_TURN_SECRET=test /tmp/ctserver &
-cd ../minirtc && xmake f -m release -y && xmake build -y
-examples/run_echo.sh p2p            # 另见 minirtc/README.md 的完整矩阵
+tools/start_server.sh &                    # 构建并启动本地 ctserver（127.0.0.1:8080）
+xmake f -m release -y && xmake build -y    # minirtc + core + ct_cli + core_tests
+xmake run core_tests                       # 单元测试
+tools/run_cli_e2e.sh p2p                   # 两进程端到端；turn --turn force / relay --relay force
+MINIRTC_TEST_DROP_PERCENT=5 tools/run_cli_e2e.sh loss5 --turn off
+tools/run_cli_resume.sh 200 3              # kill -9 接收端后凭 resume_token 续传
+tools/run_cli_open.sh                      # open 模式两接收端并发
+cd minirtc && examples/run_echo.sh p2p     # 仅 MiniRTC 层（见 minirtc/README.md）
 ```
