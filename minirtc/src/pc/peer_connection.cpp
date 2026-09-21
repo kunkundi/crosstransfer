@@ -480,8 +480,10 @@ void PeerConnection::HandleSessionStart(const json& j) {
     }
     sessions_[sid] = s;
   }
+  const bool resumed = j.contains("resumed") && j["resumed"].is_boolean() &&
+                       j["resumed"].get<bool>();
   LOG_INFO("session_start id=[{}] role=[{}] remote=[{}] resumed={}", sid,
-           s->role, s->remote_peer_id, Int(j, "resumed") ? "yes" : "no");
+           s->role, s->remote_peer_id, resumed ? "yes" : "no");
   if (s->role == "receiver") {
     NotifyClaim(MINIRTC_CLAIM_OK, sid, s->resume_token, "");
   } else {
