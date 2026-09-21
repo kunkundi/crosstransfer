@@ -132,6 +132,16 @@ const Map<String, String> _zh = {
 
   'common.ok': '确定',
   'common.cancel': '取消',
+  'storage.title': '导入副本',
+  'storage.hint': '从文件选择器或系统分享导入的本机副本。待处理的分享会保留。',
+  'storage.used': '占用',
+  'storage.clearable': '可清理',
+  'storage.clear': '清理未使用的副本',
+  'storage.refresh': '刷新占用',
+  'storage.confirm': '删除本次列出的导入副本？原始文件和收到的文件会保留。以后重新发送时需要再次选择原始文件。',
+  'storage.sending': '请先结束或关闭所有发送任务（包括已暂停的任务）。',
+  'storage.done': '导入副本已清理',
+  'storage.failed': '无法清理或读取占用，请先结束发送后重试。',
   'common.error': '错误',
   'common.unknown': '未知',
 
@@ -280,6 +290,16 @@ const Map<String, String> _en = {
 
   'common.ok': 'OK',
   'common.cancel': 'Cancel',
+  'storage.title': 'Imported copies',
+  'storage.hint': 'Local copies imported from file pickers or system sharing. Pending shared items are kept.',
+  'storage.used': 'Used',
+  'storage.clearable': 'Available to clear',
+  'storage.clear': 'Clear unused copies',
+  'storage.refresh': 'Refresh storage',
+  'storage.confirm': 'Delete the imported copies in this preview? Original and received files are kept. Select the originals again to send them later.',
+  'storage.sending': 'Finish or close all sending tasks, including paused tasks, before cleaning.',
+  'storage.done': 'Imported copies cleared',
+  'storage.failed': 'Could not read or clear storage. Finish sending and try again.',
   'common.error': 'Error',
   'common.unknown': 'Unknown',
 

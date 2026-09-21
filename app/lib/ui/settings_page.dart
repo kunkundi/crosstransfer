@@ -12,6 +12,7 @@ import '../i18n/strings.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
 import 'widgets.dart';
+import 'import_storage.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -246,6 +247,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
         ),
+        if (MobilePlatform.isMobile) const ImportStorage(),
         SectionTitle(s('settings.about')),
         _Row(
             label: s('settings.version'),

@@ -20,9 +20,7 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 本轮回归 `35641577661`：macOS universal 的原生测试、可信 WSS、FFI ⇄ CLI、Dart、Flutter Release 和 DMG 全部通过。Linux 在新增 TLS 测试编译时发现 `<ostream>` 缺失（GCC 无法输出断言中的智能指针），已补齐；macOS 的 3 项 TLS / 543 断言单独复测通过。Windows 诊断产物定位到 `legacy.dll` 的 30 个 `__imp_*` UCRT 符号未解析：静态 libcrypto 已切 `/MD`，provider 对象却未设置 CRT，仍默认 `/MT`。已向 OpenSSL Configure 全局传递所选 `/MD`/`/MDd`，覆盖 provider 和应用对象，待下一轮 Windows 验证。
 
-## 继续实施
-
-### 移动扫码依赖替换（2026-09-22）
+## 移动扫码依赖替换（2026-09-22）
 
 `mobile_scanner` 的 Android 实现间接带入 ML Kit，受 [额外 Google API 条款](https://developers.google.com/ml-kit/terms) 约束，超出计划的依赖许可范围。已移除插件：iOS 采用系统 AVFoundation QR 元数据，Android 采用 ZXing Android Embedded 4.3.0 / Core 3.4.1（Apache-2.0），完整许可位于 `docs/licenses/`。两端原生界面管理相机生命周期和授权，Dart 统一校验取件码、取消和重试。真机光学实扫仍待设备验收。
 
@@ -31,10 +29,17 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 - OpenSSL 3.5.8 三 ABI 重建与检查通过；测试签名 Release APK 约 84.4 MB，15 个原生库，64 位 ELF 与 ZIP 16 KB 对齐检查通过。Gradle Release 依赖树不再包含 ML Kit / Play Services。
 - iOS device arm64、simulator arm64/x86_64 静态库与模拟器 App 编译通过，15 项 FFI 符号及 App Group 检查通过；4 项 XCTest 全部通过，记录 `dist/ios-native-20260922-030706.xcresult`。
 
-## 待完成
+## 导入副本清理（2026-09-22）
+
+设置页新增 Imported 占用、可清理容量、刷新和明确确认的清理操作。仅接受预览快照内的 UUID 批次；平台文件队列串行处理，删除前重新保护未消费 Inbox，新批次不加入本次清理。复制容量统计不跟随符号链接，删除只移除链接本身。Received 与原始提供器文件不在操作根目录中。
+
+清理前同步查询 core 状态，确认排队的关闭操作与发送线程退出已完成；活动或暂停的发送会阻止清理。整个清理期间阻止新建分享与恢复传输，避免文件检查后重新被使用。
+
+本机 **20 项 Dart 测试、Android 5 项仪器测试、iOS 5 项 XCTest** 通过。新增覆盖确认取消、预览 ID 固定、最新 core 状态与清理期间锁定、待处理分享/新批次/外部链接目标保护、路径穿越拒绝。
+
+## 剩余工作
 
 - 全平台远程回归与 Windows 慢构建诊断。
 - 完整传递依赖许可审计、App 内开源许可证页及分发清单。
-- 移动端导入副本的占用提示/清理。
 - 自托管 TLS/ACME、部署、升级和多接收端/中继负载文档与验证。
 - 正式身份/签名/域名、移动真机、16 KB 系统与厂商后台限制需相应资源后补验收。

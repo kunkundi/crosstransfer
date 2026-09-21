@@ -49,6 +49,12 @@ class MobilePlatform {
 
   static Future<void> cancelScan() => channel.invokeMethod<void>('CancelScan');
 
+  static Future<Map<String, dynamic>> importStorage() async =>
+      await channel.invokeMapMethod<String, dynamic>('ImportStorage') ?? {};
+
+  static Future<Map<String, dynamic>> clearImports(List<String> ids) async =>
+      await channel.invokeMapMethod<String, dynamic>('ClearImports', ids) ?? {};
+
   static Future<void> exportDirectory(String path) async {
     if (isMobile) await channel.invokeMethod<void>('ExportDirectory', path);
   }

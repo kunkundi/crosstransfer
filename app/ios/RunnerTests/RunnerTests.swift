@@ -1,8 +1,43 @@
 import Darwin
 import Foundation
 import XCTest
+@testable import Runner
 
 final class RunnerTests: XCTestCase {
+  func testImportedCopyCleanupProtectsInboxNewBatchesAndLinkTargets() throws {
+    let fm = FileManager.default
+    let base = fm.temporaryDirectory.appendingPathComponent("ct-cleanup-" + UUID().uuidString).resolvingSymlinksInPath()
+    defer { try? fm.removeItem(at: base) }
+    let root = base.appendingPathComponent("Imported")
+    let inbox = base.appendingPathComponent("Inbox")
+    let outside = base.appendingPathComponent("Received")
+    let batch = root.appendingPathComponent(UUID().uuidString)
+    let queued = root.appendingPathComponent(UUID().uuidString)
+    for folder in [batch, queued, inbox, outside] { try fm.createDirectory(at: folder, withIntermediateDirectories: true) }
+    try Data(repeating: 1, count: 4096).write(to: batch.appendingPathComponent("copy.bin"))
+    try Data(repeating: 2, count: 1024).write(to: queued.appendingPathComponent("waiting.bin"))
+    let sentinel = outside.appendingPathComponent("keep.bin")
+    try Data("keep".utf8).write(to: sentinel)
+    try fm.createSymbolicLink(at: batch.appendingPathComponent("external"), withDestinationURL: outside)
+    try fm.createDirectory(at: inbox.appendingPathComponent(queued.lastPathComponent), withIntermediateDirectories: true)
+    let store = try ImportedCopyStore(root: root, inbox: inbox)
+    let preview = try store.Snapshot()
+    XCTAssertEqual(preview["bytes"] as? Int64, 5120)
+    XCTAssertEqual(preview["clearable_bytes"] as? Int64, 4096)
+    XCTAssertEqual(preview["ids"] as? [String], [batch.lastPathComponent])
+    let newer = root.appendingPathComponent(UUID().uuidString)
+    try fm.createDirectory(at: newer, withIntermediateDirectories: true)
+    _ = try store.Clear([batch.lastPathComponent, queued.lastPathComponent])
+    XCTAssertFalse(fm.fileExists(atPath: batch.path))
+    XCTAssertTrue(fm.fileExists(atPath: queued.path))
+    XCTAssertTrue(fm.fileExists(atPath: newer.path))
+    XCTAssertEqual(try Data(contentsOf: sentinel), Data("keep".utf8))
+    XCTAssertThrowsError(try store.Clear(["../Received"]))
+    let alias = base.appendingPathComponent("alias")
+    try fm.createSymbolicLink(at: alias, withDestinationURL: outside)
+    XCTAssertThrowsError(try ImportedCopyStore(root: alias, inbox: inbox))
+  }
+
   func testFFISymbolsAreAvailableToProcessLookup() throws {
     let process = try XCTUnwrap(dlopen(nil, RTLD_NOW))
     defer { dlclose(process) }

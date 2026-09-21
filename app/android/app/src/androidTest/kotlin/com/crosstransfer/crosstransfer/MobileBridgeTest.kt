@@ -166,4 +166,37 @@ class MobileBridgeTest {
             } finally { instrumentation.removeMonitor(monitor) }
         }
     }
+
+    @Test fun ImportCleanupProtectsInboxNewBatchesAndLinkTargets() {
+        val root = File(app.filesDir.canonicalFile, "Imported").apply { mkdirs() }
+        val batch = File(root, UUID.randomUUID().toString()).apply { mkdirs() }
+        val queued = File(root, UUID.randomUUID().toString()).apply { mkdirs() }
+        val outside = File(app.cacheDir, "ct-cleanup-$id").apply { mkdirs() }
+        imported.addAll(listOf(batch, queued, outside))
+        val payload = File(batch, "copy.bin").apply { writeBytes(ByteArray(4096)) }
+        File(queued, "waiting.bin").writeBytes(ByteArray(1024))
+        val sentinel = File(outside, "keep.bin").apply { writeText("keep") }
+        android.system.Os.symlink(outside.canonicalPath, File(batch, "external").path)
+        val manifest = File(app.filesDir, "Inbox/${queued.name}.json").apply {
+            parentFile!!.mkdirs()
+            writeText("{}")
+        }
+        try {
+            val preview = Request("ImportStorage").Await() as Map<*, *>
+            assertTrue((preview["ids"] as List<*>).contains(batch.name))
+            assertFalse((preview["ids"] as List<*>).contains(queued.name))
+            val newer = File(root, UUID.randomUUID().toString()).apply { mkdirs(); File(this, "new.bin").writeText("new") }
+            imported.add(newer)
+            // Explicitly requesting a protected batch still must not delete it.
+            Request("ClearImports", listOf(batch.name, queued.name)).Await()
+            assertFalse(payload.exists())
+            assertFalse(batch.exists())
+            assertEquals("keep", sentinel.readText())
+            assertTrue(queued.exists())
+            assertTrue(newer.exists())
+            val invalid = Request("ClearImports", listOf("../Received"))
+            assertTrue(invalid.ready.await(15, TimeUnit.SECONDS))
+            assertNotNull(invalid.failure)
+        } finally { manifest.delete() }
+    }
 }

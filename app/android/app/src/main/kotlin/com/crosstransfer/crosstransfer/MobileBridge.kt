@@ -96,6 +96,20 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
                     result.success(null)
                 }
                 "ReadInbox" -> Work(result, active = false) { ReadInbox() }
+                "ImportStorage" -> Work(result, active = false) { ImportStorage() }
+                "ClearImports" -> {
+                    val ids = (call.arguments as List<*>).map { UUID.fromString(it as String).toString() }.toSet()
+                    Work(result, active = false) {
+                        val root = ImportRoot()
+                        for (id in ids) {
+                            // A newly arrived share may have protected a previewed batch.
+                            if (File(inbox, "$id.json").exists()) continue
+                            val batch = File(root, id)
+                            if (batch.exists() && batch.canonicalFile == batch.absoluteFile) RemoveCopy(batch)
+                        }
+                        ImportStorage()
+                    }
+                }
                 "AcknowledgeInbox" -> {
                     val id = UUID.fromString(call.arguments as String).toString()
                     File(inbox, "$id.json").delete()
@@ -228,6 +242,41 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
     private fun SafeName(name: String?, fallback: String): String {
         val value = name.orEmpty().replace('/', '_').replace('\\', '_').replace('\u0000', '_')
         return if (value.isBlank() || value == "." || value == "..") fallback else value
+    }
+
+    private fun ImportRoot(): File {
+        val root = File(app.filesDir.canonicalFile, "Imported")
+        check(root.canonicalFile == root.absoluteFile) { "Invalid import directory" }
+        return root
+    }
+
+    private fun CopyBytes(file: File): Long {
+        if (file.canonicalFile != file.absoluteFile) return 0 // never follow links
+        if (!file.isDirectory) return file.length()
+        return (file.listFiles() ?: error("Cannot inspect imported files")).sumOf { CopyBytes(it) }
+    }
+
+    private fun RemoveCopy(file: File) {
+        // Delete links themselves, without descending into their destinations.
+        if (file.canonicalFile == file.absoluteFile && file.isDirectory) {
+            (file.listFiles() ?: error("Cannot inspect imported files")).forEach { RemoveCopy(it) }
+        }
+        check(file.delete() || !file.exists()) { "Cannot delete imported copy" }
+    }
+
+    private fun ImportStorage(): Map<String, Any> {
+        val root = ImportRoot()
+        var total = 0L
+        var clearable = 0L
+        val ids = mutableListOf<String>()
+        for (batch in root.listFiles().orEmpty()) {
+            val id = runCatching { UUID.fromString(batch.name).toString() }.getOrNull() ?: continue
+            if (id != batch.name || !batch.isDirectory || batch.canonicalFile != batch.absoluteFile) continue
+            val size = CopyBytes(batch)
+            total += size
+            if (!File(inbox, "$id.json").exists()) { ids.add(id); clearable += size }
+        }
+        return mapOf("bytes" to total, "clearable_bytes" to clearable, "ids" to ids.sorted())
     }
 
     private fun UniqueName(parent: File, name: String): String {

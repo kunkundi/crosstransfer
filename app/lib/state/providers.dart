@@ -7,6 +7,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ffi/core_client.dart';
+import '../ffi/ct_bindings.g.dart' show CtStatus;
+import '../platform/mobile.dart';
 import '../i18n/strings.dart';
 import 'app_prefs.dart';
 import 'models.dart';
@@ -82,6 +84,10 @@ class CoreState {
 
   bool get serverConfigured => config.serverHost.isNotEmpty;
 
+  // Paused senders still own their source files. Receiving never uses Imported.
+  bool get hasSendWork => shares.values.any((s) => s.isActive) ||
+      transfers.values.any((t) => t.role == 'sender' && !t.isTerminal);
+
   /// Newest first.
   List<ShareInfo> get shareList {
     final l = shares.values.toList();
@@ -126,6 +132,7 @@ class CoreState {
 class CoreStateNotifier extends Notifier<CoreState> {
   StreamSubscription<CoreEvent>? _sub;
   int _errorSeq = 0;
+  bool _clearingImports = false;
 
   @override
   CoreState build() {
@@ -220,6 +227,7 @@ class CoreStateNotifier extends Notifier<CoreState> {
   // ---- actions ------------------------------------------------------------
 
   String createShare(List<String> paths, {String? mode, int? ttlSec}) {
+    if (_clearingImports) throw CoreException(CtStatus.CT_ERR_STATE, 'Import cleanup in progress');
     final id = _client.shareCreate(paths, mode: mode, ttlSec: ttlSec);
     final next = Map<String, ShareInfo>.from(state.shares);
     final existing = next[id];
@@ -255,7 +263,25 @@ class CoreStateNotifier extends Notifier<CoreState> {
 
   void resumeReceive(String transferId) => _client.receiveResume(transferId);
   void pauseTransfer(String transferId) => _client.transferPause(transferId);
-  void resumeTransfer(String transferId) => _client.transferResume(transferId);
+  void resumeTransfer(String transferId) {
+    if (_clearingImports) throw CoreException(CtStatus.CT_ERR_STATE, 'Import cleanup in progress');
+    _client.transferResume(transferId);
+  }
+
+  Future<Map<String, dynamic>> clearImports(List<String> ids) async {
+    if (_clearingImports || state.hasSendWork) {
+      throw CoreException(CtStatus.CT_ERR_STATE, 'Finish or close sending before cleaning imports');
+    }
+    _clearingImports = true;
+    try {
+      // Query is a synchronous core-loop barrier: a dismissed share's queued
+      // close and sender shutdown must finish before any source can be removed.
+      if (_initialFromQuery(_client).hasSendWork) {
+        throw CoreException(CtStatus.CT_ERR_STATE, 'Sending is still active');
+      }
+      return await MobilePlatform.clearImports(ids);
+    } finally { _clearingImports = false; }
+  }
   void cancelTransfer(String transferId) => _client.transferCancel(transferId);
 
   /// Drops a receive from the list; cancels it in the core first so its

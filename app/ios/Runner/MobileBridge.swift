@@ -8,6 +8,7 @@ final class MobileBridge {
   private var transfer_active = false
   private var background_expired = false
   private var scanner: QrScannerController?
+  private let file_queue = DispatchQueue(label: "com.crosstransfer.imports", qos: .userInitiated)
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "com.crosstransfer/mobile", binaryMessenger: messenger)
@@ -39,7 +40,7 @@ final class MobileBridge {
         result(nil)
       case "ReadInbox":
         // File copies can be large; never block Flutter's platform thread.
-        DispatchQueue.global(qos: .userInitiated).async {
+        file_queue.async {
           do {
             let items = try self.ReadInbox()
             DispatchQueue.main.async { result(items) }
@@ -49,11 +50,17 @@ final class MobileBridge {
         }
       case "AcknowledgeInbox":
         guard let id = call.arguments as? String, UUID(uuidString: id) != nil else { throw CocoaError(.fileReadInvalidFileName) }
-        if let inbox = InboxDirectory() {
-          let batch = inbox.appendingPathComponent(id)
-          if FileManager.default.fileExists(atPath: batch.path) { try FileManager.default.removeItem(at: batch) }
+        FileWork(result) {
+          if let inbox = self.InboxDirectory() {
+            let batch = inbox.appendingPathComponent(id)
+            if FileManager.default.fileExists(atPath: batch.path) { try FileManager.default.removeItem(at: batch) }
+          }
+          return nil
         }
-        result(nil)
+      case "ImportStorage": FileWork(result) { try self.ImportStore().Snapshot() }
+      case "ClearImports":
+        guard let ids = call.arguments as? [String], ids.allSatisfy({ UUID(uuidString: $0) != nil && !$0.contains("/") }) else { throw CocoaError(.fileReadInvalidFileName) }
+        FileWork(result) { try self.ImportStore().Clear(ids) }
       case "ShareLink":
         guard let link = call.arguments as? String, let view = Presenter() else { throw CocoaError(.featureUnsupported) }
         let sheet = UIActivityViewController(activityItems: [link], applicationActivities: nil)
@@ -112,6 +119,18 @@ final class MobileBridge {
     return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?.appendingPathComponent("Inbox", isDirectory: true)
   }
 
+  private func FileWork(_ result: @escaping FlutterResult, action: @escaping () throws -> Any?) {
+    file_queue.async {
+      do { let value = try action(); DispatchQueue.main.async { result(value) } }
+      catch { DispatchQueue.main.async { result(FlutterError(code: "files", message: error.localizedDescription, details: nil)) } }
+    }
+  }
+
+  private func ImportStore() throws -> ImportedCopyStore {
+    let documents = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true).resolvingSymlinksInPath()
+    return try ImportedCopyStore(root: documents.appendingPathComponent("Imported", isDirectory: true), inbox: InboxDirectory())
+  }
+
   private func ReadInbox() throws -> [[String: Any]] {
     let fm = FileManager.default
     guard let inbox = InboxDirectory(), fm.fileExists(atPath: inbox.path) else { return [] }
@@ -143,6 +162,62 @@ final class MobileBridge {
       result.append(["id": id, "paths": paths, "content": manifest["content"] as? String ?? ""])
     }
     return result
+  }
+}
+
+// File queue only. Explicit roots make destructive boundaries independently testable.
+struct ImportedCopyStore {
+  let root: URL
+  let inbox: URL?
+
+  init(root: URL, inbox: URL?) throws {
+    guard root.resolvingSymlinksInPath().path == root.standardizedFileURL.path else { throw CocoaError(.fileReadNoPermission) }
+    self.root = root.standardizedFileURL
+    self.inbox = inbox
+  }
+
+  private func Protected(_ id: String) -> Bool {
+    guard let inbox = inbox else { return false }
+    return FileManager.default.fileExists(atPath: inbox.appendingPathComponent(id).path)
+  }
+
+  func Clear(_ ids: [String]) throws -> [String: Any] {
+    guard ids.allSatisfy({ UUID(uuidString: $0) != nil && !$0.contains("/") }) else { throw CocoaError(.fileReadInvalidFileName) }
+    let fm = FileManager.default
+    for id in Set(ids) {
+      if Protected(id) { continue }
+      let batch = root.appendingPathComponent(id)
+      if fm.fileExists(atPath: batch.path), try batch.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink != true {
+        try fm.removeItem(at: batch) // Remove links, without following their targets.
+      }
+    }
+    return try Snapshot()
+  }
+
+  private func CopyBytes(_ url: URL) throws -> Int64 {
+    let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey, .fileSizeKey])
+    if values.isSymbolicLink == true { return 0 }
+    if values.isDirectory != true { return Int64(values.fileSize ?? 0) }
+    return try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil).reduce(0) { try $0 + CopyBytes($1) }
+  }
+
+  func Snapshot() throws -> [String: Any] {
+    let fm = FileManager.default
+    guard fm.fileExists(atPath: root.path) else { return ["bytes": 0, "clearable_bytes": 0, "ids": [String]()] }
+    var total: Int64 = 0
+    var clearable: Int64 = 0
+    var ids: [String] = []
+    for batch in try fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
+      let id = batch.lastPathComponent
+      let values = try batch.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
+      guard UUID(uuidString: id) != nil, values.isSymbolicLink != true, values.isDirectory == true else { continue }
+      let size = try CopyBytes(batch)
+      total += size
+      if Protected(id) { continue }
+      ids.append(id)
+      clearable += size
+    }
+    return ["bytes": total, "clearable_bytes": clearable, "ids": ids.sorted()]
   }
 }
 
