@@ -3,13 +3,23 @@
 --   crosstransfer_core   share / receive state machines, block protocol, C API (static)
 --   ct_cli               command line client (binary)
 --   core_tests           unit tests (binary, doctest)
---   crosstransfer_native shared umbrella for Flutter FFI (minirtc + core)
+--   crosstransfer_native Flutter FFI umbrella (desktop shared / iOS static)
 set_project("crosstransfer")
 set_version("0.1.0")
 
 add_rules("mode.release", "mode.debug")
 set_languages("c++17")
 set_encodings("utf-8")
+
+if is_plat("iphoneos") then
+    -- xmake 3.1 package hashes omit appledev. Make the target triple part of
+    -- package configuration so arm64 simulator cannot reuse device archives.
+    local triple = get_config("arch") .. "-apple-ios" .. (get_config("target_minver") or "15.0")
+    if get_config("appledev") == "simulator" then
+        triple = triple .. "-simulator"
+    end
+    add_requireconfs("**", {configs = {cxflags = "--target=" .. triple}})
+end
 
 -- Match Flutter's Windows CRT and propagate it to all native dependencies.
 if is_plat("windows") then
@@ -40,7 +50,7 @@ option_end()
 option("ct_native")
     set_default(false)
     set_showmenu(true)
-    set_description("Build the crosstransfer_native shared library for Flutter FFI")
+    set_description("Build the crosstransfer_native FFI library (iOS static, desktop shared)")
 option_end()
 
 if has_config("ct_tests") then
@@ -96,11 +106,19 @@ end
 
 if has_config("ct_native") then
     target("crosstransfer_native")
-        set_kind("shared")
+        if is_plat("iphoneos") then
+            set_kind("static")
+            -- Include core, MiniRTC and their static packages in one archive.
+            set_policy("build.merge_archive", true)
+            -- libsrtp's package already carries its OpenSSL archives.
+            add_packages("spdlog", "libsrtp", "kcp", "libjuice", "miniupnpc")
+        else
+            set_kind("shared")
+        end
         ct_common()
         add_deps("crosstransfer_core", "minirtc")
         add_files("core/src/api/native_export.cpp")
-        if is_plat("macosx", "iphoneos") then
+        if is_plat("macosx") then
             add_ldflags("-Wl,-force_load,$(builddir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a", {force = true})
             add_ldflags("-Wl,-install_name,@rpath/libcrosstransfer_native.dylib", {force = true})
         elseif is_plat("linux", "android") then

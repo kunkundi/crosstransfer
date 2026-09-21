@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 
 import '../ffi/core_client.dart';
+import '../platform/mobile.dart';
+import 'scan_page.dart';
 import '../state/format.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
@@ -57,6 +59,15 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
     _start();
   }
 
+  Future<void> _scan() async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const ScanPage()),
+    );
+    if (!mounted || code == null) return;
+    _input.text = code;
+    _start();
+  }
+
   void _onChanged(String value) {
     if (extractTakeCode(value) != null) _start();
   }
@@ -76,9 +87,11 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
       setState(() => _error = s('send.no_server'));
       return;
     }
+    setState(() => _error = null);
     try {
       ref.read(coreStateProvider.notifier).startReceive(code, saveDir: _saveDir);
       _input.clear();
+      if (MobilePlatform.isMobile) _focus.unfocus();
     } on CoreException catch (e) {
       setState(() => _error = '${s('recv.invalid')} (${e.status})');
     }
@@ -97,7 +110,7 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
     ref.listen<String?>(pendingReceiveProvider, (_, next) {
       if (next == null) return;
       _input.text = formatTakeCode(next);
-      _focus.requestFocus();
+      if (!MobilePlatform.isMobile) _focus.requestFocus();
       Future.microtask(() {
         if (!mounted) return;
         ref.read(pendingReceiveProvider.notifier).set(null);
@@ -118,12 +131,22 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (MobilePlatform.isMobile) ...[
+                FilledButton.icon(
+                  onPressed: _scan,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: Text(s('recv.scan')),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(children: [
                 Expanded(
                   child: TextField(
                     controller: _input,
                     focusNode: _focus,
-                    autofocus: true,
+                    autofocus: !MobilePlatform.isMobile,
+                    textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
                     onChanged: _onChanged,
                     onSubmitted: (_) => _start(),
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -142,7 +165,7 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                SizedBox(
+                if (MediaQuery.sizeOf(context).width >= 600) SizedBox(
                   height: 56,
                   child: FilledButton.icon(
                     onPressed: _start,
@@ -151,6 +174,11 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                   ),
                 ),
               ]),
+              if (MediaQuery.sizeOf(context).width < 600)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: FilledButton.icon(onPressed: _start, icon: const Icon(Icons.download), label: Text(s('recv.start'))),
+                ),
               const SizedBox(height: 12),
               Row(children: [
                 Icon(Icons.folder_open, size: 18, color: cs.onSurfaceVariant),
@@ -159,12 +187,12 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant)),
                 Expanded(
-                  child: Text(saveDir,
+                  child: Text(MobilePlatform.displayPath(saveDir),
                       style: theme.textTheme.bodySmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ),
-                TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
+                if (!MobilePlatform.isIOS) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
               ]),
             ],
           ),
@@ -242,7 +270,7 @@ class _ReceiveCard extends ConsumerWidget {
                           s('send.files_bytes')
                               .replaceFirst('{files}', '${r.metaFiles}')
                               .replaceFirst('{bytes}', formatBytes(r.metaBytes)),
-                        r.saveDir,
+                        MobilePlatform.displayPath(r.saveDir),
                       ].join('  ·  '),
                       style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                       maxLines: 1,
@@ -252,7 +280,7 @@ class _ReceiveCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              StateChip(r.state, detail: detail),
+              Flexible(child: StateChip(r.state, detail: detail)),
               const SizedBox(width: 4),
               if (running)
                 IconButton(
@@ -270,10 +298,12 @@ class _ReceiveCard extends ConsumerWidget {
                 ),
               if (r.state == 'completed')
                 IconButton(
-                  tooltip: s('recv.open_dir'),
+                  tooltip: s(MobilePlatform.isIOS ? 'recv.export' : 'recv.open_dir'),
                   // Open the containing folder, including when the share was
                   // a single file or the receiver renamed a colliding root.
-                  onPressed: () => OpenFilex.open(r.saveDir),
+                  onPressed: () => MobilePlatform.isIOS
+                      ? MobilePlatform.exportDirectory(r.saveDir)
+                      : OpenFilex.open(r.saveDir),
                   icon: const Icon(Icons.folder_open),
                 ),
               if (r.isActive)

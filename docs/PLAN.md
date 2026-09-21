@@ -256,7 +256,7 @@ const char* CtVersion(void);
 
 ## 八、Flutter 应用
 
-依赖：`ffi`、`ffigen`、`flutter_riverpod`、`path_provider`、`file_picker`、`desktop_drop`、`qr_flutter`、`mobile_scanner`、`app_links`、`share_handler`、`tray_manager` + `window_manager`、`flutter_local_notifications`、`open_filex`（均为 BSD / MIT）。
+依赖：`ffi`、`ffigen`、`flutter_riverpod`、`path_provider`、`file_picker`、`desktop_drop`、`qr_flutter`、`mobile_scanner`、`app_links`、`tray_manager` + `window_manager`、`flutter_local_notifications`、`open_filex`（均为 BSD / MIT）。
 
 页面：
 
@@ -264,7 +264,7 @@ const char* CtVersion(void);
 2. **接收页**：扫码 / 粘贴链接为首屏，手输 10 位码兜底 → 保存目录 → 清单与进度 → 完成后打开目录。
 3. **设置**：保存目录、服务器地址、TURN 模式、分享 ttl、默认 once / open、语言（中 / 英）。
 
-平台：桌面托盘与关窗隐藏；iOS 分享扩展入口、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。
+平台：桌面托盘与关窗隐藏；iOS 15.0+，原生分享扩展 + App Group 批次导入、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。iOS 分享扩展导入后提示用户返回主 App 生成取件码，不采用 `share_handler` 的响应链 UIApplication 跳转；Android 分享插件在阶段 4 决定。
 
 桌面基线（阶段 2 确定）：macOS 12.0+（Flutter 3.47 模板与 `file_picker_darwin` 的要求），**不启用 App Sandbox**（P2P 任意 UDP 端口 + 用户任意目录读写），走 Developer ID 签名 + 公证的 dmg 分发；`crosstransfer_native` 以 `vendored_libraries` podspec 嵌入 `Contents/Frameworks/`。Windows / Linux 把共享库放在可执行文件旁（`lib/`），Dart `DynamicLibrary.open` 按 `CT_NATIVE_LIB` → 包内路径 → 裸名顺序查找。
 
@@ -272,7 +272,7 @@ const char* CtVersion(void);
 
 - 根 `xmake.lua`：`includes("minirtc")`，`crosstransfer_core`（static）、`ct_cli`（binary）、`crosstransfer_native`（shared umbrella，`-force_load` / `--whole-archive`）。
 - 桌面：`tools/build_native.sh <plat> <arch>` → `app/<plat>/native/libcrosstransfer_native.*`，Dart `DynamicLibrary.open`。
-- iOS：合并为 `.a` + podspec `vendored_libraries`，Dart `DynamicLibrary.process()`。
+- iOS：将 core / MiniRTC / 静态依赖合并为 `.a`，device arm64 与 simulator arm64/x86_64 包装为静态 XCFramework，通过 podspec `vendored_frameworks` 集成并保留 FFI 导出，Dart `DynamicLibrary.process()`。
 - Android（后置）：Gradle `externalNativeBuild` → `jniLibs`。
 - 服务端：`go build` 单二进制；`Dockerfile`（distroless）、`compose.yaml`（信令 + 内嵌 TURN，主机网络）；配置 `CT_LISTEN`、`CT_TLS_CERT/KEY` 或 `CT_ACME_DOMAIN`、`CT_PUBLIC_IP`、`CT_TURN_PORT`、`CT_TURN_PORT_RANGE`、`CT_TURN_SECRET`、`CT_EXTERNAL_TURN`、`CT_RELAY_RATE_LIMIT`。
 - CI：native 三平台 + iOS 未签名；`go test` + `go vet` + 多架构镜像；`flutter build`；发布门禁包含第三方许可证清单生成与依赖许可证核对。
@@ -294,7 +294,7 @@ const char* CtVersion(void);
 8. 三个页面、拖拽、二维码、链接 scheme、托盘、通知。
 9. 三平台 native 集成与打包（dmg / pkg、NSIS、deb）。
 
-**阶段 3：iOS**
+**阶段 3：iOS**（2026-09-22 主要实现与本机验收完成；真机/域名验收待补，见 `docs/PHASE3_NOTES.md`、`docs/IOS_BUILD.md`）
 10. 静态库合并 + podspec；分享扩展；扫码；Universal Link；`Documents/Received`；后台任务。
 
 **阶段 4：Android**

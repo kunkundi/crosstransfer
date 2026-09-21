@@ -21,7 +21,12 @@
   - Windows x64、Linux x86_64、macOS universal 的 Actions 验收全绿：27 项 core tests / 299 断言、9 项 Flutter tests、15 个 FFI 导出、FFI ⇄ CLI 传输、Flutter release、安装后的首次/热启动链接收件。验收 run `35626385301`，代码提交 `2a1d761`，工作分支 `codex/phase2-desktop`。
   - 构建脚本 `tools/build_native.sh` / `tools/build_native.ps1`；打包脚本 `tools/package_macos.sh` / `tools/package_windows.ps1` / `tools/package_linux.sh`，产出 DMG / NSIS / deb 与 SHA-256。Windows 原生依赖统一动态 CRT，安装器携带运行库；Linux 自动计算 ELF 依赖。
   - macOS 最低 12.0、不启用 App Sandbox；当前 DMG 为 `local-test`。正式 Developer ID 签名/公证流程已提供，尚无发布证书；真实 Windows/Linux 桌面的托盘、通知与安装器交互外观仍需人工验收。
-- 下一步：阶段 3 iOS；公开发布前补齐证书/公证与真实桌面外观验收。阶段 4 Android、阶段 5 公共服务与加固沿用规划。
+- **阶段 3 iOS 主要实现与本机验收已完成**，记录见 `docs/PHASE3_NOTES.md`，操作见 `docs/IOS_BUILD.md`：
+  - iOS 15.0+，device arm64 / simulator arm64+x86_64 静态 XCFramework、分享扩展、扫码、Documents/Received、系统分享/导出、后台任务、手机布局。
+  - 本机未签名 release / simulator 构建、15 项 ABI 符号检查、13 项 Dart 测试、4 项 XCTest（运行时 FFI、P2P、强制中继、失败重连）通过；CLI ⇄ iOS 实际收发校验通过，系统 Files 分享扩展已验收。
+  - 修复心跳/重连条件变量锁不一致与 endpoint 生命周期问题；桌面 core 回归扩充至 28 用例 / 305 断言。
+  - 正式 Bundle ID/Team/域名仍待确定，签名真机、相机实扫、后台系统到期与 Universal Link 部署验收未完成；新增 iOS Actions 尚未记录远程运行结果。
+- 下一步：阶段 4 Android，同时补 iOS 真机/域名验收；公开发布前补齐桌面证书/公证与真实桌面外观验收，阶段 5 公共服务与加固沿用规划。
 
 ## 硬约束（不要偏离）
 

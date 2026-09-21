@@ -1,0 +1,3 @@
+// Provisional identifier; tools/configure_ios.py updates identifiers and links.
+CT_BUNDLE_ID = com.crosstransfer.crosstransfer
+CT_APP_GROUP = group.$(CT_BUNDLE_ID)

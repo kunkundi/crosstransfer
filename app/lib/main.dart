@@ -1,4 +1,4 @@
-// CrossTransfer desktop entry point.
+// CrossTransfer application entry point.
 //
 // Copyright (c) 2026 DI JUNKUN. All Rights Reserved. Proprietary.
 

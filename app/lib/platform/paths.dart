@@ -33,6 +33,13 @@ class AppPaths {
     }
     await Directory(dataDir).create(recursive: true);
 
+    if (Platform.isIOS) {
+      final documents = await getApplicationDocumentsDirectory();
+      final saveDir = p.join(documents.path, 'Received');
+      await Directory(saveDir).create(recursive: true);
+      return AppPaths(dataDir: dataDir, defaultSaveDir: saveDir);
+    }
+
     String saveDir;
     try {
       final downloads = await getDownloadsDirectory();

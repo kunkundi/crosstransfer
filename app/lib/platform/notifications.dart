@@ -20,6 +20,11 @@ class DesktopNotifier {
     try {
       final ok = await _plugin.initialize(
         settings: const InitializationSettings(
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: true,
+            requestSoundPermission: true,
+            requestBadgePermission: false,
+          ),
           macOS: DarwinInitializationSettings(
             requestAlertPermission: true,
             requestSoundPermission: true,
@@ -48,6 +53,7 @@ class DesktopNotifier {
         title: title,
         body: body,
         notificationDetails: const NotificationDetails(
+          iOS: DarwinNotificationDetails(presentSound: true),
           macOS: DarwinNotificationDetails(presentSound: true),
           linux: LinuxNotificationDetails(),
           windows: WindowsNotificationDetails(),
@@ -58,5 +64,5 @@ class DesktopNotifier {
     }
   }
 
-  bool get supported => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  bool get supported => Platform.isIOS || Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 }

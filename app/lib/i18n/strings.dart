@@ -21,6 +21,17 @@ class S {
 }
 
 const Map<String, String> _zh = {
+  'recv.scan': '扫码接收',
+  'recv.camera_error': '无法使用相机，请在系统设置中允许相机权限，或返回粘贴链接。',
+  'recv.export': '导出到文件',
+  'send.system_share': '系统分享',
+  'send.mobile_empty': '选择文件，或从其他 App 分享到 CrossTransfer。',
+  'mobile.foreground': '传输大文件时请保持 App 在前台。',
+  'mobile.expired': '后台时间已用完，传输已暂停，请回到 App 后继续。',
+  'mobile.inbox': '从其他 App 导入的文件',
+  'mobile.inbox_send': '生成取件码',
+  'mobile.inbox_remove': '移除',
+
   'app.title': 'CrossTransfer',
   'nav.send': '发送',
   'nav.receive': '接收',
@@ -158,6 +169,17 @@ const Map<String, String> _zh = {
 };
 
 const Map<String, String> _en = {
+  'recv.scan': 'Scan QR code',
+  'recv.camera_error': 'Camera unavailable. Allow camera access in Settings, or go back and paste the link.',
+  'recv.export': 'Export to Files',
+  'send.system_share': 'Share',
+  'send.mobile_empty': 'Choose files or share them to CrossTransfer from another app.',
+  'mobile.foreground': 'Keep the app in the foreground for large transfers.',
+  'mobile.expired': 'Background time expired. Transfers paused; return to the app to continue.',
+  'mobile.inbox': 'Files imported from other apps',
+  'mobile.inbox_send': 'Create take-code',
+  'mobile.inbox_remove': 'Dismiss',
+
   'app.title': 'CrossTransfer',
   'nav.send': 'Send',
   'nav.receive': 'Receive',

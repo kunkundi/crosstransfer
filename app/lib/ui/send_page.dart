@@ -13,6 +13,7 @@ import 'package:path/path.dart' as p;
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../ffi/core_client.dart';
+import '../platform/mobile.dart';
 import '../state/format.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
@@ -65,14 +66,7 @@ class _SendPageState extends ConsumerState<SendPage> {
     final theme = Theme.of(context);
     final compact = shares.isNotEmpty;
 
-    return DropTarget(
-      onDragEntered: (_) => setState(() => _dragging = true),
-      onDragExited: (_) => setState(() => _dragging = false),
-      onDragDone: (d) {
-        setState(() => _dragging = false);
-        _share(d.files.map((f) => f.path).toList());
-      },
-      child: ListView(
+    final content = ListView(
         padding: const EdgeInsets.all(24),
         children: [
           _DropZone(
@@ -82,7 +76,7 @@ class _SendPageState extends ConsumerState<SendPage> {
             onPickFolder: _pickFolder,
           ),
           if (shares.isEmpty)
-            EmptyHint(s('send.empty'))
+            EmptyHint(s(MobilePlatform.isMobile ? 'send.mobile_empty' : 'send.empty'))
           else ...[
             const SizedBox(height: 16),
             for (final share in shares)
@@ -98,7 +92,16 @@ class _SendPageState extends ConsumerState<SendPage> {
                   style: TextStyle(color: theme.colorScheme.error)),
             ),
         ],
-      ),
+    );
+    if (MobilePlatform.isMobile) return content;
+    return DropTarget(
+      onDragEntered: (_) => setState(() => _dragging = true),
+      onDragExited: (_) => setState(() => _dragging = false),
+      onDragDone: (d) {
+        setState(() => _dragging = false);
+        _share(d.files.map((f) => f.path).toList());
+      },
+      child: content,
     );
   }
 }
@@ -137,20 +140,21 @@ class _DropZone extends ConsumerWidget {
           Icon(active ? Icons.file_download_outlined : Icons.upload_file_outlined,
               size: compact ? 28 : 48, color: cs.primary),
           const SizedBox(height: 8),
-          Text(active ? s('send.drop_active') : s('send.drop_hint'),
+          Text(active ? s('send.drop_active') : s(MobilePlatform.isMobile ? 'send.pick_files' : 'send.drop_hint'),
               style: Theme.of(context).textTheme.titleMedium),
           if (!active) ...[
             const SizedBox(height: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 FilledButton.tonalIcon(
                   onPressed: onPickFiles,
                   icon: const Icon(Icons.insert_drive_file_outlined),
                   label: Text(s('send.pick_files')),
                 ),
-                const SizedBox(width: 12),
-                FilledButton.tonalIcon(
+                if (!MobilePlatform.isIOS) FilledButton.tonalIcon(
                   onPressed: onPickFolder,
                   icon: const Icon(Icons.folder_outlined),
                   label: Text(s('send.pick_folder')),
@@ -306,6 +310,12 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                         icon: const Icon(Icons.link),
                         label: Text(s('send.copy_link')),
                       ),
+                      if (MobilePlatform.isIOS)
+                        OutlinedButton.icon(
+                          onPressed: () => MobilePlatform.shareLink(share.link),
+                          icon: const Icon(Icons.ios_share),
+                          label: Text(s('send.system_share')),
+                        ),
                       OutlinedButton.icon(
                         onPressed: () => _copy(share.code, s('send.copied')),
                         icon: const Icon(Icons.pin_outlined),

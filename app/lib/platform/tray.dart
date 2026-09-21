@@ -53,6 +53,7 @@ class DesktopTray with TrayListener, WindowListener {
   }
 
   Future<void> showWindow() async {
+    if (!supported) return;
     await windowManager.show();
     await windowManager.focus();
   }

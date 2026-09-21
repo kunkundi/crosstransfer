@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ffi/core_client.dart';
+import '../platform/mobile.dart';
 import '../i18n/strings.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
@@ -124,9 +125,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           label: s('settings.save_dir'),
           child: Row(children: [
             Expanded(
-              child: Text(_saveDir, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(MobilePlatform.displayPath(_saveDir), maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
-            TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
+            if (!MobilePlatform.isIOS) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
           ]),
         ),
         _Row(
@@ -299,6 +300,17 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(label, style: theme.textTheme.bodyMedium),
+          if (hint != null) Text(hint!, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 8),
+          child,
+        ]),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(

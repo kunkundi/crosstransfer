@@ -1,0 +1,63 @@
+name: iOS Phase 3
+on:
+  push:
+    branches: [main, 'codex/phase3-ios']
+    paths-ignore: ['**.md']
+  pull_request:
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: '3.1.0'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.xmake/packages
+          key: ios-native-v1-${{ hashFiles('xmake.lua', 'minirtc/**/xmake.lua', 'tools/build_ios_native.sh') }}
+          restore-keys: ios-native-v1-
+      - name: Static device and simulator libraries
+        run: tools/build_ios_native.sh
+      - name: Flutter checks and builds
+        working-directory: app
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter analyze
+          flutter test
+          flutter build ios --release --no-codesign
+          flutter build ios --simulator --debug
+          python3 ../tools/check_ios_native.py build/ios/iphoneos/Runner.app
+          python3 ../tools/check_ios_native.py build/ios/iphonesimulator/Runner.app
+      - name: Simulator runtime FFI and transfers
+        run: |
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for ds in json.load(sys.stdin)["devices"].values() for d in ds if d["name"].startswith("iPhone")))')
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          tools/test_ios_native.sh "$device"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-builds
+          path: |
+            app/build/ios/iphoneos/Runner.app
+            app/build/ios/iphonesimulator/Runner.app
+            dist/ios-*.png
+            dist/ios-native-*.xcresult
