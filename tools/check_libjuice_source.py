@@ -74,7 +74,7 @@ def Main():
         source = work / PREFIX
         subprocess.run(["git", "apply", "--check", str(PATCH)], cwd=source, check=True)
         subprocess.run(["git", "apply", str(PATCH)], cwd=source, check=True)
-        (source / "CROSSTRANSFER-CHANGES.txt").write_text(CHANGES, encoding="utf-8")
+        (source / "CROSSTRANSFER-CHANGES.txt").write_bytes(CHANGES.encode("utf-8"))
         (source / "CROSSTRANSFER-RELAY-ONLY.patch").write_bytes(PATCH.read_bytes())
         buffer = io.BytesIO()
         with gzip.GzipFile(fileobj=buffer, mode="wb", mtime=0, filename="") as compressed:
@@ -97,7 +97,10 @@ def Main():
             with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
                 return {m.name: (m.mode, archive.extractfile(m).read())
                         for m in archive.getmembers() if m.isfile()}
-        assert Contents(BUNDLE.read_bytes()) == Contents(result), "bundled source differs from recipe"
+        bundled, expected = Contents(BUNDLE.read_bytes()), Contents(result)
+        changed = sorted(name for name in bundled.keys() | expected.keys()
+                         if bundled.get(name) != expected.get(name))
+        assert not changed, f"bundled source differs from recipe: {changed}"
         license_text = (source / "LICENSE").read_bytes()
         for path in [ROOT / "docs/licenses/libjuice.txt", ROOT / "app/assets/legal/libjuice.txt"]:
             assert path.read_bytes() == license_text, f"license mismatch: {path}"

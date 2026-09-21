@@ -50,14 +50,16 @@ def CreateCA(work, openssl):
         subprocess.run([openssl, *args], cwd=work, check=True, capture_output=True)
     (work / "root.cnf").write_text(
         "[req]\ndistinguished_name=dn\nx509_extensions=ca\n[dn]\n[ca]\n"
-        "basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\n")
+        "basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\n"
+        "subjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid:always\n")
     Run("req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", "root.key",
         "-out", "root.pem", "-days", "1", "-subj", "/CN=CrossTransfer Load Test CA", "-config", "root.cnf")
     Run("req", "-newkey", "rsa:2048", "-nodes", "-keyout", "server.key",
         "-out", "server.csr", "-subj", "/CN=CrossTransfer Local Test")
     (work / "server.ext").write_text(
         "basicConstraints=critical,CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\n"
-        "extendedKeyUsage=serverAuth\nsubjectAltName=IP:127.0.0.1\n")
+        "extendedKeyUsage=serverAuth\nsubjectAltName=IP:127.0.0.1\n"
+        "subjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n")
     Run("x509", "-req", "-in", "server.csr", "-CA", "root.pem", "-CAkey", "root.key",
         "-CAcreateserial", "-out", "server.pem", "-days", "1", "-extfile", "server.ext")
 
