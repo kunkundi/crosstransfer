@@ -10,7 +10,7 @@ cd app
 flutter pub get --enforce-lockfile
 flutter analyze
 flutter test
-flutter build macos --release
+python3 ../tools/build_macos_app.py
 cd ..
 tools/package_macos.sh
 ```
@@ -25,6 +25,14 @@ CT_NOTARY_PROFILE='your-profile' tools/package_macos.sh
 ```
 
 此分支不配置或上传签名私钥。没有发布证书时生成的是本地测试包，不能当作已公证产品分发。Apple Development 证书不能替代 Developer ID。
+
+### Flutter 3.47.5 的 macOS AOT 构建约束
+
+当前 App 触发上游 [Flutter #191575](https://github.com/flutter/flutter/issues/191575)：`_window_macos.dart` 的 `_Rect` 类型在快照中仍被引用，但其 class ID 被裁掉，Release 编译器崩溃。直接 `flutter build macos --release` 在本机失败。
+
+`tools/build_macos_app.py` 只接受 framework revision `6a19cca56475dbfba1478ee68d7bd0c2ef891da1`，校验源文件 SHA-256 后，通过 macOS APFS 写时复制创建仓库 `build/` 下的独立 SDK。仅给 6 个内部 macOS FFI 类型增加 `@pragma('vm:entry-point')`，保留快照元数据；不启用实验窗口特性，也不改全局 SDK。构建前显式 `pub get --enforce-lockfile` 让 package_config 指向该副本，结束后恢复原 SDK 的解析路径。上游 SDK 更新必须重新验证并移除此临时处理，不能静默套用到其他版本。
+
+该脚本已在本机生成 universal Release App。补丁作用于 Flutter 的 BSD 许可源码，原版权/许可保持不变；源码变更由脚本完整记录。原生传输库仍通过常规 native 构建脚本生成。
 
 ## Windows x64
 
