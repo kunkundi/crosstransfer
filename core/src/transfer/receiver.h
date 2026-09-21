@@ -164,8 +164,8 @@ class ReceiverTransfer {
   size_t queue_bytes_ = 0;
   static constexpr size_t kMaxQueueBytes = 64u * 1024u * 1024u;
 
-  // Owner -> writer messages.
-  std::mutex done_mutex_;
+  // Owner -> writer messages, also guarded by queue_mutex_ so the wake
+  // predicate and both producer queues have the same synchronization.
   std::map<uint16_t, std::string> pending_done_;
 
   mutable std::mutex state_mutex_;  // guards rx_ bitmaps for snapshots

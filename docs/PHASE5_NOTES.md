@@ -45,6 +45,12 @@ iOS 可用系统信任补齐 OpenSSL 缺失的根证书，但该回退先严格�
 
 新增中英 README 与 `docs/SELF_HOSTING.md`，涵盖三种 TLS 方式、TURN、防火墙、代理、手机域名关联、升级与回滚。公共服务配额和真实公网 ACME 验收仍待完成。
 
+## 并发压测发现的接收端缺陷（2026-09-22）
+
+8 接收端 × 64 MiB 的强制 TURN 测试暴露重复最终块问题：`HandleBatch` 在提交前一段之前判断后一块是否新块，同批重复块可能在前一段完成校验并关闭文件后仍被写入，误报 `io write failed`。改为先提交不连续段、再判断当前块新旧；同时让 `file_done` 队列与条件变量共享同一互斥锁，消除原等待谓词对另一锁保护数据的读取。
+
+新增确定性测试由 writer 回调把两份最终块放进同一批，并提前送达哈希。旧实现稳定失败，修复后 **32 项 core / 859 断言通过**。大并发还发现 TURN 数据停顿/ICE 超时，正在继续定位，不能将该轮记为整体通过。
+
 ## 剩余工作
 
 内置 TURN 增加默认 peer 访问策略（参考 [IANA IPv4 特殊用途地址表](https://www.iana.org/assignments/iana-ipv4-special-registry/)）：拒绝私网/回环/CGNAT、链路本地、组播、文档/基准测试和保留地址；IPv6 peer 因当前仅 UDP4 中继而拒绝。受控测试可显式开放 RFC1918、回环、CGNAT，但不能放开链路本地。新增地址边界、IPv4-mapped IPv6 和真实 TURN Allocate/CreatePermission/双向数据测试；默认策略确实阻止回环数据，测试开关下双向数据通过。完整 Go race/vet 通过。

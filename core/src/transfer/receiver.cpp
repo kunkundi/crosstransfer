@@ -190,7 +190,7 @@ void ReceiverTransfer::OnBlock(const uint8_t* data, size_t len) {
 
 void ReceiverTransfer::OnFileDone(uint16_t index, const std::string& sha256) {
   {
-    std::lock_guard<std::mutex> lock(done_mutex_);
+    std::lock_guard<std::mutex> lock(queue_mutex_);
     pending_done_[index] = sha256;
   }
   queue_cv_.notify_one();
@@ -228,22 +228,19 @@ void ReceiverTransfer::Run() {
   bool initial_check = true;
   while (!stop_.load() && !failed_.load()) {
     std::deque<Pending> batch;
+    std::map<uint16_t, std::string> done;
     {
       std::unique_lock<std::mutex> lock(queue_mutex_);
       queue_cv_.wait_for(lock, std::chrono::milliseconds(kSackIntervalMs / 2), [&] {
         return stop_.load() || !queue_.empty() || !pending_done_.empty();
       });
       batch.swap(queue_);
+      done.swap(pending_done_);
       queue_bytes_ = 0;
     }
     const uint32_t now = NowMs();
     HandleBatch(batch, now);
     if (failed_.load()) return;
-    std::map<uint16_t, std::string> done;
-    {
-      std::lock_guard<std::mutex> lock(done_mutex_);
-      done.swap(pending_done_);
-    }
     for (auto& [index, hash] : done) {
       if (index >= rx_.size()) continue;
       rx_[index]->expected_sha256 = hash;
@@ -329,13 +326,17 @@ void ReceiverTransfer::HandleBatch(std::deque<Pending>& batch, uint32_t now) {
     return ok;
   };
   for (const auto& p : batch) {
-    if (!AcceptBlock(p)) continue;
     FileRx& f = *rx_[p.file];
     const bool contiguous = run_file == &f && !run_blocks.empty() &&
                             p.block == run_blocks.back() + 1 &&
                             run_data.size() == run_blocks.size() * kBlockPayloadSize;
     if (!contiguous) {
       if (!flush()) return;
+    }
+    // Committing the previous run may mark this block received, or finish
+    // verification and close its file. Decide freshness only after that flush.
+    if (!AcceptBlock(p)) continue;
+    if (!run_file) {
       run_file = &f;
       run_first = p.block;
     }

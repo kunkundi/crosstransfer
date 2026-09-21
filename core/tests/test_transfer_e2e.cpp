@@ -320,3 +320,44 @@ TEST_CASE("transfer: corrupted file is detected and re-sent") {
   CHECK(h.file_bads == 1);
   CHECK(SameContent(h.src / "c.bin", h.dst / "c.bin"));
 }
+
+TEST_CASE("transfer: duplicate final block in one batch does not write a closed file") {
+  Harness h(0.0, 0);
+  WriteRandomFile(h.src / "data.bin", 777, 11);
+  WriteRandomFile(h.src / "zero.bin", 0, 12);
+  h.Build({(h.src / "data.bin").string(), (h.src / "zero.bin").string()});
+  REQUIRE(h.manifest.files[0].path == "data.bin");
+  REQUIRE(h.manifest.files[1].path == "zero.bin");
+  std::ifstream in(h.src / "data.bin", std::ios::binary);
+  std::vector<uint8_t> payload((std::istreambuf_iterator<char>(in)), {});
+  std::vector<uint8_t> wire(kBlockHeaderSize + payload.size());
+  BlockHeader header;
+  header.len = static_cast<uint16_t>(payload.size());
+  REQUIRE(EncodeBlock(header, payload.data(), wire.data(), wire.size()) == wire.size());
+  ReceiverCallbacks callbacks;
+  callbacks.on_error = [&](const std::string&, const std::string&) { h.failed = true; };
+  callbacks.on_all_done = [&] { h.receiver_done = true; };
+  callbacks.on_file_ok = [&](uint16_t index) {
+    if (index != 1) return;
+    // The data hash has already been consumed, and this callback runs on the
+    // writer thread: both copies deterministically enter the next single batch.
+    h.receiver->OnBlock(wire.data(), wire.size());
+    h.receiver->OnBlock(wire.data(), wire.size());
+  };
+  h.receiver = std::make_unique<ReceiverTransfer>(&h.r2s, callbacks);
+  std::string error, hash;
+  REQUIRE(h.receiver->Start(h.manifest, h.dst, {}, {}, &error));
+  REQUIRE(Sha256File(h.src / "data.bin", &hash));
+  h.receiver->OnFileDone(0, hash);
+  h.receiver->OnFileDone(1, Sha256Hex("", 0));
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+  while (!h.receiver_done && !h.failed && std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  h.receiver->Stop();
+  CHECK_FALSE(h.failed);
+  CHECK(h.receiver_done);
+  CHECK(h.receiver->Progress().bytes_received == 777);
+  CHECK(h.receiver->Progress().files_done == 2);
+  CHECK(SameContent(h.src / "data.bin", h.dst / "data.bin"));
+}
