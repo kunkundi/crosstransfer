@@ -25,6 +25,16 @@ CGO_ENABLED=0 go build -trimpath -o ctserver ./cmd/ctserver
 cp .env.example .env
 ```
 
+Server CI 另保存 `ctserver-linux-amd64-arm64` artifact，其中包含两种 Linux 架构的 OCI 镜像归档与 SHA-256；它不是已发布的镜像地址。Dockerfile 在构建宿主上交叉编译静态 Go 二进制，无需模拟器参与编译。在仓库根目录可复现：
+
+```sh
+mkdir -p dist
+docker buildx build --platform linux/amd64,linux/arm64 --provenance=false \
+  --build-arg VERSION=local-test \
+  --output type=oci,dest=dist/ctserver-linux-amd64-arm64.oci.tar \
+  -t crosstransfer/ctserver:local-test server
+```
+
 `.env` 是 Docker Compose 的环境文件；直接运行二进制时由服务管理器设置环境变量，或设置 `CT_CONFIG=/etc/ctserver/config.yaml`。配置优先级是环境变量 > YAML > 默认值。完整变量见 `server/.env.example` 和 `server/internal/config/config.go`。
 
 推荐先选择一种 TLS 方式：

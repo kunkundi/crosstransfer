@@ -134,3 +134,7 @@ TURN 计量会对经过两个 relay socket 的同一数据分别计数，不能�
 本机 iOS 最新未签名 Release App 30.1 MB 已成功，20 项法律资产、15 项 FFI 导出、扩展与 App Group 均通过。正式签名、真机、公开域名及真实 ACME 验收仍待相应资源。
 
 资源配额版本容器 `crosstransfer/ctserver:phase5-quota-check` 构建成功；只读/非 root 运行、YAML 健康探针、固定落地/下载/关联文件、默认私有 metrics 和 ACME 卷权限回归通过。本机使用过的 Android/iOS 模拟器已关闭，SDK 与测试设备配置保留。
+
+## 服务端多架构镜像（2026-09-22）
+
+Dockerfile 使用构建宿主运行 Go 编译器，按 BuildKit TARGETOS/TARGETARCH 交叉编译；Server CI 导出 linux/amd64 + linux/arm64 OCI 归档和 SHA-256，不上传镜像仓库。本机归档逐 blob 校验 SHA-256，并核对两份 ELF machine、镜像平台、nonroot 用户与入口。加载归档后，两个平台分别通过完整容器路由/权限检查（amd64 由 Docker Desktop 仿真运行）。本机报告 `/tmp/ct-phase5-multiarch-{amd64,arm64}.log`，产物 `dist/ctserver-linux-amd64-arm64.oci.tar`。
