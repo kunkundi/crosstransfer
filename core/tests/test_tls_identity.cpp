@@ -4,6 +4,7 @@
 #include <openssl/x509v3.h>
 
 #include <memory>
+#include <ostream>
 #include <string>
 
 #include "../../minirtc/src/ws/tls_peer_name.h"
