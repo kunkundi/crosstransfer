@@ -127,7 +127,10 @@ if has_config("ct_native") then
             add_ldflags("-Wl,--whole-archive", "$(builddir)/$(plat)/$(arch)/$(mode)/libcrosstransfer_core.a",
                 "-Wl,--no-whole-archive", {force = true})
             if is_plat("android") then
-                add_ldflags("-Wl,-z,max-page-size=16384", {force = true})
+                add_shflags("-Wl,-z,max-page-size=16384", {force = true})
+                -- OpenSSL's ARM assembly uses local-relative capability data.
+                -- Keep its static symbols private to this umbrella library.
+                add_shflags("-Wl,--exclude-libs,libcrypto.a:libssl.a", {force = true})
             end
         elseif is_plat("windows") then
             add_defines("CT_BUILDING_SHARED")
