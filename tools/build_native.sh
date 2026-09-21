@@ -51,7 +51,7 @@ case "$PLAT" in
 esac
 
 echo "==> xmake f -p $PLAT -a $ARCH -m $MODE --ct_native=y ${extra[*]:-}"
-xmake f -p "$PLAT" -a "$ARCH" -m "$MODE" --ct_native=y "${extra[@]}" -y
+xmake f -p "$PLAT" -a "$ARCH" -m "$MODE" --ct_native=y -o build "${extra[@]}" -y
 xmake build -y crosstransfer_native
 
 OUT="build/$PLAT/$ARCH/$MODE"

@@ -16,7 +16,7 @@ function Invoke-Xmake([string[]]$Arguments) {
 }
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
-    Invoke-Xmake -Arguments @('f', '-p', 'windows', '-a', $Arch, '-m', $Mode, '--ct_native=y', '-y')
+    Invoke-Xmake -Arguments @('f', '-p', 'windows', '-a', $Arch, '-m', $Mode, '--ct_native=y', '-o', 'build', '-y')
     Invoke-Xmake -Arguments @('build', '-y', 'crosstransfer_native')
     New-Item -ItemType Directory -Force app/windows/native | Out-Null
     Copy-Item "build/windows/$Arch/$Mode/crosstransfer_native.dll" app/windows/native/ -Force
