@@ -33,11 +33,12 @@
 
 测试工具：`build_ios_native.sh`、`check_ios_native.py`、`test_ios_native.sh <UDID>`、`ios_e2e.py --device <UDID>`。XCTest 可无人值守执行；scheme 的首次系统确认保留为交互验收，不用脚本绕过系统提示。截图在本地 `dist/ios-receive.png`、`dist/ios-share.png`。修复后 XCTest 结果在 `dist/ios-native-20260922-014434.xcresult`；路径验证记录传输事件，避免完成后会话已移除的查询竞态。
 
+远程验收：[Actions 35634079792](https://github.com/kunkundi/crosstransfer/actions/runs/35634079792) 全部通过，对应 `b109234`；含三 slice 原生构建、Dart 分析/测试、device 与 simulator Flutter 构建、15 项 ABI 检查及模拟器 XCTest。
+
 尚未完成的验收边界：
 
 - 正式 Bundle ID、Apple Team/App Group provisioning、接收域名与 AASA 部署待项目所有者确定；当前使用临时桌面同名 ID，release 产物未签名。
 - 未连接真实 iPhone/iPad，摄像头实扫、系统实际后台时间耗尽、锁屏网络、Universal Link 域名关联与通知真机行为尚未验收。
-- 新增 CI 工作流已本地验证对应构建/测试命令；GitHub Actions 运行结果需另行记录。
 - 导入文件在主 App Documents/Imported 中保留，用户可通过“文件”管理；自动配额/陈旧临时文件回收留给阶段 5 加固。
 
 下一步：补真机/域名验收，并按 PLAN.md 阶段 4 移植 Android NDK 和 Runner。阶段 5 继续完整许可证清单、公共服务部署与全平台加固。
