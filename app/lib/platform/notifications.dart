@@ -5,41 +5,49 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications_linux/flutter_local_notifications_linux.dart';
+import 'package:flutter_local_notifications_windows/flutter_local_notifications_windows.dart';
 
 class DesktopNotifier {
   DesktopNotifier._();
   static final DesktopNotifier instance = DesktopNotifier._();
 
-  final _plugin = FlutterLocalNotificationsPlugin();
+  static const _appleChannel = MethodChannel('com.crosstransfer/notifications');
+  static const _androidChannel = MethodChannel('com.crosstransfer/mobile');
+  LinuxFlutterLocalNotificationsPlugin? _linux;
+  FlutterLocalNotificationsWindows? _windows;
   bool _ready = false;
   int _seq = 0;
 
   Future<void> init() async {
     if (kIsWeb) return;
     try {
-      final ok = await _plugin.initialize(
-        settings: const InitializationSettings(
-          android: AndroidInitializationSettings('ic_transfer'),
-          iOS: DarwinInitializationSettings(
-            requestAlertPermission: true,
-            requestSoundPermission: true,
-            requestBadgePermission: false,
+      if (Platform.isLinux) {
+        _linux = LinuxFlutterLocalNotificationsPlugin();
+        _ready = await _linux!.initialize(
+          settings: const LinuxInitializationSettings(
+            defaultActionName: 'Open',
           ),
-          macOS: DarwinInitializationSettings(
-            requestAlertPermission: true,
-            requestSoundPermission: true,
-            requestBadgePermission: false,
-          ),
-          linux: LinuxInitializationSettings(defaultActionName: 'Open'),
-          windows: WindowsInitializationSettings(
+        ) ?? true;
+      } else if (Platform.isWindows) {
+        _windows = FlutterLocalNotificationsWindows();
+        _ready = await _windows!.initialize(
+          settings: const WindowsInitializationSettings(
             appName: 'CrossTransfer',
             appUserModelId: 'com.crosstransfer.crosstransfer',
             guid: '7e6d0d63-2f4b-4b39-9a58-3c2c3e2f1a10',
           ),
-        ),
-      );
-      _ready = ok ?? true;
+        );
+      } else if (Platform.isAndroid) {
+        _ready =
+            await _androidChannel.invokeMethod<bool>('InitNotifications') ??
+            false;
+      } else if (Platform.isIOS || Platform.isMacOS) {
+        _ready =
+            await _appleChannel.invokeMethod<bool>('InitNotifications') ??
+            false;
+      }
     } catch (e) {
       debugPrint('notifications init: $e');
       _ready = false;
@@ -49,22 +57,29 @@ class DesktopNotifier {
   Future<void> show(String title, String body) async {
     if (!_ready) return;
     try {
-      await _plugin.show(
-        id: ++_seq,
-        title: title,
-        body: body,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'milestones',
-            'Transfer results',
-            importance: Importance.defaultImportance,
-          ),
-          iOS: DarwinNotificationDetails(presentSound: true),
-          macOS: DarwinNotificationDetails(presentSound: true),
-          linux: LinuxNotificationDetails(),
-          windows: WindowsNotificationDetails(),
-        ),
-      );
+      final id = ++_seq;
+      if (_linux != null) {
+        await _linux!.show(
+          id: id,
+          title: title,
+          body: body,
+          notificationDetails: const LinuxNotificationDetails(),
+        );
+      } else if (_windows != null) {
+        await _windows!.show(
+          id: id,
+          title: title,
+          body: body,
+          notificationDetails: const WindowsNotificationDetails(),
+        );
+      } else {
+        await (Platform.isAndroid ? _androidChannel : _appleChannel)
+            .invokeMethod<void>('ShowNotification', {
+              'id': id,
+              'title': title,
+              'body': body,
+            });
+      }
     } catch (e) {
       debugPrint('notification: $e');
     }

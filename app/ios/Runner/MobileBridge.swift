@@ -1,9 +1,11 @@
 import Flutter
 import UIKit
 import AVFoundation
+import UserNotifications
 
-final class MobileBridge {
+final class MobileBridge: NSObject, UNUserNotificationCenterDelegate {
   private let channel: FlutterMethodChannel
+  private let notifications: FlutterMethodChannel
   private var background_task: UIBackgroundTaskIdentifier = .invalid
   private var transfer_active = false
   private var background_expired = false
@@ -12,9 +14,42 @@ final class MobileBridge {
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "com.crosstransfer/mobile", binaryMessenger: messenger)
+    notifications = FlutterMethodChannel(name: "com.crosstransfer/notifications", binaryMessenger: messenger)
+    super.init()
+    notifications.setMethodCallHandler { [weak self] call, result in self?.HandleNotification(call, result: result) }
     channel.setMethodCallHandler { [weak self] call, result in self?.Handle(call, result: result) }
     NotificationCenter.default.addObserver(self, selector: #selector(DidEnterBackground), name: UIScene.didEnterBackgroundNotification, object: nil)
     NotificationCenter.default.addObserver(self, selector: #selector(WillEnterForeground), name: UIScene.willEnterForegroundNotification, object: nil)
+  }
+
+  private func HandleNotification(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let center = UNUserNotificationCenter.current()
+    switch call.method {
+    case "InitNotifications":
+      center.delegate = self
+      center.requestAuthorization(options: [.alert, .sound]) { _, error in
+        // Remain ready after denial: the user may enable notifications later.
+        DispatchQueue.main.async { result(error == nil) }
+      }
+    case "ShowNotification":
+      let args = call.arguments as? [String: Any] ?? [:]
+      let content = UNMutableNotificationContent()
+      content.title = args["title"] as? String ?? "CrossTransfer"
+      content.body = args["body"] as? String ?? ""
+      content.sound = .default
+      center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { error in
+        DispatchQueue.main.async {
+          if let error = error { result(FlutterError(code: "notification", message: error.localizedDescription, details: nil)) }
+          else { result(nil) }
+        }
+      }
+    default: result(FlutterMethodNotImplemented)
+    }
+  }
+
+  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                              withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    completionHandler([.banner, .list, .sound])
   }
 
   private func Handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

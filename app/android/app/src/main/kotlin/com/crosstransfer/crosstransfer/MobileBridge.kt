@@ -1,6 +1,10 @@
 package com.crosstransfer.crosstransfer
 
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -79,6 +83,12 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
     private fun Handle(call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
+                "InitNotifications" -> { InitNotifications(); result.success(true) }
+                "ShowNotification" -> {
+                    ShowNotification(call.argument<Int>("id") ?: 1,
+                        call.argument<String>("title").orEmpty(), call.argument<String>("body").orEmpty())
+                    result.success(null)
+                }
                 "SetTransferActive" -> { transfer_active = call.arguments == true; UpdateService(); result.success(null) }
                 "ScanCode" -> {
                     val options = ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
@@ -136,6 +146,29 @@ class MobileBridge(private val app: TransferApplication, messenger: BinaryMessen
                 else -> result.notImplemented()
             }
         } catch (error: Exception) { result.error("mobile", error.message, null) }
+    }
+
+    private fun InitNotifications() {
+        if (Build.VERSION.SDK_INT >= 26) {
+            app.getSystemService(NotificationManager::class.java).createNotificationChannel(
+                NotificationChannel("milestones", "CrossTransfer", NotificationManager.IMPORTANCE_DEFAULT))
+        }
+    }
+
+    internal fun ShowNotification(id: Int, title: String, body: String) {
+        InitNotifications()
+        val manager = app.getSystemService(NotificationManager::class.java)
+        if (!manager.areNotificationsEnabled()) return
+        val intent = Intent(app, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val open = PendingIntent.getActivity(app, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        @Suppress("DEPRECATION")
+        val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(app, "milestones")
+            else Notification.Builder(app)
+        manager.notify("milestones", id, builder.setSmallIcon(R.drawable.ic_transfer)
+            .setContentTitle(title).setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
+            .setContentIntent(open).setAutoCancel(true).build())
     }
 
     private fun RequireActivity(): Activity = activity.get() ?: error("Open CrossTransfer to continue")

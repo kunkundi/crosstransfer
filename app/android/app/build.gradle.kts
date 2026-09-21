@@ -17,7 +17,6 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -59,7 +58,6 @@ android {
 
 dependencies {
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     // integration_test brings older runner APIs into the debug APK. Keep the
@@ -96,4 +94,30 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Freeze the audited runtime graph, including transitive artifacts. This does
+// not treat the build tool's own dependencies as app runtime libraries.
+tasks.register("verifyRuntimeLicenses") {
+    doLast {
+        val modules = configurations.getByName("releaseRuntimeClasspath").incoming
+            .resolutionResult.allComponents.mapNotNull { component ->
+                (component.id as? org.gradle.api.artifacts.component.ModuleComponentIdentifier)?.let {
+                    "${it.group}:${it.module}:${it.version}"
+                }
+            }.sorted()
+        val report = layout.buildDirectory.file("reports/runtime-modules.txt").get().asFile
+        report.parentFile.mkdirs()
+        report.writeText(modules.joinToString("\n", postfix = "\n"))
+        val audited = rootProject.file("../../docs/licenses/android-runtime-modules.txt")
+        check(audited.isFile && audited.readLines().filter { it.isNotBlank() } == modules) {
+            "Android runtime dependencies changed; review licenses and update the inventory. Resolved graph: $report"
+        }
+        check(modules.none { it.contains("desugar_jdk_libs") || it.contains("mlkit") || it.contains("play-services") }) {
+            "A removed dependency was reintroduced into the app runtime"
+        }
+        check(configurations.getByName("coreLibraryDesugaring").allDependencies.isEmpty()) {
+            "Core-library desugaring has not been approved by the project's license policy"
+        }
+    }
 }

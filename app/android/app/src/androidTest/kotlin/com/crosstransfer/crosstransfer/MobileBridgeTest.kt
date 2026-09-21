@@ -33,6 +33,25 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class MobileBridgeTest {
+    @Test fun MilestoneNotificationUsesSystemChannelAndOpensApp() {
+        val manager = app.getSystemService(android.app.NotificationManager::class.java)
+        val notification_id = 7251
+        try {
+            instrumentation.runOnMainSync { app.mobile.ShowNotification(notification_id, "Transfer complete", "测试文件.txt") }
+            var item = manager.activeNotifications.firstOrNull { it.tag == "milestones" && it.id == notification_id }
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
+            while (item == null && System.nanoTime() < deadline) {
+                Thread.sleep(20)
+                item = manager.activeNotifications.firstOrNull { it.tag == "milestones" && it.id == notification_id }
+            }
+            assertNotNull("System notification was not delivered", item)
+            val notification = item!!.notification
+            assertEquals("Transfer complete", notification.extras.getString(android.app.Notification.EXTRA_TITLE))
+            assertEquals("测试文件.txt", notification.extras.getString(android.app.Notification.EXTRA_TEXT))
+            assertNotNull(notification.contentIntent)
+            if (Build.VERSION.SDK_INT >= 26) assertEquals("milestones", notification.channelId)
+        } finally { manager.cancel("milestones", notification_id) }
+    }
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app get() = instrumentation.targetContext.applicationContext as TransferApplication
     private val id = UUID.randomUUID().toString()
