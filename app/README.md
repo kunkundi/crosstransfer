@@ -2,6 +2,9 @@
 
 Requires the native core to be built first (from the repo root):
 
+See [desktop build and packaging](../docs/DESKTOP_BUILD.md) for macOS DMG,
+Windows NSIS, Linux deb, signing, and CI validation.
+
 ```sh
 tools/build_native.sh            # host platform; copies into app/<plat>/native/
 cd app && flutter pub get

@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -29,7 +30,7 @@ def Main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cli', required=True)
     parser.add_argument('--native', required=True)
-    parser.add_argument('--app', help='Windows/Linux packaged executable; test cold and warm scheme activation')
+    parser.add_argument('--app', help='Packaged executable; test initial and subsequent scheme activation')
     args = parser.parse_args()
     cli, native = str(Path(args.cli).resolve()), str(Path(args.native).resolve())
     processes, logs = [], []
@@ -114,12 +115,19 @@ def Main():
                     # The shipped app must load its bundled library, not the
                     # development override used by the headless Dart client.
                     app_env.pop('CT_NATIVE_LIB', None)
-                    activated, _ = Start(direction + '-app',
-                        [str(Path(args.app).resolve()), f'crosstransfer://r/{code}'], app_env)
-                    if app_process is None:
-                        app_process = activated
+                    executable = Path(args.app).resolve()
+                    uri = f'crosstransfer://r/{code}'
+                    if sys.platform == 'darwin':
+                        if app_process is None:
+                            app_process, _ = Start(direction + '-app', [str(executable)], app_env)
+                            time.sleep(2)
+                        subprocess.run(['open', '-a', str(executable.parents[2]), uri], check=True)
                     else:
-                        assert activated.wait(timeout=15) == 0, 'second instance did not forward the link'
+                        activated, _ = Start(direction + '-app', [str(executable), uri], app_env)
+                        if app_process is None:
+                            app_process = activated
+                        else:
+                            assert activated.wait(timeout=15) == 0, 'second instance did not forward the link'
                     dest = app_dest
                     WaitFor(lambda: all((dest / source.name / f.relative_to(source)).exists()
                                        for f in source.rglob('*')), timeout=120)

@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2026 DI JUNKUN. All Rights Reserved. Proprietary.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -55,8 +56,6 @@ Future<void> main() async {
   }
   final client = CoreClient.create(createConfig);
 
-  await DesktopNotifier.instance.init();
-
   runApp(ProviderScope(
     overrides: [
       appPrefsProvider.overrideWithValue(prefs),
@@ -64,6 +63,8 @@ Future<void> main() async {
     ],
     child: const CrossTransferApp(),
   ));
+  // A notification permission dialog must not block startup or link delivery.
+  unawaited(DesktopNotifier.instance.init());
 
   if (_isDesktop) {
     const options = WindowOptions(

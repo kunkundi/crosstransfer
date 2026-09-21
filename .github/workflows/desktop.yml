@@ -88,7 +88,11 @@ jobs:
         run: flutter build ${{ matrix.platform }} --release
       - name: Package DMG
         if: runner.os == 'macOS'
-        run: tools/package_macos.sh
+        run: |
+          tools/package_macos.sh
+          hdiutil attach -readonly -nobrowse dist/*.dmg
+          trap 'hdiutil detach /Volumes/CrossTransfer' EXIT
+          python tools/desktop_e2e.py --cli '${{ matrix.cli }}' --native '${{ matrix.native }}' --app /Volumes/CrossTransfer/CrossTransfer.app/Contents/MacOS/crosstransfer
       - name: Package deb
         if: runner.os == 'Linux'
         run: |

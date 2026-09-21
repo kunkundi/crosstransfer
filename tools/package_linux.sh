@@ -12,6 +12,12 @@ BUNDLE="${1:-$ROOT/app/build/linux/$FLUTTER_ARCH/release/bundle}"
 BUNDLE="$(cd "$BUNDLE" && pwd)"
 test -f "$BUNDLE/crosstransfer"
 test -f "$BUNDLE/lib/libcrosstransfer_native.so"
+for ELF in "$BUNDLE/crosstransfer" "$BUNDLE/lib/libcrosstransfer_native.so"; do
+  case "$DEB_ARCH" in
+    amd64) readelf -h "$ELF" | grep -q 'Advanced Micro Devices X86-64' ;;
+    arm64) readelf -h "$ELF" | grep -q 'AArch64' ;;
+  esac
+done
 VERSION="$(awk '/^version:/ {print $2}' "$ROOT/app/pubspec.yaml")"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
