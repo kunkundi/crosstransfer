@@ -24,7 +24,7 @@ class CtBindings {
 
   /// Create a core instance.
   ///
-  /// config_json (all keys optional unless noted):
+  /// config_json (all keys optional unless noted; service keys are developer-only):
   /// {
   /// "data_dir": "...",          // required: config.json, transfers.json
   /// "log_dir": "...",           // default <data_dir>/logs
@@ -39,7 +39,8 @@ class CtBindings {
   /// "share": {"mode": "once", "ttl_sec": 600},
   /// "app_version": "0.1.0", "platform": "macos"
   /// }
-  /// Values persist to <data_dir>/config.json and are merged over saved ones.
+  /// Preferences persist to <data_dir>/config.json. Commercial builds ignore service
+  /// overrides and omit them from saved/query config; service_available is read-only.
   ffi.Pointer<CtCore> CtCreate(ffi.Pointer<ffi.Char> config_json) {
     return _CtCreate(config_json);
   }
@@ -315,7 +316,7 @@ class CtBindings {
         int Function(ffi.Pointer<CtCore>, ffi.Pointer<ffi.Char>)
       >();
 
-  /// Merge new values into the configuration (server change reconnects).
+  /// Merge preferences; commercial builds reject service overrides (CT_ERR_INVALID_ARG).
   int CtUpdateConfig(
     ffi.Pointer<CtCore> core,
     ffi.Pointer<ffi.Char> config_json,

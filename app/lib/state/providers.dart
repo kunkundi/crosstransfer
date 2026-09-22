@@ -82,7 +82,7 @@ class CoreState {
   final CoreConfig config;
   final CoreError? lastError;
 
-  bool get serverConfigured => config.serverHost.isNotEmpty;
+  bool get serviceAvailable => config.serviceAvailable;
 
   // Paused senders still own their source files. Receiving never uses Imported.
   bool get hasSendWork => shares.values.any((s) => s.isActive) ||

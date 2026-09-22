@@ -1,5 +1,7 @@
 # 桌面构建与安装包（Phase 2）
 
+> 商用构建必须指定 `CT_SERVICE_HOST`；本页的回环/模拟器验收需先设置 `CT_DEVELOPER_MODE=y`（PowerShell：`$env:CT_DEVELOPER_MODE="y"`），仅供内部开发。详见[服务发行配置](CLIENT_SERVICE.md)。
+
 三平台使用 `app/pubspec.lock` 锁定 Dart 依赖。工具版本为 Flutter 3.47.5 / Dart 3.13.4、xmake 3.1.0；端到端验收还需要 Go 1.25 和 Python 3。先构建 native，再构建 Flutter。`CT_NATIVE_LIB` 仅用于开发检查，安装包内必须自带共享库。
 
 ## macOS 12.0+
@@ -92,6 +94,6 @@ CT_NATIVE_LIB="$PWD/macos/native/libcrosstransfer_native.dylib" dart run tool/na
 
 `.github/workflows/desktop.yml` 在工作分支 push、PR 或手动触发时执行三平台构建、core/Dart 测试、FFI 传输、安装包生成。Windows 和 Linux 安装产物后验证 scheme 收件，macOS 从挂载的 DMG 运行并验证链接收件。Actions artifacts 保留安装包及校验文件；正式证书、公证、真实桌面托盘/通知权限和安装器交互外观不由无头 CI 代替。
 
-首次运行的 release App 需要在设置页填写自托管信令地址。公共服务器、品牌域名、移动端与发布许可证全文汇总沿用后续阶段计划。
+App 自动使用原生库内的发行配置，不提供服务器设置入口。正式域名待定，缺少域名时商用原生构建会失败。
 
 平台链接集成依据已锁定插件源码和上游说明：[app_links Windows](https://github.com/llfbandit/app_links/blob/main/doc/README_windows.md)、[app_links Linux](https://github.com/llfbandit/app_links/blob/main/doc/README_linux.md)。

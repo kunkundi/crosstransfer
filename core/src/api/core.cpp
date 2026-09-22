@@ -917,6 +917,12 @@ int Core::TransferCancel(const std::string& transfer_id) {
 // ---- config / query -----------------------------------------------------------
 
 int Core::UpdateConfig(const nlohmann::json& config, std::string* error) {
+#if !CT_DEVELOPER_MODE
+  if (Config::HasServiceOverrides(config)) {
+    if (error) *error = "service settings are managed by the publisher";
+    return CT_ERR_INVALID_ARG;
+  }
+#endif
   Config next = cfg_;
   if (!next.Merge(config, error)) return CT_ERR_INVALID_ARG;
   loop_.Post([this, next] {

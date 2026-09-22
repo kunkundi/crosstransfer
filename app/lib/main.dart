@@ -20,12 +20,6 @@ import 'ui/shell.dart';
 
 const String kAppVersion = '0.1.0';
 
-/// Development default used only when no server has been configured yet.
-/// The public service is a later phase; release builds should ship a real host.
-const String kDevServerHost = '127.0.0.1';
-const int kDevServerPort = 8080;
-const bool kDevServerTls = false;
-
 bool get _isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
 Future<void> main() async {
@@ -48,13 +42,6 @@ Future<void> main() async {
   if (firstRun) {
     createConfig['log_level'] = kDebugMode ? 'debug' : 'info';
     createConfig['save_dir'] = paths.defaultSaveDir;
-    if (kDebugMode && kDevServerHost.isNotEmpty) {
-      createConfig['server'] = {
-        'host': kDevServerHost,
-        'port': kDevServerPort,
-        'tls': kDevServerTls,
-      };
-    }
   }
   final client = CoreClient.create(createConfig);
 

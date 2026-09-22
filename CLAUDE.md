@@ -58,12 +58,16 @@
 
 ```sh
 tools/start_server.sh &                    # 构建并启动本地 ctserver（127.0.0.1:8080）
-xmake f -m release -y && xmake build -y    # minirtc + core + ct_cli + core_tests
+xmake f -m release --ct_developer=y -y && xmake build -y    # minirtc + core + ct_cli + core_tests
 xmake run core_tests                       # 单元测试
 tools/run_cli_e2e.sh p2p                   # 两进程端到端；turn --turn force / relay --relay force
 MINIRTC_TEST_DROP_PERCENT=5 tools/run_cli_e2e.sh loss5 --turn off
 tools/run_cli_resume.sh 200 3              # kill -9 接收端后凭 resume_token 续传
 tools/run_cli_open.sh                      # open 模式两接收端并发
 cd minirtc && examples/run_echo.sh p2p     # 仅 MiniRTC 层（见 minirtc/README.md）
-tools/build_native.sh && (cd app && flutter run -d macos)   # 桌面 App（先起本地 server）
+CT_DEVELOPER_MODE=y tools/build_native.sh && (cd app && flutter run -d macos)   # 桌面 App（先起本地 server）
 ```
+
+## 商用客户端服务边界（2026-09-22）
+
+用户不可配置服务器。商用原生构建必须提供 `ct_service_host`，固定 WSS/443、自动传输策略；旧配置中的连接参数被忽略并清除。仅显式 `ct_developer=y` / `CT_DEVELOPER_MODE=y` 构建允许内部联调，CI 产物不用于商业分发。完整发行方法见 `docs/CLIENT_SERVICE.md`。

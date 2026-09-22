@@ -1,5 +1,8 @@
 # 自托管服务
 
+> 本文仅供发行方内部部署和运维。终端用户不需要部署或配置服务；客户端配置见 [CLIENT_SERVICE.md](CLIENT_SERVICE.md)。
+
+
 服务端二进制内置 Go 依赖版权/许可文本，可运行 `ctserver -licenses` 查看；容器使用 `docker run --rm <镜像> -licenses`。清单覆盖 `go.mod` 中的 15 个直接/间接模块和 Go 运行时，`tools/check_go_notices.py` 与 CI 核对源码许可和模块版本。ISC 等既有许可的项目白名单解释仍见 `docs/LICENSE_AUDIT.md`。
 
 CrossTransfer 服务是单实例、内存状态的 Go 进程，提供 `/ws` 信令、取件码、TURN-UDP 和 WSS 中继。服务器不保存传输文件；第一版仍信任服务器转发的 DTLS 指纹。重启会清空分享、会话和服务器端续传令牌，因此升级应安排在活动传输结束后。

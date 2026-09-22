@@ -83,8 +83,8 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
       setState(() => _error = s('recv.no_save_dir'));
       return;
     }
-    if (!ref.read(coreStateProvider).serverConfigured) {
-      setState(() => _error = s('send.no_server'));
+    if (!ref.read(coreStateProvider).serviceAvailable) {
+      setState(() => _error = s('service.unavailable'));
       return;
     }
     setState(() => _error = null);
@@ -326,12 +326,6 @@ class _ReceiveCard extends ConsumerWidget {
               const SizedBox(height: 12),
               const LinearProgressIndicator(minHeight: 4),
             ],
-            if (r.errorMessage.isNotEmpty && (r.state == 'failed' || r.state == 'interrupted'))
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(r.errorMessage,
-                    style: theme.textTheme.bodySmall?.copyWith(color: cs.error)),
-              ),
           ],
         ),
       ),

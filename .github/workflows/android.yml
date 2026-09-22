@@ -20,6 +20,9 @@ on:
   pull_request:
     paths: *android-paths
   workflow_dispatch:
+# These artifacts are internal test builds, never commercial releases.
+env:
+  CT_DEVELOPER_MODE: y
 permissions:
   contents: read
 concurrency:

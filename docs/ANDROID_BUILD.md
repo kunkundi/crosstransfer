@@ -1,5 +1,7 @@
 # Android 构建与验收
 
+> 商用构建必须指定 `CT_SERVICE_HOST`；本页的回环/模拟器验收需先设置 `CT_DEVELOPER_MODE=y`（PowerShell：`$env:CT_DEVELOPER_MODE="y"`），仅供内部开发。详见[服务发行配置](CLIENT_SERVICE.md)。
+
 基线：Flutter 3.47.5 / Dart 3.13.4、JDK 21、xmake 3.1.0、Android SDK 36、Build Tools 36.0.0、NDK 28.2.13676358、Go 1.25。最低 Android 7.0 / API 24，支持 arm64-v8a、armeabi-v7a、x86_64。
 
 ## 原生库与 APK

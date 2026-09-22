@@ -11,7 +11,7 @@ cp core/include/crosstransfer/ct_api.h "$DEST/headers/"
 BuildSlice() {
   local sdk="$1" arch="$2" appledev=iphone
   [ "$sdk" != simulator ] || appledev=simulator
-  xmake f -p iphoneos -a "$arch" -m "$MODE" --appledev="$appledev" \
+  xmake f --ct_developer="${CT_DEVELOPER_MODE:-n}" --ct_service_host="${CT_SERVICE_HOST:-}" --ct_link_host="${CT_LINK_HOST:-}" -p iphoneos -a "$arch" -m "$MODE" --appledev="$appledev" \
     --target_minver=15.0 --ct_native=y --ct_cli=n --ct_tests=n \
     --minirtc_examples=n -o "build/ios-$sdk-$arch" -y
   xmake build -y crosstransfer_native

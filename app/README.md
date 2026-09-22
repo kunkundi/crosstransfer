@@ -1,5 +1,7 @@
 # CrossTransfer desktop app (Flutter)
 
+> 商用构建必须指定 `CT_SERVICE_HOST`；本页的回环/模拟器验收需先设置 `CT_DEVELOPER_MODE=y`（PowerShell：`$env:CT_DEVELOPER_MODE="y"`），仅供内部开发。详见[服务发行配置](../docs/CLIENT_SERVICE.md)。
+
 Requires the native core to be built first (from the repo root):
 
 See [desktop build and packaging](../docs/DESKTOP_BUILD.md) for macOS DMG,

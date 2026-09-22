@@ -34,8 +34,8 @@ class _SendPageState extends ConsumerState<SendPage> {
     if (cleaned.isEmpty) return;
     final s = ref.read(sProvider);
     final state = ref.read(coreStateProvider);
-    if (!state.serverConfigured) {
-      showSnack(context, s('send.no_server'));
+    if (!state.serviceAvailable) {
+      showSnack(context, s('service.unavailable'));
       return;
     }
     try {
@@ -104,10 +104,10 @@ class _SendPageState extends ConsumerState<SendPage> {
                 child: _ShareCard(share: share, key: ValueKey(share.id)),
               ),
           ],
-          if (!ref.watch(coreStateProvider.select((st) => st.serverConfigured)))
+          if (!ref.watch(coreStateProvider.select((st) => st.serviceAvailable)))
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(s('send.no_server'),
+              child: Text(s('service.unavailable'),
                   style: TextStyle(color: theme.colorScheme.error)),
             ),
         ],

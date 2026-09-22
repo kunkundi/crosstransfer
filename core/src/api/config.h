@@ -16,6 +16,7 @@
 namespace ct {
 
 struct Config {
+  Config();
   std::string data_dir;
   std::string log_dir;
   std::string log_level = "info";
@@ -35,9 +36,10 @@ struct Config {
   std::string app_version = "0.1.0";
   std::string platform;
 
-  // Applies keys present in `j` (nested "server" / "share" objects allowed).
+  // Applies preferences. Infrastructure keys are accepted only in developer builds.
   // Unknown keys are ignored; wrong types set *error and return false.
   bool Merge(const nlohmann::json& j, std::string* error);
+  static bool HasServiceOverrides(const nlohmann::json& j);
   nlohmann::json ToJson() const;
   // Everything needed to (re)create the signaling peer.
   PeerConfig ToPeerConfig() const;

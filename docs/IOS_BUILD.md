@@ -1,5 +1,7 @@
 # iOS 构建与验收（Phase 3）
 
+> 商用构建必须指定 `CT_SERVICE_HOST`；本页的回环/模拟器验收需先设置 `CT_DEVELOPER_MODE=y`（PowerShell：`$env:CT_DEVELOPER_MODE="y"`），仅供内部开发。详见[服务发行配置](CLIENT_SERVICE.md)。
+
 iOS 15.0+，Flutter 3.47.5 / Dart 3.13.4、Xcode、CocoaPods、xmake 3.1.0。使用静态原生引擎，不加载 dylib。默认 Bundle ID 暂沿用桌面的 `com.crosstransfer.crosstransfer`；正式标识与域名仍需项目所有者提供。
 
 ## 构建

@@ -10,7 +10,7 @@ MODE="${1:-release}"
 [ -f "$NDK/source.properties" ] || { echo "Install NDK 28.2.13676358, or set ANDROID_NDK_HOME" >&2; exit 1; }
 for abi in $ABIS; do
   case "$abi" in arm64-v8a|armeabi-v7a|x86_64) ;; *) echo "Unsupported Android ABI: $abi" >&2; exit 1;; esac
-  xmake f -p android -a "$abi" -m "$MODE" --ndk="$NDK" --ndk_sdkver=24 \
+  xmake f --ct_developer="${CT_DEVELOPER_MODE:-n}" --ct_service_host="${CT_SERVICE_HOST:-}" --ct_link_host="${CT_LINK_HOST:-}" -p android -a "$abi" -m "$MODE" --ndk="$NDK" --ndk_sdkver=24 \
     --runtimes=c++_static --ct_native=y --ct_cli=n --ct_tests=n \
     --minirtc_examples=n -o "build/android-$abi" -y
   xmake build -y crosstransfer_native

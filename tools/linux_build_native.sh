@@ -22,6 +22,6 @@ export XMAKE_ROOT=y
 rm -rf /tmp/src && mkdir -p /tmp/src
 cp -r /src/xmake.lua /src/core /src/cli /src/minirtc /tmp/src/
 cd /tmp/src
-xmake f -p linux -m release --ct_native=y --ct_tests=n --minirtc_examples=n -y -o /out
+xmake f --ct_developer="${CT_DEVELOPER_MODE:-n}" --ct_service_host="${CT_SERVICE_HOST:-}" --ct_link_host="${CT_LINK_HOST:-}" -p linux -m release --ct_native=y --ct_tests=n --minirtc_examples=n -y -o /out
 xmake build -y crosstransfer_native
 ls -la /out/linux/*/release/libcrosstransfer_native.so

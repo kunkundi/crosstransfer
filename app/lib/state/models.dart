@@ -214,23 +214,13 @@ class CoreConfig {
   const CoreConfig(this.raw);
   final Map<String, dynamic> raw;
 
-  Map<String, dynamic> get _server =>
-      raw['server'] is Map<String, dynamic> ? raw['server'] : const {};
   Map<String, dynamic> get _share =>
       raw['share'] is Map<String, dynamic> ? raw['share'] : const {};
 
   String get dataDir => _str(raw['data_dir']);
   String get logDir => _str(raw['log_dir']);
   String get logLevel => _str(raw['log_level'], 'info');
-  String get serverHost => _str(_server['host']);
-  int get serverPort => _int(_server['port'], 443);
-  bool get serverTls => _bool(_server['tls'], true);
-  String get serverPath => _str(_server['path'], '/ws');
-  String get linkHost => _str(raw['link_host']);
-  String get turnMode => _str(raw['turn_mode'], 'auto');
-  String get wsRelay => _str(raw['ws_relay'], 'auto');
-  bool get enableSrtp => _bool(raw['enable_srtp'], true);
-  bool get enableUpnp => _bool(raw['enable_upnp'], false);
+  bool get serviceAvailable => _bool(raw['service_available'], false);
   String get saveDir => _str(raw['save_dir']);
   String get shareMode => _str(_share['mode'], 'once');
   int get shareTtlSec => _int(_share['ttl_sec'], 600);

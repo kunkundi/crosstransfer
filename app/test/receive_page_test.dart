@@ -13,7 +13,7 @@ class FakeCoreState extends CoreStateNotifier {
   @override
   CoreState build() => CoreState(config: CoreConfig({
         'save_dir': '/tmp/received',
-        'server': {'host': configured ? 'localhost' : ''},
+        'service_available': configured,
       }));
 
   @override
@@ -57,13 +57,13 @@ void main() {
     expect(container.read(pendingReceiveProvider), isNull);
   });
 
-  testWidgets('unconfigured server leaves the code available for retry', (tester) async {
+  testWidgets('unavailable service leaves the code available for retry', (tester) async {
     final core = FakeCoreState()..configured = false;
     await mount(tester, core);
     await tester.enterText(find.byType(TextField), 'MXT3XF8SK2');
     await tester.pump();
     expect(core.requests, isEmpty);
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'MXT3XF8SK2');
-    expect(find.text(const S('en')('send.no_server')), findsOneWidget);
+    expect(find.text(const S('en')('service.unavailable')), findsOneWidget);
   });
 }

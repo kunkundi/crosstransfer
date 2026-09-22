@@ -49,7 +49,7 @@ typedef enum CtStatus {
 /**
  * Create a core instance.
  *
- * config_json (all keys optional unless noted):
+ * config_json (all keys optional unless noted; service keys are developer-only):
  * {
  *   "data_dir": "...",          // required: config.json, transfers.json
  *   "log_dir": "...",           // default <data_dir>/logs
@@ -64,7 +64,8 @@ typedef enum CtStatus {
  *   "share": {"mode": "once", "ttl_sec": 600},
  *   "app_version": "0.1.0", "platform": "macos"
  * }
- * Values persist to <data_dir>/config.json and are merged over saved ones.
+ * Preferences persist to <data_dir>/config.json. Commercial builds ignore service
+ * overrides and omit them from saved/query config; service_available is read-only.
  */
 CT_API CtCore* CtCreate(const char* config_json);
 CT_API void CtDestroy(CtCore* core);
@@ -81,7 +82,7 @@ CT_API void CtSetEventCallback(CtCore* core, CtEventCallback cb,
 CT_API void CtSetEventCallbackOwned(CtCore* core, CtEventCallback cb,
                                     void* user_data);
 
-/** Merge new values into the configuration (server change reconnects). */
+/** Merge preferences; commercial builds reject service overrides (CT_ERR_INVALID_ARG). */
 CT_API int CtUpdateConfig(CtCore* core, const char* config_json);
 
 /**

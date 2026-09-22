@@ -72,9 +72,8 @@ class _ShellState extends ConsumerState<Shell> {
     setState(() => _consumingInbox = true);
     try {
       if (send) {
-        if (!ref.read(coreStateProvider).serverConfigured) {
-          showSnack(context, ref.read(sProvider)('send.no_server'));
-          ref.read(navIndexProvider.notifier).set(2);
+        if (!ref.read(coreStateProvider).serviceAvailable) {
+          showSnack(context, ref.read(sProvider)('service.unavailable'));
           return;
         }
         final paths = (item['paths'] as List).cast<String>();
@@ -160,7 +159,7 @@ class _ShellState extends ConsumerState<Shell> {
     }
     final err = next.lastError;
     if (err != null && err.seq != (prev.lastError?.seq ?? 0) && mounted) {
-      showSnack(context, '${s('common.error')}: ${err.code} ${err.message}'.trim());
+      showSnack(context, s.errorCode(err.code));
     }
   }
 
@@ -263,13 +262,13 @@ class _SignalIndicator extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(sProvider);
     final state = ref.watch(coreStateProvider.select((st) => st.signalState));
-    final configured = ref.watch(coreStateProvider.select((st) => st.serverConfigured));
+    final configured = ref.watch(coreStateProvider.select((st) => st.serviceAvailable));
     final cs = Theme.of(context).colorScheme;
     Color color;
     String label;
     if (!configured) {
       color = cs.outline;
-      label = s('signal.unconfigured');
+      label = s('signal.unavailable');
     } else {
       switch (state) {
         case 'connected':

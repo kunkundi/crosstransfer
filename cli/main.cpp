@@ -5,8 +5,7 @@
 //   ct_cli resume  <transfer_id>
 //   ct_cli list
 //
-// Common flags: --server HOST[:PORT] --tls/--no-tls --data-dir DIR --turn auto|force|off
-//               --relay auto|force|off --no-srtp --log-level LVL --json --link-host HOST
+// Service flags are compiled only into explicitly enabled internal developer builds.
 //
 // Events from the core are printed as one JSON object per line with --json,
 // or as human readable progress otherwise. Exit code 0 on completion.
@@ -38,16 +37,20 @@ using nlohmann::json;
 struct Options {
   std::string cmd;
   std::vector<std::string> args;
+#if CT_DEVELOPER_MODE
   std::string server_host = "127.0.0.1";
   int server_port = 8080;
   bool tls = false;
+#endif
   std::string data_dir;
   std::string save_dir;
+#if CT_DEVELOPER_MODE
   std::string turn = "auto";
   std::string relay = "auto";
   bool srtp = true;
-  std::string log_level = "warn";
   std::string link_host;
+#endif
+  std::string log_level = "warn";
   std::string mode;
   int ttl = 0;
   int wait_receivers = 1;  // share: exit after N completed receivers (0 = forever)
@@ -62,9 +65,12 @@ int Usage() {
                "  ct_cli receive <code|link> [--dir DIR]\n"
                "  ct_cli resume  <transfer_id>\n"
                "  ct_cli list\n"
-               "common: --server HOST[:PORT] [--tls] --data-dir DIR --turn auto|force|off\n"
-               "        --relay auto|force|off --no-srtp --log-level LVL --json --link-host HOST\n"
-               "        --timeout SEC\n");
+               "common: --data-dir DIR --log-level LVL --json --timeout SEC\n"
+#if CT_DEVELOPER_MODE
+               "development only: --server HOST[:PORT] --tls/--no-tls --turn auto|force|off\n"
+               "                  --relay auto|force|off --no-srtp --link-host HOST\n"
+#endif
+               );
   return 2;
 }
 
@@ -79,7 +85,10 @@ bool Parse(int argc, char** argv, Options* o) {
       return true;
     };
     std::string v;
-    if (a == "--server" && next(&v)) {
+    if (a == "--data-dir" && next(&v)) {
+      o->data_dir = v;
+#if CT_DEVELOPER_MODE
+    } else if (a == "--server" && next(&v)) {
       const size_t colon = v.rfind(':');
       if (colon != std::string::npos && v.find(']') == std::string::npos) {
         o->server_host = v.substr(0, colon);
@@ -91,20 +100,19 @@ bool Parse(int argc, char** argv, Options* o) {
       o->tls = true;
     } else if (a == "--no-tls") {
       o->tls = false;
-    } else if (a == "--data-dir" && next(&v)) {
-      o->data_dir = v;
-    } else if (a == "--dir" && next(&v)) {
-      o->save_dir = v;
     } else if (a == "--turn" && next(&v)) {
       o->turn = v;
     } else if (a == "--relay" && next(&v)) {
       o->relay = v;
     } else if (a == "--no-srtp") {
       o->srtp = false;
-    } else if (a == "--log-level" && next(&v)) {
-      o->log_level = v;
     } else if (a == "--link-host" && next(&v)) {
       o->link_host = v;
+#endif
+    } else if (a == "--dir" && next(&v)) {
+      o->save_dir = v;
+    } else if (a == "--log-level" && next(&v)) {
+      o->log_level = v;
     } else if (a == "--mode" && next(&v)) {
       o->mode = v;
     } else if (a == "--ttl" && next(&v)) {
@@ -254,15 +262,17 @@ int main(int argc, char** argv) {
   json cfg = {
       {"data_dir", o.data_dir},
       {"log_level", o.log_level},
-      {"server", {{"host", o.server_host}, {"port", o.server_port}, {"tls", o.tls}, {"path", "/ws"}}},
-      {"turn_mode", o.turn},
-      {"ws_relay", o.relay},
-      {"enable_srtp", o.srtp},
       {"save_dir", o.save_dir},
       {"app_version", CtVersion()},
       {"platform", "cli"},
   };
+#if CT_DEVELOPER_MODE
+  cfg["server"] = {{"host", o.server_host}, {"port", o.server_port}, {"tls", o.tls}, {"path", "/ws"}};
+  cfg["turn_mode"] = o.turn;
+  cfg["ws_relay"] = o.relay;
+  cfg["enable_srtp"] = o.srtp;
   if (!o.link_host.empty()) cfg["link_host"] = o.link_host;
+#endif
 
   app.core = CtCreate(cfg.dump().c_str());
   if (!app.core) {

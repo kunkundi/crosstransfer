@@ -41,6 +41,24 @@ option("ct_cli")
     set_description("Build the ct_cli command line client")
 option_end()
 
+option("ct_developer")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Internal development only: allow runtime service overrides; never distribute")
+option_end()
+
+option("ct_service_host")
+    set_default("")
+    set_showmenu(true)
+    set_description("Publisher-managed WSS service hostname (required for commercial builds)")
+option_end()
+
+option("ct_link_host")
+    set_default("")
+    set_showmenu(true)
+    set_description("Publisher-managed HTTPS share-link hostname (optional)")
+option_end()
+
 option("ct_tests")
     set_default(true)
     set_showmenu(true)
@@ -70,6 +88,25 @@ end
 target("crosstransfer_core")
     set_kind("static")
     ct_common()
+    on_load(function (target)
+        local developer = has_config("ct_developer")
+        local host = get_config("ct_service_host") or ""
+        local link_host = get_config("ct_link_host") or ""
+        local function valid_host(value)
+            if #value > 253 or value:find("..", 1, true) or value:sub(-1) == "." then return false end
+            for label in value:gmatch("[^.]+") do
+                if #label > 63 or not label:match("^[%w][%w%-]*$")
+                    or not label:sub(-1):match("[%w]") then return false end
+            end
+            return value:match("^[%w]") ~= nil
+        end
+        assert(developer or host ~= "",
+            "Commercial builds require --ct_service_host=<hostname>. Internal tests must explicitly use --ct_developer=y.")
+        assert(host == "" or valid_host(host), "ct_service_host must be a hostname without scheme, port or path")
+        assert(link_host == "" or valid_host(link_host), "ct_link_host must be a hostname without scheme, port or path")
+        target:add("defines", "CT_DEVELOPER_MODE=" .. (developer and "1" or "0"), {public = true})
+        target:add("defines", 'CT_SERVICE_HOST="' .. host .. '"', 'CT_LINK_HOST="' .. link_host .. '"')
+    end)
     -- The API is compiled in this archive, not in native_export.cpp. MSVC
     -- must see dllexport here for the umbrella DLL to expose every Ct* call.
     if is_plat("windows") and has_config("ct_native") then

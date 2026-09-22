@@ -1,7 +1,6 @@
 // Exercises the actual packaged ABI without a server or Flutter engine.
 // CT_NATIVE_LIB=<absolute library path> dart run tool/native_check.dart
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:crosstransfer/ffi/core_client.dart';
@@ -35,10 +34,10 @@ Future<void> main(List<String> args) async {
     client = CoreClient.create({'data_dir': dir.path, 'log_level': 'error'});
     final event = client.events.firstWhere((e) => e['type'] == 'config')
         .timeout(const Duration(seconds: 10));
-    client.updateConfig({'link_host': 'ffi-check.example'});
+    client.updateConfig({'share': {'ttl_sec': 1234}});
     await event;
     final config = client.query('config');
-    if (!jsonEncode(config).contains('ffi-check.example')) {
+    if (config['config']?['share']?['ttl_sec'] != 1234) {
       throw StateError('config update/query round trip failed: $config');
     }
     stdout.writeln('PASS: ${names.length} exports, core ${CoreClient.version}, '
