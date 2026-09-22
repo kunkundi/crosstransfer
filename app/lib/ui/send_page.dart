@@ -17,10 +17,12 @@ import '../platform/mobile.dart';
 import '../state/format.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
 class SendPage extends ConsumerStatefulWidget {
-  const SendPage({super.key});
+  const SendPage({super.key, this.historyOnly = false});
+  final bool historyOnly;
 
   @override
   ConsumerState<SendPage> createState() => _SendPageState();
@@ -90,12 +92,14 @@ class _SendPageState extends ConsumerState<SendPage> {
     final mobile = MediaQuery.sizeOf(context).width < 600;
 
     final content = ListView(
-      padding: EdgeInsets.fromLTRB(
-        mobile ? 16 : 24,
-        mobile ? 26 : 20,
-        mobile ? 16 : 24,
-        mobile ? 32 : 24,
-      ),
+      padding: widget.historyOnly
+          ? const EdgeInsets.fromLTRB(10, 0, 10, 12)
+          : EdgeInsets.fromLTRB(
+              mobile ? 16 : 24,
+              isDesktopTheme(context) ? 20 : (mobile ? 26 : 24),
+              mobile ? 16 : 24,
+              mobile ? 32 : 24,
+            ),
       children: [
         Center(
           child: ConstrainedBox(
@@ -103,23 +107,27 @@ class _SendPageState extends ConsumerState<SendPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PageHeader(
-                  title: s('send.title'),
-                  subtitle: s('send.subtitle'),
-                ),
-                _DropZone(
-                  active: _dragging,
-                  compact: compact,
-                  onPickFiles: _pickFiles,
-                  onPickFolder: _pickFolder,
-                ),
-                if (shares.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text(
-                    s('send.active_shares'),
-                    style: theme.textTheme.titleLarge,
+                if (!widget.historyOnly)
+                  PageHeader(
+                    title: s('send.title'),
+                    subtitle: s('send.subtitle'),
                   ),
-                  const SizedBox(height: 12),
+                if (!widget.historyOnly)
+                  _DropZone(
+                    active: _dragging,
+                    compact: compact,
+                    onPickFiles: _pickFiles,
+                    onPickFolder: _pickFolder,
+                  ),
+                if (shares.isNotEmpty) ...[
+                  if (!widget.historyOnly) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      s('send.active_shares'),
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   for (final share in shares)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 14),
@@ -185,6 +193,14 @@ class _DropZone extends ConsumerWidget {
     final s = ref.watch(sProvider);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    if (isDesktopTheme(context)) {
+      return _DesktopDropZone(
+        active: active,
+        compact: compact,
+        onPickFiles: onPickFiles,
+        onPickFolder: onPickFolder,
+      );
+    }
     final narrow = MediaQuery.sizeOf(context).width < 460;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -381,11 +397,13 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                StateChip(
-                  share.state,
-                  detail: share.state == 'failed' || share.state == 'closed'
-                      ? s.errorCode(share.error)
-                      : null,
+                Flexible(
+                  child: StateChip(
+                    share.state,
+                    detail: share.state == 'failed' || share.state == 'closed'
+                        ? s.errorCode(share.error)
+                        : null,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 if (share.isActive)
@@ -425,7 +443,8 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
               const SizedBox(height: 18),
               LayoutBuilder(
                 builder: (context, c) {
-                  final narrow = c.maxWidth < 560;
+                  final desktop = isDesktopTheme(context);
+                  final narrow = c.maxWidth < (desktop ? 390 : 560);
                   final qr = Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -435,7 +454,7 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                     ),
                     child: QrImageView(
                       data: share.link,
-                      size: 168,
+                      size: desktop ? 112 : 168,
                       padding: EdgeInsets.zero,
                       backgroundColor: Colors.white,
                     ),
@@ -455,9 +474,11 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                         share.code,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: cs.primary,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: desktop
+                              ? FontWeight.w600
+                              : FontWeight.w700,
                           fontFeatures: const [FontFeature.tabularFigures()],
-                          letterSpacing: 2.4,
+                          letterSpacing: desktop ? 1 : 2.4,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -565,7 +586,12 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                     const SizedBox(width: 10),
-                    Text(s('send.waiting'), style: theme.textTheme.bodySmall),
+                    Expanded(
+                      child: Text(
+                        s('send.waiting'),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -575,7 +601,12 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
                 children: [
                   Icon(Icons.swap_vert, size: 16, color: cs.onSurfaceVariant),
                   const SizedBox(width: 6),
-                  Text(s.state(t.state), style: theme.textTheme.labelMedium),
+                  Expanded(
+                    child: Text(
+                      s.state(t.state),
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ),
                   if (t.currentFile >= 0 && t.filesTotal > 0)
                     Text(
                       '  ·  ${t.currentFile + 1}/${t.filesTotal}',
@@ -588,6 +619,113 @@ class _ShareCardState extends ConsumerState<_ShareCard> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DesktopDropZone extends ConsumerWidget {
+  const _DesktopDropZone({
+    required this.active,
+    required this.compact,
+    required this.onPickFiles,
+    required this.onPickFolder,
+  });
+
+  final bool active;
+  final bool compact;
+  final VoidCallback onPickFiles;
+  final VoidCallback onPickFolder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(sProvider);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return AnimatedContainer(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      constraints: BoxConstraints(
+        minHeight: compact
+            ? 132
+            : (MediaQuery.sizeOf(context).width < 600 ? 280 : 232),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: compact ? 18 : 24,
+      ),
+      decoration: BoxDecoration(
+        color: active ? cs.primaryContainer : cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: active ? cs.primary : cs.outlineVariant,
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (!compact) ...[
+            Container(
+              width: 54,
+              height: 60,
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(
+                active
+                    ? Icons.arrow_downward_rounded
+                    : Icons.upload_file_outlined,
+                size: 30,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Text(
+            s(active ? 'send.drop_active' : 'send.drop_hint'),
+            style: theme.textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          if (!compact) ...[
+            const SizedBox(height: 5),
+            Text(
+              s('send.secure_hint'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: onPickFiles,
+                icon: const Icon(Icons.add_rounded, size: 17),
+                label: Text(s('send.pick_files')),
+              ),
+              OutlinedButton.icon(
+                onPressed: onPickFolder,
+                icon: const Icon(Icons.folder_outlined, size: 17),
+                label: Text(s('send.pick_folder')),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

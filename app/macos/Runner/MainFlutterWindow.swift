@@ -18,7 +18,7 @@ class MainFlutterWindow: NSWindow, UNUserNotificationCenterDelegate {
     notifications?.setMethodCallHandler { [weak self] call, result in self?.HandleNotification(call, result: result) }
 
     super.awakeFromNib()
-    // Both the main view and quick-drop basket use fixed window sizes.
+    // The compact desktop window uses a fixed size.
     collectionBehavior.remove(.fullScreenPrimary)
     collectionBehavior.remove(.fullScreenAuxiliary)
     collectionBehavior.insert(.fullScreenNone)
@@ -28,7 +28,7 @@ class MainFlutterWindow: NSWindow, UNUserNotificationCenterDelegate {
   private func EnableDropTargetFirstMouse(in rootView: NSView) {
     // desktop_drop 0.8.4 installs a full-window NSView above FlutterView. It
     // inherits NSView's default acceptsFirstMouse = false, so AppKit consumes
-    // the first click on an inactive basket before Flutter sees it.
+    // the first click on an inactive window before Flutter sees it.
     guard let dropTarget = rootView.subviews.first(where: {
       NSStringFromClass(type(of: $0)) == "desktop_drop.DropTarget"
     }) else {

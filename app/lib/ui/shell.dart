@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../platform/desktop_basket.dart';
 import '../platform/links.dart';
 import '../platform/mobile.dart';
 import '../platform/mobile_lifecycle.dart';
@@ -14,7 +13,8 @@ import '../platform/notifications.dart';
 import '../platform/tray.dart';
 import '../state/format.dart';
 import '../state/providers.dart';
-import 'desktop_basket_page.dart';
+import 'desktop_send_page.dart';
+import 'desktop_layout.dart';
 import 'receive_page.dart';
 import 'send_page.dart';
 import 'settings_page.dart';
@@ -32,6 +32,15 @@ class CrossTransferApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
+      builder: (context, child) => isDesktopTheme(context)
+          ? Overlay.wrap(
+              child: DesktopWindowFrame(
+                strings: s,
+                status: const _SignalIndicator(),
+                child: child!,
+              ),
+            )
+          : child!,
       home: const Shell(),
     );
   }
@@ -184,7 +193,11 @@ class _ShellState extends ConsumerState<Shell> {
       DesktopTray.instance.setMenu(ref.read(sProvider));
     });
 
-    final pages = const [SendPage(), ReceivePage(), SettingsPage()];
+    final pages = [
+      isDesktopTheme(context) ? const DesktopSendPage() : const SendPage(),
+      const ReceivePage(),
+      const SettingsPage(),
+    ];
     final page = Column(
       children: [
         if (MobilePlatform.isIOS &&
@@ -202,118 +215,116 @@ class _ShellState extends ConsumerState<Shell> {
         ),
       ],
     );
-    if (MediaQuery.sizeOf(context).width < 600) {
-      return _basketOr(
-        Scaffold(
-          appBar: AppBar(
-            toolbarHeight: 62,
-            titleSpacing: 18,
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const AppMark(size: 30),
-                const SizedBox(width: 10),
-                Text(s('app.title')),
-              ],
-            ),
-            actions: const [
-              Padding(
-                padding: EdgeInsets.only(right: 18),
-                child: _SignalIndicator(),
-              ),
-            ],
-          ),
-          body: SafeArea(child: page),
-          bottomNavigationBar: NavigationBar(
+    if (isDesktopTheme(context)) {
+      return Scaffold(
+        body: SafeArea(
+          child: DesktopLayout(
+            strings: s,
             selectedIndex: index,
-            onDestinationSelected: (i) =>
-                ref.read(navIndexProvider.notifier).set(i),
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.upload_outlined),
-                label: s('nav.send'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.download_outlined),
-                label: s('nav.receive'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.settings_outlined),
-                label: s('nav.settings'),
-              ),
-            ],
+            onSelected: (i) => ref.read(navIndexProvider.notifier).set(i),
+            child: page,
           ),
         ),
       );
     }
-    return _basketOr(
-      Scaffold(
-        body: SafeArea(
-          child: Row(
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return Scaffold(
+        appBar: AppBar(
+          toolbarHeight: 62,
+          titleSpacing: 18,
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              NavigationRail(
-                selectedIndex: index,
-                onDestinationSelected: (i) =>
-                    ref.read(navIndexProvider.notifier).set(i),
-                extended: true,
-                minExtendedWidth: 160,
-                groupAlignment: -0.72,
-                leading: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 14, 6, 20),
-                  child: Row(
-                    children: [
-                      const AppMark(size: 26),
-                      const SizedBox(width: 6),
-                      Text(
-                        s('app.title'),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ],
-                  ),
-                ),
-                trailing: const Expanded(
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 8, 18),
-                      child: _SignalIndicator(showLabel: true),
-                    ),
-                  ),
-                ),
-                destinations: [
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.upload_outlined),
-                    selectedIcon: const Icon(Icons.upload),
-                    label: Text(s('nav.send')),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.download_outlined),
-                    selectedIcon: const Icon(Icons.download),
-                    label: Text(s('nav.receive')),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.settings_outlined),
-                    selectedIcon: const Icon(Icons.settings),
-                    label: Text(s('nav.settings')),
-                  ),
-                ],
-              ),
-              const VerticalDivider(width: 1),
-              Expanded(child: page),
+              const AppMark(size: 30),
+              const SizedBox(width: 10),
+              Text(s('app.title')),
             ],
           ),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 18),
+              child: _SignalIndicator(),
+            ),
+          ],
+        ),
+        body: SafeArea(child: page),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: (i) =>
+              ref.read(navIndexProvider.notifier).set(i),
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.upload_outlined),
+              label: s('nav.send'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.download_outlined),
+              label: s('nav.receive'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.settings_outlined),
+              label: s('nav.settings'),
+            ),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      body: SafeArea(
+        child: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: index,
+              onDestinationSelected: (i) =>
+                  ref.read(navIndexProvider.notifier).set(i),
+              extended: true,
+              minExtendedWidth: 160,
+              groupAlignment: -0.72,
+              leading: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 14, 6, 20),
+                child: Row(
+                  children: [
+                    const AppMark(size: 26),
+                    const SizedBox(width: 6),
+                    Text(
+                      s('app.title'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ],
+                ),
+              ),
+              trailing: const Expanded(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 8, 18),
+                    child: _SignalIndicator(showLabel: true),
+                  ),
+                ),
+              ),
+              destinations: [
+                NavigationRailDestination(
+                  icon: const Icon(Icons.upload_outlined),
+                  selectedIcon: const Icon(Icons.upload),
+                  label: Text(s('nav.send')),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.download_outlined),
+                  selectedIcon: const Icon(Icons.download),
+                  label: Text(s('nav.receive')),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: Text(s('nav.settings')),
+                ),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: page),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _basketOr(Widget shell) {
-    if (!DesktopBasket.supported) return shell;
-    return ListenableBuilder(
-      listenable: DesktopBasket.instance,
-      child: shell,
-      builder: (context, child) =>
-          DesktopBasket.instance.active ? const DesktopBasketPage() : child!,
     );
   }
 }
@@ -349,15 +360,9 @@ class _SignalIndicator extends ConsumerWidget {
       label = s('signal.$state');
     }
     final dot = Container(
-      width: 9,
-      height: 9,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 6),
-        ],
-      ),
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
     return Tooltip(
       message: label,

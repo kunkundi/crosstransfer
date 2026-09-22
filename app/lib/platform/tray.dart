@@ -13,7 +13,7 @@ import 'package:tray_manager/legacy.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../i18n/strings.dart';
-import 'desktop_basket.dart';
+import 'desktop_window.dart';
 
 class DesktopTray with TrayListener, WindowListener {
   DesktopTray._();
@@ -50,8 +50,6 @@ class DesktopTray with TrayListener, WindowListener {
     await trayManager.setContextMenu(
       Menu(
         items: [
-          MenuItem(key: 'quick_send', label: s('tray.quick_send')),
-          MenuItem.separator(),
           MenuItem(key: 'show', label: s('tray.show')),
           MenuItem.separator(),
           MenuItem(key: 'quit', label: s('tray.quit')),
@@ -62,12 +60,7 @@ class DesktopTray with TrayListener, WindowListener {
 
   Future<void> showWindow() async {
     if (!supported) return;
-    await DesktopBasket.instance.showMain();
-  }
-
-  Future<void> showBasket() async {
-    if (!supported) return;
-    await DesktopBasket.instance.show(anchor: await trayManager.getBounds());
+    await DesktopWindow.instance.show();
   }
 
   Future<void> quit() async {
@@ -85,7 +78,7 @@ class DesktopTray with TrayListener, WindowListener {
     // activation state. Showing a key window from inside the native click
     // callback can leave it ordered behind other apps until another status-bar
     // interaction occurs.
-    Timer.run(() => unawaited(showBasket()));
+    Timer.run(() => unawaited(showWindow()));
   }
 
   @override
@@ -94,8 +87,6 @@ class DesktopTray with TrayListener, WindowListener {
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
-      case 'quick_send':
-        showBasket();
       case 'show':
         showWindow();
       case 'quit':
@@ -107,13 +98,13 @@ class DesktopTray with TrayListener, WindowListener {
   void onWindowClose() async {
     if (_quitting) return;
     if (await windowManager.isPreventClose()) {
-      await windowManager.hide();
+      await DesktopWindow.instance.hide();
     }
   }
 
   @override
-  void onWindowMove() => DesktopBasket.instance.schedulePositionSave();
+  void onWindowMove() => DesktopWindow.instance.schedulePositionSave();
 
   @override
-  void onWindowMoved() => DesktopBasket.instance.schedulePositionSave();
+  void onWindowMoved() => DesktopWindow.instance.schedulePositionSave();
 }

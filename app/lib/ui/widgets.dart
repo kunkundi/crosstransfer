@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/format.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
+import 'theme.dart';
 
 class AppMark extends StatelessWidget {
   const AppMark({super.key, this.size = 36});
@@ -25,7 +26,9 @@ class AppMark extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [colors.primary, colors.tertiary],
+            colors: isDesktopTheme(context)
+                ? const [Color(0xFF66B0FF), Color(0xFF0878F9)]
+                : [colors.primary, colors.tertiary],
           ),
           borderRadius: BorderRadius.circular(size * 0.3),
           boxShadow: [
@@ -61,8 +64,9 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (isCompactDesktop(context)) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: isDesktopTheme(context) ? 18 : 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -71,7 +75,7 @@ class PageHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 6),
+                SizedBox(height: isDesktopTheme(context) ? 7 : 6),
                 Text(
                   subtitle,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -98,6 +102,28 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    if (isDesktopTheme(context)) {
+      return Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: isCompactDesktop(context) ? 16 : 24,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: colors.onSurfaceVariant, size: 18),
+            const SizedBox(width: 9),
+            Flexible(
+              child: Text(
+                text,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 34),
       child: Column(
@@ -191,7 +217,7 @@ class TransferProgressView extends ConsumerWidget {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: t.bytesTotal > 0 ? t.fraction : (active ? null : 0),
-            minHeight: 8,
+            minHeight: isDesktopTheme(context) ? 5 : 8,
             color: stateColor(context, t.state),
           ),
         ),

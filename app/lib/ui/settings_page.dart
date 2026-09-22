@@ -5,6 +5,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as path;
 
 import '../ffi/core_client.dart';
 import '../platform/mobile.dart';
@@ -14,6 +15,11 @@ import '../state/providers.dart';
 import 'widgets.dart';
 import 'import_storage.dart';
 import 'about_page.dart';
+import 'theme.dart';
+
+TextStyle _desktopOptionStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodyMedium!
+        .copyWith(fontSize: 12, fontWeight: FontWeight.w400, height: 1.4);
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -84,15 +90,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final config = ref.watch(coreStateProvider.select((st) => st.config));
     final lang = ref.watch(languageProvider);
     if (!_loaded) _loadFrom(config);
+    if (isDesktopTheme(context)) return _desktopSettings(s, config, lang);
     final mobile = MediaQuery.sizeOf(context).width < 600;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        mobile ? 16 : 24,
-        mobile ? 26 : 20,
-        mobile ? 16 : 24,
-        mobile ? 32 : 24,
-      ),
+      padding: isCompactDesktop(context)
+          ? const EdgeInsets.fromLTRB(10, 4, 10, 12)
+          : EdgeInsets.fromLTRB(
+              mobile ? 16 : 24,
+              isDesktopTheme(context) ? 20 : (mobile ? 26 : 24),
+              mobile ? 16 : 24,
+              mobile ? 32 : 24,
+            ),
       children: [
         Center(
           child: ConstrainedBox(
@@ -135,9 +144,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     _Row(
                       label: s('settings.language'),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
+                      child: _ChoiceSurface(
                         child: SegmentedButton<String>(
+                          showSelectedIcon: !isDesktopTheme(context),
                           segments: [
                             for (final l in S.supported)
                               ButtonSegment(
@@ -160,9 +169,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   children: [
                     _Row(
                       label: s('settings.share_mode'),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
+                      child: _ChoiceSurface(
                         child: SegmentedButton<String>(
+                          showSelectedIcon: !isDesktopTheme(context),
                           segments: [
                             ButtonSegment(
                               value: 'once',
@@ -184,9 +193,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _Row(
                       label: s('settings.share_ttl'),
                       child: Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: isDesktopTheme(context)
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: SizedBox(
-                          width: 160,
+                          width: isDesktopTheme(context) ? 108 : 160,
                           child: TextField(
                             controller: _ttl,
                             onChanged: (_) => _mark(),
@@ -270,6 +281,261 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ],
     );
   }
+
+  Widget _desktopSettings(S s, CoreConfig config, String lang) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final optionStyle = _desktopOptionStyle(context);
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+            children: [
+              _SettingsGroup(
+                icon: Icons.tune_rounded,
+                title: s('settings.general'),
+                children: [
+                  Tooltip(
+                    message: _saveDir,
+                    child: InkWell(
+                      key: const Key('settings-save-location'),
+                      onTap: _chooseDir,
+                      child: _PreferenceRow(
+                        label: s('settings.save_location'),
+                        value: _saveDir.isEmpty ? '—' : path.basename(_saveDir),
+                        icon: Icons.chevron_right_rounded,
+                      ),
+                    ),
+                  ),
+                  _PreferenceChoice(
+                    key: const Key('settings-language'),
+                    label: s('settings.language'),
+                    value: lang,
+                    choices: {
+                      for (final language in S.supported)
+                        language: S.languageName(language),
+                    },
+                    onChanged: (value) =>
+                        ref.read(languageProvider.notifier).set(value),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _SettingsGroup(
+                icon: Icons.ios_share_rounded,
+                title: s('settings.share'),
+                children: [
+                  _PreferenceChoice(
+                    key: const Key('settings-share-mode'),
+                    label: s('settings.default_mode'),
+                    value: _shareMode,
+                    choices: {
+                      'once': s('send.mode.once'),
+                      'open': s('send.mode.open'),
+                    },
+                    onChanged: (value) => setState(() {
+                      _shareMode = value;
+                      _dirty = true;
+                    }),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s('settings.code_lifetime'),
+                            style: optionStyle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 94,
+                          child: TextField(
+                            key: const Key('settings-ttl'),
+                            controller: _ttl,
+                            onChanged: (_) => _mark(),
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.right,
+                            style: optionStyle,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 7,
+                              ),
+                              suffixText: s('settings.seconds'),
+                              suffixStyle: optionStyle.copyWith(
+                                fontSize: 11,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AboutPage(
+                        strings: s,
+                        version: config.appVersion,
+                        coreVersion: CoreClient.version,
+                      ),
+                    ),
+                  ),
+                  child: _PreferenceRow(
+                    label: s('settings.about'),
+                    value: config.appVersion,
+                    icon: Icons.chevron_right_rounded,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_dirty)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border(top: BorderSide(color: colors.outlineVariant)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      style: TextButton.styleFrom(textStyle: optionStyle),
+                      onPressed: () => setState(() => _loadFrom(config)),
+                      child: Text(s('common.cancel')),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        textStyle: optionStyle.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      onPressed: _save,
+                      child: Text(s('settings.save')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PreferenceRow extends StatelessWidget {
+  const _PreferenceRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final optionStyle = _desktopOptionStyle(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 40),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: Row(
+          children: [
+            Expanded(flex: 5, child: Text(label, style: optionStyle)),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 6,
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: optionStyle.copyWith(color: colors.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(icon, size: 15, color: colors.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PreferenceChoice extends StatelessWidget {
+  const _PreferenceChoice({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.choices,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final Map<String, String> choices;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) => PopupMenuButton<String>(
+        tooltip: label,
+        initialValue: value,
+        position: PopupMenuPosition.under,
+        offset: Offset(constraints.maxWidth - 156, 0),
+        constraints: const BoxConstraints.tightFor(width: 156),
+        menuPadding: const EdgeInsets.symmetric(vertical: 4),
+        color: colors.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: colors.outlineVariant, width: 0.5),
+        ),
+        onSelected: (selection) {
+          if (selection != value) onChanged(selection);
+        },
+        itemBuilder: (_) => [
+          for (final entry in choices.entries)
+            CheckedPopupMenuItem(
+              value: entry.key,
+              checked: value == entry.key,
+              child: Text(entry.value, style: _desktopOptionStyle(context)),
+            ),
+        ],
+        child: _PreferenceRow(
+          label: label,
+          value: choices[value] ?? value,
+          icon: Icons.unfold_more_rounded,
+        ),
+      ),
+    );
+  }
 }
 
 class _SettingsGroup extends StatelessWidget {
@@ -287,6 +553,36 @@ class _SettingsGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    if (isDesktopTheme(context)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 12, bottom: 5),
+            child: Text(
+              title,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) const Divider(indent: 16, endIndent: 16),
+                  children[i],
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -327,9 +623,13 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (MediaQuery.sizeOf(context).width < 600) {
+    if (MediaQuery.sizeOf(context).width <
+            (isDesktopTheme(context) ? 400 : 600) ||
+        MediaQuery.textScalerOf(context).scale(13) > 16) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+        padding: isCompactDesktop(context)
+            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+            : const EdgeInsets.fromLTRB(18, 14, 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -341,17 +641,45 @@ class _Row extends StatelessWidget {
       );
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 148,
-            child: Text(label, style: theme.textTheme.labelLarge),
+            width: isDesktopTheme(context) ? 126 : 148,
+            child: Text(
+              label,
+              style: isDesktopTheme(context)
+                  ? theme.textTheme.bodyMedium
+                  : theme.textTheme.labelLarge,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(child: child),
         ],
+      ),
+    );
+  }
+}
+
+class _ChoiceSurface extends StatelessWidget {
+  const _ChoiceSurface({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final desktop = isDesktopTheme(context);
+    return Align(
+      alignment: desktop ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        padding: desktop ? const EdgeInsets.all(3) : EdgeInsets.zero,
+        decoration: desktop
+            ? BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(8),
+              )
+            : null,
+        child: child,
       ),
     );
   }

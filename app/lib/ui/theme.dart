@@ -7,7 +7,22 @@ import 'package:flutter/material.dart';
 
 const _brand = Color(0xFF4169E1);
 
-ThemeData buildAppTheme(Brightness brightness) {
+bool isDesktopPlatform(TargetPlatform platform) => switch (platform) {
+  TargetPlatform.macOS ||
+  TargetPlatform.windows ||
+  TargetPlatform.linux => true,
+  _ => false,
+};
+
+bool isDesktopTheme(BuildContext context) =>
+    isDesktopPlatform(Theme.of(context).platform);
+
+bool isCompactDesktop(BuildContext context) =>
+    isDesktopTheme(context) && MediaQuery.sizeOf(context).width < 340;
+
+ThemeData buildAppTheme(Brightness brightness, {TargetPlatform? platform}) {
+  platform ??= defaultTargetPlatform;
+  if (isDesktopPlatform(platform)) return _desktopTheme(brightness, platform);
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(seedColor: _brand, brightness: brightness)
       .copyWith(
@@ -28,6 +43,7 @@ ThemeData buildAppTheme(Brightness brightness) {
   );
 
   return ThemeData(
+    platform: platform,
     colorScheme: scheme,
     useMaterial3: true,
     scaffoldBackgroundColor: scheme.surface,
@@ -196,4 +212,214 @@ ThemeData buildAppTheme(Brightness brightness) {
       textStyle: TextStyle(color: scheme.onInverseSurface, fontSize: 12),
     ),
   );
+}
+
+// Use fonts installed by each OS. Apple's system fonts are never bundled on
+// Windows or Linux, and CJK text falls back to the platform's native sans face.
+ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
+  final dark = brightness == Brightness.dark;
+  final primary = dark ? const Color(0xFF64A9FF) : const Color(0xFF0067D9);
+  final surface = dark ? const Color(0xFF202124) : const Color(0xFFF7F7F9);
+  final panel = dark ? const Color(0xFF2A2B2F) : Colors.white;
+  final text = dark ? const Color(0xFFF3F3F5) : const Color(0xFF1D1D1F);
+  final secondary = dark ? const Color(0xFFACADB5) : const Color(0xFF686970);
+  final separator = dark ? const Color(0xFF414248) : const Color(0xFFE3E3E8);
+  final scheme =
+      ColorScheme.fromSeed(seedColor: primary, brightness: brightness).copyWith(
+        primary: primary,
+        onPrimary: dark ? const Color(0xFF102440) : Colors.white,
+        primaryContainer: dark
+            ? const Color(0xFF253B57)
+            : const Color(0xFFE9F2FF),
+        onPrimaryContainer: primary,
+        surface: surface,
+        onSurface: text,
+        onSurfaceVariant: secondary,
+        surfaceContainerLowest: panel,
+        surfaceContainerLow: panel,
+        surfaceContainer: dark
+            ? const Color(0xFF303136)
+            : const Color(0xFFF0F0F4),
+        surfaceContainerHigh: dark
+            ? const Color(0xFF35363B)
+            : const Color(0xFFECECF0),
+        surfaceContainerHighest: dark
+            ? const Color(0xFF3B3C42)
+            : const Color(0xFFE5E5EA),
+        outline: secondary,
+        outlineVariant: separator,
+      );
+  final family = switch (platform) {
+    TargetPlatform.macOS => '.AppleSystemUIFont',
+    TargetPlatform.windows => 'Segoe UI',
+    _ => 'Ubuntu',
+  };
+  final fallbacks = switch (platform) {
+    TargetPlatform.macOS => const ['PingFang SC', 'Heiti SC'],
+    TargetPlatform.windows => const ['Microsoft YaHei UI', 'Microsoft YaHei'],
+    _ => const ['Noto Sans', 'DejaVu Sans', 'Noto Sans CJK SC'],
+  };
+  TextStyle type(double size, FontWeight weight, {double height = 1.4}) =>
+      TextStyle(
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        letterSpacing: 0,
+      );
+  final textTheme =
+      TextTheme(
+        headlineSmall: type(24, FontWeight.w600, height: 1.2),
+        titleLarge: type(18, FontWeight.w600, height: 1.3),
+        titleMedium: type(14, FontWeight.w600),
+        titleSmall: type(13, FontWeight.w600),
+        bodyLarge: type(14, FontWeight.w400),
+        bodyMedium: type(13, FontWeight.w400),
+        bodySmall: type(12, FontWeight.w400),
+        labelLarge: type(13, FontWeight.w500, height: 1.2),
+        labelMedium: type(12, FontWeight.w500),
+        labelSmall: type(11, FontWeight.w500),
+      ).apply(
+        fontFamily: family,
+        fontFamilyFallback: fallbacks,
+        bodyColor: text,
+        displayColor: text,
+      );
+  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
+  final buttonText = textTheme.labelLarge!;
+  final base = ThemeData(
+    useMaterial3: true,
+    platform: platform,
+    brightness: brightness,
+    colorScheme: scheme,
+    fontFamily: family,
+    fontFamilyFallback: fallbacks,
+    textTheme: textTheme,
+    scaffoldBackgroundColor: surface,
+    canvasColor: surface,
+    splashFactory: NoSplash.splashFactory,
+    hoverColor: primary.withValues(alpha: 0.05),
+    focusColor: primary.withValues(alpha: 0.14),
+    dividerTheme: DividerThemeData(color: separator, thickness: 0.5, space: 1),
+    iconTheme: IconThemeData(size: 20, color: secondary),
+    appBarTheme: AppBarTheme(
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      backgroundColor: surface,
+      foregroundColor: text,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle: textTheme.titleMedium,
+    ),
+    cardTheme: CardThemeData(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: panel,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: separator, width: 0.6),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        shape: shape,
+        textStyle: buttonText,
+        iconSize: 17,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        backgroundColor: panel,
+        foregroundColor: text,
+        side: BorderSide(color: separator),
+        shape: shape,
+        textStyle: buttonText,
+        iconSize: 17,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shape: shape,
+        textStyle: buttonText,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        minimumSize: const Size(32, 32),
+        padding: const EdgeInsets.all(7),
+        iconSize: 18,
+        shape: shape,
+        foregroundColor: secondary,
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        textStyle: buttonText,
+        foregroundColor: secondary,
+        selectedForegroundColor: text,
+        backgroundColor: Colors.transparent,
+        selectedBackgroundColor: panel,
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: dark ? scheme.surfaceContainer : const Color(0xFFFAFAFC),
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      hintStyle: textTheme.bodyMedium?.copyWith(color: secondary),
+      prefixIconColor: secondary,
+      suffixIconColor: secondary,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: separator),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: separator),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: primary, width: 1.5),
+      ),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: primary,
+      linearTrackColor: scheme.surfaceContainerHighest,
+      linearMinHeight: 5,
+      borderRadius: BorderRadius.circular(4),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(
+        color: scheme.onInverseSurface,
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: panel,
+      surfaceTintColor: Colors.transparent,
+      elevation: 12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    tooltipTheme: TooltipThemeData(
+      waitDuration: const Duration(milliseconds: 500),
+      decoration: BoxDecoration(
+        color: scheme.inverseSurface,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      textStyle: textTheme.bodySmall?.copyWith(color: scheme.onInverseSurface),
+    ),
+  );
+  return base;
 }

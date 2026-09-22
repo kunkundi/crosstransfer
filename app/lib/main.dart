@@ -11,7 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'ffi/core_client.dart';
-import 'platform/desktop_basket.dart';
+import 'platform/desktop_window.dart';
 import 'platform/notifications.dart';
 import 'platform/legal.dart';
 import 'platform/paths.dart';
@@ -32,7 +32,7 @@ Future<void> main() async {
   final paths = await AppPaths.resolve();
   final prefs = AppPrefs(paths.dataDir);
   await prefs.load();
-  if (_isDesktop) DesktopBasket.instance.configure(prefs);
+  if (_isDesktop) DesktopWindow.instance.configure(prefs);
 
   // The core fills empty keys with its own defaults on creation and persists
   // them, so first-run defaults must be supplied up front.
@@ -60,19 +60,5 @@ Future<void> main() async {
   // A notification permission dialog must not block startup or link delivery.
   unawaited(DesktopNotifier.instance.init());
 
-  if (_isDesktop) {
-    const options = WindowOptions(
-      size: DesktopBasket.mainSize,
-      minimumSize: DesktopBasket.mainSize,
-      maximumSize: DesktopBasket.mainSize,
-      center: true,
-      fullScreen: false,
-      title: 'CrossTransfer',
-    );
-    await windowManager.waitUntilReadyToShow(options);
-    await windowManager.setResizable(false);
-    await windowManager.setMaximizable(false);
-    await windowManager.show();
-    await windowManager.focus();
-  }
+  if (_isDesktop) await DesktopWindow.instance.initialize();
 }

@@ -259,15 +259,17 @@ const char* CtVersion(void);
 
 ## 八、Flutter 应用
 
+桌面视觉（2026-09-23）：参考 Apple HIG 的文字层级与导航布局，Windows / macOS / Linux 使用独立桌面主题和唯一的 280 × 360 紧凑窗口。启动、托盘和链接唤起同一窗口，不再区分主窗口与投递篮；顶部保留拖动、连接状态、置顶和关闭，发送 / 接收 / 设置在窗口内切换并保留页面状态。发送默认直接拖放或选文件，取件码与复制操作单列排列；发送记录保留二维码、进度和关闭分享等功能。接收与设置省略大标题并按需滚动。系统无衬线字体、中性表面、蓝色主操作、细分隔线与圆角覆盖中英文、深浅色和放大文字。继承原有窗口位置与置顶偏好。移动端继续使用原有主题，不分发 Apple 字体或引入新的 UI 依赖。
+
 依赖：`ffi`、`ffigen`、`flutter_riverpod`、`path_provider`、`file_picker`、`desktop_drop`、`qr_flutter`、`app_links`、`tray_manager` + `window_manager`、`flutter_local_notifications`、`open_filex`（BSD / MIT）。扫码通过平台桥接：iOS 使用系统 AVFoundation，Android 使用 ZXing Android Embedded 4.3.0（Apache-2.0）。阶段 5 移除 `mobile_scanner`，其 Android 传递依赖 ML Kit 受额外 Google API 条款约束，不符合本项目已选定的依赖许可证范围。相机授权、取消、前后台生命周期由原生扫描界面管理，Dart 统一校验取件码并展示错误/重试。
 
 页面：
 
 1. **发送页**：拖入 / 选择文件或目录 → 二维码 + "复制链接 / 系统分享"为主视觉，取件码次要展示 → 等待 / 进度 / 完成 / 关闭分享。
 2. **接收页**：扫码 / 粘贴链接为首屏，手输 10 位码兜底 → 保存目录 → 清单与进度 → 完成后打开目录。
-3. **设置**：保存目录、分享 ttl、默认 once / open、语言（中 / 英）；底部“关于”入口进入独立页面，展示版本、版权与第三方开源声明入口。
+3. **设置**：保存目录、分享 ttl、默认 once / open、语言（中 / 英）；桌面使用“常规 / 分享”两组紧凑列表行，标签在左、当前值在右，语言与模式通过菜单选择，目录显示文件夹名并悬停查看完整路径；分组标题使用 11 号半粗体，选项、当前值与菜单统一 12 号常规字重，单位使用 11 号辅助文字，并保留系统文字缩放；仅有未保存修改时显示固定在底部的取消 / 保存操作。底部用单行“关于 + 版本”入口进入独立页面，展示版本、版权与第三方开源声明入口。
 
-平台：桌面托盘与关窗隐藏；Windows / macOS / Linux 共用可由托盘呼出的紧凑“快速投递篮”，窗口置顶状态与位置可保留，拖入文件或目录后直接走现有分享状态机，macOS 菜单栏图标拖放只作为可选平台增强而非跨平台基线；iOS 15.0+，原生分享扩展 + App Group 批次导入、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。iOS 分享扩展导入后提示用户返回主 App 生成取件码，不采用 `share_handler` 的响应链 UIApplication 跳转；Android 分享插件在阶段 4 决定。
+平台：桌面托盘与关窗隐藏；Windows / macOS / Linux 共用可由托盘呼出的唯一紧凑窗口，窗口置顶状态与位置可保留，拖入文件或目录后直接走现有分享状态机，macOS 菜单栏图标拖放只作为可选平台增强而非跨平台基线；iOS 15.0+，原生分享扩展 + App Group 批次导入、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。iOS 分享扩展导入后提示用户返回主 App 生成取件码，不采用 `share_handler` 的响应链 UIApplication 跳转；Android 分享插件在阶段 4 决定。
 
 桌面基线（阶段 2 确定）：macOS 12.0+（Flutter 3.47 模板与 `file_picker_darwin` 的要求），**不启用 App Sandbox**（P2P 任意 UDP 端口 + 用户任意目录读写），走 Developer ID 签名 + 公证的 dmg 分发；`crosstransfer_native` 以 `vendored_libraries` podspec 嵌入 `Contents/Frameworks/`。Windows / Linux 把共享库放在可执行文件旁（`lib/`），Dart `DynamicLibrary.open` 按 `CT_NATIVE_LIB` → 包内路径 → 裸名顺序查找。
 
