@@ -13,7 +13,7 @@ import '../state/models.dart';
 import '../state/providers.dart';
 import 'widgets.dart';
 import 'import_storage.dart';
-import 'legal_page.dart';
+import 'about_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -83,7 +83,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final config = ref.watch(coreStateProvider.select((st) => st.config));
     final lang = ref.watch(languageProvider);
     if (!_loaded) _loadFrom(config);
-    final theme = Theme.of(context);
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -138,19 +137,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         if (MobilePlatform.isMobile) const ImportStorage(),
-        SectionTitle(s('settings.about')),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.balance_outlined),
-          title: Text(s('legal.title')),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => LegalPage(strings: s, version: config.appVersion),
-          )),
-        ),
-        _Row(
-            label: s('settings.version'),
-            child: Text('${config.appVersion}  (core ${CoreClient.version})')),
         const SizedBox(height: 24),
         Row(children: [
           FilledButton.icon(
@@ -166,9 +152,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
         ]),
         const SizedBox(height: 24),
-        Text(
-          'CrossTransfer ${config.appVersion} · ${theme.platform.name}',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+        const Divider(),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.info_outline),
+          title: Text(s('settings.about')),
+          subtitle: Text('CrossTransfer ${config.appVersion}'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => AboutPage(
+              strings: s,
+              version: config.appVersion,
+              coreVersion: CoreClient.version,
+            ),
+          )),
         ),
       ],
     );

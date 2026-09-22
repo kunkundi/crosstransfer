@@ -202,7 +202,8 @@
       ],
       "license_sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
       "source_archive": "dbus-0.7.15.tar.gz",
-      "source_sha256": "a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383"
+      "source_sha256": "a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383",
+      "source_download": "https://pub.dev/api/archives/dbus-0.7.15.tar.gz"
     },
     {
       "name": "gtk (Dart)",
@@ -215,7 +216,19 @@
       ],
       "license_sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
       "source_archive": "gtk-2.2.0.tar.gz",
-      "source_sha256": "4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5"
+      "source_sha256": "4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5",
+      "source_download": "https://pub.dev/api/archives/gtk-2.2.0.tar.gz"
+    },
+    {
+      "name": "Linux system GTK / GLib",
+      "version": "Distribution-provided, unmodified, dynamically linked",
+      "license": "LGPL-2.1-or-later",
+      "source": "https://www.gtk.org/",
+      "asset": "linux-system-gtk-glib.txt",
+      "platforms": [
+        "linux"
+      ],
+      "license_sha256": "fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb"
     }
   ]
 }

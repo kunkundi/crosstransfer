@@ -4,8 +4,9 @@ CrossTransfer is proprietary software (see `LICENSE`). It embeds or links the
 components below. GPL/LGPL bundled runtime dependencies are prohibited; Linux
 may dynamically use unmodified system-provided GTK/GLib without bundling them.
 Full version/source/text inventories and validation limits are documented in
-`docs/LICENSE_AUDIT.md`. In the app, open Settings > Open-source licenses to read
-Flutter/engine and supplemental notices and export the bundled MPL sources.
+`docs/LICENSE_AUDIT.md`. In the app, open Settings > About > Third-party notices to read
+Flutter/engine and supplemental notices, save the modified libjuice source, and
+open exact-version source download links for the unmodified Dart MPL packages.
 
 ## Bundled source (in this repository)
 
@@ -82,8 +83,9 @@ license texts in `NOTICES.Z`; the app displays these through LicenseRegistry.
 and the full original texts in that same asset directory.
 
 The unmodified MPL-2.0 Dart packages dbus 0.7.15 and gtk 2.2.0 have complete source
-archives `dbus-0.7.15.tar.gz` and `gtk-2.2.0.tar.gz` in `assets/legal/`, available
-for offline export from Settings > Open-source licenses > Source code. Their
+archives at the upstream download links below. Open them from Settings > About >
+Third-party notices > Third-party component source code. Exact copies remain in
+`assets/legal/` for source verification and packaged backup. Their
 SHA-256 values are `a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383`
 and `4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5`, respectively.
 Upstream source: https://pub.dev/api/archives/dbus-0.7.15.tar.gz and

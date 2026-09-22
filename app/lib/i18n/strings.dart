@@ -7,7 +7,8 @@ class S {
   const S(this.lang);
   final String lang; // zh | en
 
-  String call(String key) => (lang == 'en' ? _en[key] : _zh[key]) ?? _zh[key] ?? key;
+  String call(String key) =>
+      (lang == 'en' ? _en[key] : _zh[key]) ?? _zh[key] ?? key;
 
   String state(String s) => call('state.$s');
   String path(String p) => call('path.$p');
@@ -21,14 +22,32 @@ class S {
 }
 
 const Map<String, String> _zh = {
-  'legal.title': '开源许可证',
+  'about.tagline': '跨设备文件传输',
+  'about.description': '通过取件码、链接或二维码，在设备间发送和接收文件。',
+  'about.version_details': '版本信息',
+  'about.version_hint': '查看或复制版本，便于反馈问题',
+  'about.app_version': '应用版本',
+  'about.core_version': '传输引擎版本',
+  'about.platform': '运行平台',
+  'about.copy_version': '复制版本信息',
+  'about.version_copied': '版本信息已复制',
+  'about.copy_failed': '暂时无法复制，请重试。',
+  'about.close': '关闭',
+  'about.legal_hint': '版权、许可证与组件源码',
+  'about.copyright': '© 2026 DI JUNKUN。保留所有权利。',
+  'legal.intro': '本应用使用了第三方开源组件，相关版权与许可信息可在此查阅。',
+  'legal.license_hint': '查看随版本附带的完整许可文本',
+  'legal.source_hint': '获取对应版本的开源组件源码',
+  'legal.title': '第三方开源声明',
   'legal.copyright': '© 2026 DI JUNKUN。CrossTransfer 为专有软件。各开源组件适用其各自的许可证。',
   'legal.view': '查看第三方版权与许可声明',
-  'legal.source_title': '源码',
-  'legal.source_notice': '本 App 随附以下 MPL 组件的完整对应源码与许可原文。libjuice 包含 CrossTransfer 的 ct1 修改及说明；dbus 和 Dart gtk 保持上游原样。可以离线导出；CrossTransfer 的专有许可不限制您对这些源码享有的 MPL 权利。',
-  'legal.export_source': '导出源码',
-  'legal.saved': '源码已保存',
-  'legal.export_failed': '源码导出失败，请重试或选择其他保存位置。',
+  'legal.source_title': '第三方组件源码',
+  'legal.source_notice': 'libjuice 的完整源码包含 ct1 修改及说明，可离线保存。dbus 和 Dart gtk 未经修改，可通过链接下载对应版本源码（需联网）。各源码包均附许可文本，CrossTransfer 的专有许可不限制您对这些源码享有的 MPL 权利。',
+  'legal.download_source': '下载源码 · pub.dev',
+  'legal.open_failed': '无法打开浏览器，请复制链接访问',
+  'legal.export_source': '保存组件源码',
+  'legal.saved': '组件源码已保存',
+  'legal.export_failed': '组件源码保存失败，请重试或选择其他保存位置。',
   'recv.scan': '扫码接收',
   'recv.camera_error': '无法使用相机，请在系统设置中允许相机权限，或返回粘贴链接。',
   'recv.export': '导出到文件',
@@ -171,19 +190,38 @@ const Map<String, String> _zh = {
 };
 
 const Map<String, String> _en = {
-  'legal.title': 'Open-source licenses',
+  'about.tagline': 'File transfer across devices',
+  'about.description': 'Send and receive files between devices using a take code, link or QR code.',
+  'about.version_details': 'Version information',
+  'about.version_hint': 'View or copy details for a bug report',
+  'about.app_version': 'App version',
+  'about.core_version': 'Transfer engine version',
+  'about.platform': 'Platform',
+  'about.copy_version': 'Copy version info',
+  'about.version_copied': 'Version information copied',
+  'about.copy_failed': 'Could not copy. Please try again.',
+  'about.close': 'Close',
+  'about.legal_hint': 'Copyright, licenses and component source',
+  'about.copyright': '© 2026 DI JUNKUN. All rights reserved.',
+  'legal.intro': 'This app uses third-party open-source components. Their copyright and license information is available here.',
+  'legal.license_hint': 'Read the complete bundled license texts',
+  'legal.source_hint': 'Get the matching open-source component source',
+  'legal.title': 'Third-party notices',
   'legal.copyright': '© 2026 DI JUNKUN. CrossTransfer is proprietary software. Open-source components are covered by their respective licenses.',
   'legal.view': 'View third-party copyright and license notices',
-  'legal.source_title': 'Source code',
-  'legal.source_notice': 'This app includes complete corresponding source and license text for the MPL components below. libjuice includes CrossTransfer ct1 modifications and change notes; dbus and Dart gtk are unmodified upstream packages. Export them offline. CrossTransfer’s proprietary license does not restrict your MPL rights to this source.',
-  'legal.export_source': 'Export source',
-  'legal.saved': 'Source saved',
-  'legal.export_failed': 'Could not export the source. Try again or choose another destination.',
+  'legal.source_title': 'Third-party component source code',
+  'legal.source_notice': 'The complete libjuice source includes ct1 changes and change notes and can be saved offline. Download the unmodified dbus and Dart gtk source for the matching versions via the links (internet required). Each archive includes its license. CrossTransfer’s proprietary license does not restrict your MPL rights to this source.',
+  'legal.download_source': 'Download source · pub.dev',
+  'legal.open_failed': 'Could not open a browser. Copy this link to continue.',
+  'legal.export_source': 'Save component source',
+  'legal.saved': 'Component source saved',
+  'legal.export_failed': 'Could not save the component source. Try again or choose another destination.',
   'recv.scan': 'Scan QR code',
   'recv.camera_error': 'Camera unavailable. Allow camera access in Settings, or go back and paste the link.',
   'recv.export': 'Export to Files',
   'send.system_share': 'Share',
-  'send.mobile_empty': 'Choose files or share them to CrossTransfer from another app.',
+  'send.mobile_empty':
+      'Choose files or share them to CrossTransfer from another app.',
   'mobile.foreground': 'Keep the app in the foreground for large transfers.',
   'mobile.expired': 'Background time expired. Transfers paused; return to the app to continue.',
   'mobile.inbox': 'Files imported from other apps',
@@ -282,7 +320,8 @@ const Map<String, String> _en = {
   'storage.confirm': 'Delete the imported copies in this preview? Original and received files are kept. Select the originals again to send them later.',
   'storage.sending': 'Finish or close all sending tasks, including paused tasks, before cleaning.',
   'storage.done': 'Imported copies cleared',
-  'storage.failed': 'Could not read or clear storage. Finish sending and try again.',
+  'storage.failed':
+      'Could not read or clear storage. Finish sending and try again.',
   'common.error': 'Error',
   'common.unknown': 'Unknown',
 

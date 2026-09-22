@@ -36,7 +36,7 @@
 | 项 | 假设 |
 | --- | --- |
 | Android | 分阶段，特化版 MiniRTC 需补 NDK 构建（libjuice / OpenSSL / libsrtp 交叉编译，无 glib 后难度明显降低） |
-| 许可 | 项目、`minirtc/` 特化版、`server/` 均为专有许可。MiniRTC 版权人（dijunkun = kunkundi）为用户本人；`qos/aimd_rate_control.cc` 中一处外部贡献的一行初始化修复在特化版中重写。仓库根放 `LICENSE`（专有）与 `THIRD_PARTY_NOTICES.md`（汇总依赖许可证文本，随产品分发，App 内提供开源许可证页） |
+| 许可 | 项目、`minirtc/` 特化版、`server/` 均为专有许可。MiniRTC 版权人（dijunkun = kunkundi）为用户本人；`qos/aimd_rate_control.cc` 中一处外部贡献的一行初始化修复在特化版中重写。仓库根放 `LICENSE`（专有）与 `THIRD_PARTY_NOTICES.md`（汇总依赖许可证文本，随产品分发，App 内关于页提供第三方开源声明入口） |
 | 公共服务 | 由发行方部署和运维，正式域名待定；缺少域名时禁止构建商用原生库。部署文档仅供内部运维使用。 |
 
 环境（2026-09-22）：本机有 xmake 3.1.0、Xcode、Go 1.25、Flutter 3.47.5 / Dart 3.13.4、CocoaPods。MiniRTC 基线 commit `a25a3b4` 已复制并裁剪为数据专用版本；桌面构建与验收入口见 `docs/DESKTOP_BUILD.md`。
@@ -93,7 +93,7 @@
 
 | 依赖 | 许可证 | 处理 |
 | --- | --- | --- |
-| glib、gupnp / gssdp / libsoup / libxml2 / libpsl、proxy-libintl | LGPL | **移除**（闭源静态链接不合规） |
+| glib、gupnp / gssdp / libsoup / libxml2 / libpsl、proxy-libintl | LGPL | **移除**（本项目不采用 LGPL 静态链接及其重链接材料方案） |
 | libnice（含 MiniRTC 四个补丁） | LGPL-2.1 / MPL-1.1，硬依赖 glib | **移除**，以 libjuice 替代 |
 | libjuice | MPL-2.0 | **新增**：纯 C，ICE + STUN + TURN-UDP，零外部依赖 |
 | miniupnpc | BSD-3 | **新增**：替代 gupnp 做网关端口映射 |
@@ -102,7 +102,7 @@
 
 libjuice 不支持 ICE-TCP / TURN-TCP，UDP 被完全封锁的网络由服务端 WSS 中继兜底；libnice 补丁中的"中继后升级 P2P"与"对称 NAT 预测打洞"第一版不保留，后续按需在 libjuice 之上重做。
 
-分发义务：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 无论组件是否修改，均要求提供对应覆盖源码并告知获取方式，修改部分同样保留 MPL-2.0。阶段 5 的 libjuice ct1、dbus 0.7.15、Dart gtk 2.2.0 完整源码归档随产品提供并支持离线导出。App 内设置 → 法律信息 → 开源许可证页面。
+分发义务：随产品分发 `THIRD_PARTY_NOTICES.md`（各依赖许可证文本、WebRTC PATENTS）；MPL-2.0 无论组件是否修改，均要求提供对应覆盖源码并告知获取方式，修改部分同样保留 MPL-2.0。阶段 5 的 libjuice ct1 完整源码支持离线保存；未修改的 dbus 0.7.15、Dart gtk 2.2.0 通过官方对应版本下载链接获取，源码归档仍随包保留用于校验与备份。App 内设置 → 关于 → 第三方开源声明页面。
 
 ### 改造范围
 
@@ -265,7 +265,7 @@ const char* CtVersion(void);
 
 1. **发送页**：拖入 / 选择文件或目录 → 二维码 + "复制链接 / 系统分享"为主视觉，取件码次要展示 → 等待 / 进度 / 完成 / 关闭分享。
 2. **接收页**：扫码 / 粘贴链接为首屏，手输 10 位码兜底 → 保存目录 → 清单与进度 → 完成后打开目录。
-3. **设置**：保存目录、分享 ttl、默认 once / open、语言（中 / 英）、版本与法律信息。
+3. **设置**：保存目录、分享 ttl、默认 once / open、语言（中 / 英）；底部“关于”入口进入独立页面，展示版本、版权与第三方开源声明入口。
 
 平台：桌面托盘与关窗隐藏；iOS 15.0+，原生分享扩展 + App Group 批次导入、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。iOS 分享扩展导入后提示用户返回主 App 生成取件码，不采用 `share_handler` 的响应链 UIApplication 跳转；Android 分享插件在阶段 4 决定。
 
@@ -307,7 +307,7 @@ const char* CtVersion(void);
 阶段 4 实施约定：arm64-v8a / armeabi-v7a / x86_64；SAF 选文件/目录与外部分享均先导入 App 私有持久目录，core 始终使用有效 POSIX 路径。接收到私有 Received 后由用户通过 SAF 导出，避免把 `content://` 当作文件路径。FlutterEngine 由 Application 持有，Activity 重建不销毁传输引擎；活动收发使用 dataSync 前台服务及通知，系统超时停止服务并请求暂停。App Link 的域名和正式签名证书关联待所有者提供，先验收 scheme 和本地签名测试包。
 
 **阶段 5：加固与公共服务**（2026-09-22 主要工程加固、CI 全矩阵及关闭兼容回退的 Android 16 KB 模拟器运行验收完成；正式签名、域名/公网与真机验收仍待资源，见 `docs/PHASE5_NOTES.md`）
-13. CI 全矩阵、多接收端并发、强制 TURN、WSS 中继压测、TLS / ACME、文档、第三方许可证清单、App 内开源许可证页。
+13. CI 全矩阵、多接收端并发、强制 TURN、WSS 中继压测、TLS / ACME、文档、第三方许可证清单、App 内第三方开源声明页。
 14. 可选：SPAKE2 口令认证、浏览器接收页、libjuice 之上的打洞增强（对称 NAT 预测、中继后升级 P2P）。
 
 阶段 5 首批加固：原生 OpenSSL 固定到仍在维护的 3.5 LTS（当前 3.5.8），Windows 默认使用 nmake 并保留依赖构建失败日志；WSS 必须同时验证受信证书链与目标 DNS/IP 的 SAN，拒绝不匹配、过期及不受信证书，并以回归测试覆盖；梳理所有传递依赖许可（尤其移动端扫码 SDK），完善 App 内许可页面与分发清单；对移动端导入副本提供可控清理。公开域名、证书和真实设备验证仍按所有者提供的资源推进。

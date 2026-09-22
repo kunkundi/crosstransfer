@@ -34,7 +34,7 @@ Flutter SDK 的 `flutter`、`flutter_test`、`flutter_web_plugins` BSD 文本存
 
 ## MPL 对应源码
 
-设置 → 开源许可证可离线查看完整许可并导出以下完整源码：
+设置 → 关于 → 第三方开源声明可离线查看完整许可。展开“第三方组件源码”后，libjuice 提供离线保存，未修改的 dbus 和 Dart gtk 提供对应版本的官方源码下载链接：
 
 | 归档 | 内容 | SHA-256 |
 | --- | --- | --- |
@@ -42,7 +42,9 @@ Flutter SDK 的 `flutter`、`flutter_test`、`flutter_web_plugins` BSD 文本存
 | dbus-0.7.15.tar.gz | 未修改的官方 pub 源码包 | `a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383` |
 | gtk-2.2.0.tar.gz | 未修改的 Dart gtk pub 源码包；与系统 GTK 分开 | `4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5` |
 
-源码在 `app/assets/legal/`，均附原 MPL-2.0 文本。CrossTransfer 的专有许可不限制接收者对覆盖源码的 MPL 权利。即使未修改的编译后 MPL 组件也需告知对应源码取得方式，参见 [Mozilla FAQ Q8/Q10](https://www.mozilla.org/en-US/MPL/2.0/FAQ/)。
+dbus 下载链接为 https://pub.dev/api/archives/dbus-0.7.15.tar.gz ，Dart gtk 为 https://pub.dev/api/archives/gtk-2.2.0.tar.gz 。2026-09-23 已实际下载，确认 SHA-256 同时匹配 pub 元数据、锁文件和内置源码归档。链接通过系统浏览器打开；浏览器不可用时显示可选择复制的完整链接。
+
+归档副本仍在 `app/assets/legal/`，用于离线校验和随包备份，均附原 MPL-2.0 文本。libjuice ct1 没有已配置的对应公开下载地址，继续保留离线保存入口。CrossTransfer 的专有许可不限制接收者对覆盖源码的 MPL 权利。即使未修改的编译后 MPL 组件也需告知对应源码取得方式，参见 [Mozilla FAQ Q8/Q10](https://www.mozilla.org/en-US/MPL/2.0/FAQ/)。
 
 ## 已移除的运行依赖
 

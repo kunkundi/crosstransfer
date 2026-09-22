@@ -6,11 +6,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 const libjuiceSourceName = 'libjuice-1.7.2-ct1.tar.gz';
-const mplSources = <({String title, String fileName})>[
-  (title: 'libjuice 1.7.2 + ct1', fileName: libjuiceSourceName),
-  (title: 'dbus 0.7.15', fileName: 'dbus-0.7.15.tar.gz'),
-  (title: 'gtk 2.2.0 (Dart)', fileName: 'gtk-2.2.0.tar.gz'),
-];
+const componentSources =
+    <({String title, String fileName, String license, String? sourceUrl})>[
+      (
+        title: 'libjuice 1.7.2 + ct1',
+        fileName: libjuiceSourceName,
+        license: 'MPL-2.0',
+        sourceUrl: null,
+      ),
+      (
+        title: 'dbus 0.7.15',
+        fileName: 'dbus-0.7.15.tar.gz',
+        license: 'MPL-2.0',
+        sourceUrl: 'https://pub.dev/api/archives/dbus-0.7.15.tar.gz',
+      ),
+      (
+        title: 'gtk 2.2.0 (Dart)',
+        fileName: 'gtk-2.2.0.tar.gz',
+        license: 'MPL-2.0',
+        sourceUrl: 'https://pub.dev/api/archives/gtk-2.2.0.tar.gz',
+      ),
+    ];
 
 bool _registered = false;
 
@@ -35,10 +51,18 @@ Stream<LicenseEntry> loadNativeLicenses() async* {
       'assets/legal/${component['asset']}',
     );
     final sourceArchive = component['source_archive'];
-    final sourceNotice = sourceArchive != null
-        ? '\n\nThe complete corresponding MPL-2.0 source is bundled as $sourceArchive. '
-              'Export it from Settings > Open-source licenses > Source code. '
-              'CrossTransfer’s proprietary license does not restrict your MPL rights '
+    final sourceUrl = component['source_download'];
+    final sourceLocation = sourceUrl != null
+        ? 'The complete corresponding component source is available at $sourceUrl. '
+              'Open it from Settings > About > Third-party notices > '
+              'Third-party component source code. '
+        : sourceArchive != null
+        ? 'The complete corresponding component source is bundled as $sourceArchive. '
+              'Save it from Settings > About > Third-party notices > '
+              'Third-party component source code. '
+        : '';
+    final sourceNotice = sourceLocation.isNotEmpty
+        ? '\n\n${sourceLocation}CrossTransfer’s proprietary license does not restrict your rights under the component license '
               'to that covered source.'
         : '';
     yield LicenseEntryWithLineBreaks([

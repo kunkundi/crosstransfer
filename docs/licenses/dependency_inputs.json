@@ -23,6 +23,6 @@
     "minirtc/thirdparty/websocketpp/xmake.lua": "beac245a717c2bc3bc8d17265d9fc9b54f699f3833b11513f8723c4dbaffd539",
     "minirtc/thirdparty/xmake.lua": "3da4fb793de885dbf27816693ffd9c0f2ac5f42a86a1a723ea68fc5bb53ca7e7",
     "minirtc/xmake.lua": "59257d97d49384dddea0254bce5b8d757d05d8c1c94af07aa61782263248f8e1",
-    "xmake.lua": "0da78dfd8ae13d01a7a2964f087c11c4140b62ad72f4b006f6ebca194d2d5db7"
+    "xmake.lua": "870ce4a593de1e882f37cf12ba84b925de51e9f7830ba94241e51b62a1d4c4c1"
   }
 }

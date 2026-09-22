@@ -23,7 +23,7 @@ def Main():
         assert Hash(licenses / name) == component["license_sha256"], f"notice hash changed: {name}"
         assert (assets / name).read_bytes() == (licenses / name).read_bytes(), f"notice not bundled: {name}"
         if "source_archive" in component:
-            assert Hash(assets / component["source_archive"]) == component["source_sha256"], "MPL source changed"
+            assert Hash(assets / component["source_archive"]) == component["source_sha256"], "component source changed"
     inputs = json.loads((licenses / "dependency_inputs.json").read_text())
     for name, checksum in inputs["sha256"].items():
         assert Hash(ROOT / name) == checksum, f"dependency input changed: {name}; review and refresh license evidence"
