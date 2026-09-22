@@ -39,7 +39,6 @@ func TestCredentialsRoundTrip(t *testing.T) {
 func TestEmbeddedServerAllocates(t *testing.T) {
 	srv, err := Start(Options{
 		PublicIP: net.ParseIP("127.0.0.1"),
-		ListenIP: "127.0.0.1",
 		Port:     0,
 		MinPort:  40000,
 		MaxPort:  40100,
@@ -50,6 +49,9 @@ func TestEmbeddedServerAllocates(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer srv.Close()
+	if !srv.conn.LocalAddr().(*net.UDPAddr).IP.IsLoopback() {
+		t.Fatal("a loopback-advertised TURN server must bind loopback")
+	}
 
 	cred := IssueCredentials("secret", "u", time.Minute, time.Now())
 	pc, err := net.ListenPacket("udp4", "127.0.0.1:0")

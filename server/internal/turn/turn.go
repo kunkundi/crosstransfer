@@ -108,6 +108,12 @@ func Start(o Options) (*Server, error) {
 	}
 	if o.ListenIP == "" {
 		o.ListenIP = "0.0.0.0"
+		// A loopback-advertised endpoint must also reply from loopback. A
+		// wildcard socket replying to a client's LAN-bound ICE socket can
+		// otherwise choose the LAN source IP; strict TURN clients reject it.
+		if o.PublicIP.IsLoopback() {
+			o.ListenIP = o.PublicIP.String()
+		}
 	}
 	if o.Logger == nil {
 		o.Logger = slog.Default()
