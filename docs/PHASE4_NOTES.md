@@ -31,6 +31,6 @@
 验收边界与后续：
 
 - 默认 applicationId 为占位；正式 keystore、分发渠道证书、域名和 assetlinks.json 尚未部署。当前 Release APK 使用测试签名。
-- 尚无 Android 真机验收；相机实扫、OEM 后台限制、6 小时 dataSync 配额耗尽和 16 KB 页面系统的运行时仍待验证。静态对齐通过不等于这些运行场景通过。
+- 阶段 5 已补 Android 15 ARM64 16 KB 模拟器运行验收：关闭兼容回退后，Release 启动、6 项仪器测试、2 项 FFI 传输与冷/热链接、后台收件均通过，见 [验收记录](PHASE5_NOTES.md)。尚无 Android 真机验收；相机实扫、OEM 后台限制和 6 小时 dataSync 配额耗尽仍待验证。
 - SAF 测试使用真实跨 UID DocumentsProvider 和临时 URI 授权，选择器人工操作由 ActivityMonitor 返回结果；真实文件管理器界面/不同云盘提供器仍需人工验收。
 - 导入副本的占用提示/清理、完整传递依赖许可审计（含 Android 扫码 SDK）、TLS 主机名验证、全平台并发/弱网和服务部署继续在阶段 5 完成。

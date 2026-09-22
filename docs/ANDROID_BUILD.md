@@ -78,6 +78,33 @@ python3 tools/android_e2e.py --device emulator-5554 --cli build/macosx/arm64/rel
 
 此脚本要求可 `run-as` 的调试包，临时备份并最终恢复 App `files` 配置；接收目录和端口映射仅清理本次创建的内容。每次收取 8 MiB+37 字节、Unicode 与空目录，校验 SHA-256，检查服务启动/结束，并测试退到桌面后的接收。异常退出后优先检查备份，勿对日常使用设备执行 `pm clear`。
 
+## 16 KB 模拟器
+
+所有者于 2026-09-22 授权接受 `android-sdk-arm-dbt-license` 并安装 `system-images;android-35;google_apis_ps16k;arm64-v8a`（revision 5）。本机专用 AVD 为 `CrossTransfer_API35_16K`；镜像仅用于测试，不随产品分发。
+
+安装并创建新的专用设备（已有同名 AVD 时跳过创建）：
+
+```sh
+sdkmanager 'system-images;android-35;google_apis_ps16k;arm64-v8a'
+avdmanager create avd --name CrossTransfer_API35_16K \
+  --package 'system-images;android-35;google_apis_ps16k;arm64-v8a' --device pixel_7
+emulator -avd CrossTransfer_API35_16K -port 5560 -no-snapshot
+```
+
+启动完成后，在另一终端确认真实页大小，并按 [Android 官方指南](https://developer.android.com/guide/practices/page-sizes#16kb-backcompat) 关闭兼容回退。以下 root 和系统属性修改仅用于这台专用 userdebug 模拟器：
+
+```sh
+adb -s emulator-5560 root
+adb -s emulator-5560 wait-for-device
+adb -s emulator-5560 shell getconf PAGE_SIZE  # 必须为 16384
+adb -s emulator-5560 shell setprop bionic.linker.16kb.app_compat.enabled false
+adb -s emulator-5560 shell setprop pm.16kb.app_compat.disabled true
+adb -s emulator-5560 shell getprop bionic.linker.16kb.app_compat.enabled  # false
+adb -s emulator-5560 shell getprop pm.16kb.app_compat.disabled           # true
+```
+
+在此环境安装并启动 Release APK，随后以 `emulator-5560` 执行上节的仪器测试、完整 App 冷/热启动接收和 FFI 集成测试。集成测试会替换 App 入口，结束后重新安装产品 APK。验收证据见 [阶段 5 记录](PHASE5_NOTES.md)。
+
 ## 文件与后台行为
 
 - SAF 文件/目录、ACTION_SEND / ACTION_SEND_MULTIPLE 均先复制到私有持久 `files/Imported/<UUID>`。核心始终读取 POSIX 路径，不依赖长期 URI 权限。
@@ -86,4 +113,4 @@ python3 tools/android_e2e.py --device emulator-5554 --cli build/macosx/arm64/rel
 - Application 持有 FlutterEngine，Activity 重建/退出不销毁正在使用的 FFI 引擎。活动工作使用 dataSync 前台服务、通知及有限时长唤醒锁；系统超时通知 Dart 暂停并停止服务。
 - 依赖 `desktop_drop` 尚使用 Kotlin Gradle Plugin；当前 Flutter 给出迁移提醒，构建可通过。模板兼容开关保留，升级 Flutter 前应复核插件支持情况。
 
-正式发布前仍需真机相机扫码、厂商后台策略、系统前台服务配额到期、16 KB 系统运行以及正式签名/App Link 联调。
+正式发布前仍需真机相机扫码、厂商后台策略、系统前台服务配额到期以及正式签名/App Link 联调；16 KB 模拟器不能代替这些真机验收。

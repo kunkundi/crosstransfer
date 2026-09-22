@@ -8,18 +8,32 @@
 | --- | --- |
 | Windows / macOS / Linux | [Desktop 35660167218](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218) 全绿：34 core / 889 断言、24 Dart、15 FFI 导出、双向收发、Release、安装包和冷/热链接收件。macOS/Linux 包含五种并发路径 |
 | Android | [Android 35660167284](https://github.com/kunkundi/crosstransfer/actions/runs/35660167284) 全绿：3 ABI、24 Dart、Release/许可/16 KB 静态对齐、6 项仪器测试、2 项 P2P/WSS FFI 收发 |
+| Android 16 KB 运行 | 本机 Android 15 ARM64 revision 5，页大小 16384，关闭兼容回退；Release 启动、6 项仪器测试、2 项 FFI 传输及 CLI 冷/热链接、后台收件全部通过，详见下节 |
 | iOS | [iOS 35660167216](https://github.com/kunkundi/crosstransfer/actions/runs/35660167216) 全绿：3 个 native slice、24 Dart、未签名 device/simulator App、许可/ABI、5 项 XCTest |
 | 服务端 | [Server 35658256979](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979) 全绿：race/vet、许可、容器路由/权限与 amd64/arm64 OCI 导出；下载产物的架构/哈希另行通过核对 |
 
 客户端验证代码为 `cc8b8e5`；Server 多架构验证代码为 `7489036`，其后未修改服务端代码。下载入口：下文桌面安装包表、[Android 测试 APK](https://github.com/kunkundi/crosstransfer/actions/runs/35660167284/artifacts/10666852943)、[iOS 未签名产物](https://github.com/kunkundi/crosstransfer/actions/runs/35660167216/artifacts/10666578476)、[双架构 OCI](https://github.com/kunkundi/crosstransfer/actions/runs/35658256979/artifacts/10664868634)。
 
-剩余验收需要以下资源或授权：
+剩余验收需要以下资源：
 
 - 正式应用 ID、Apple Team/App Group、签名证书/provisioning/keystore，以及实际接收域名和公开服务主机，用于签名分发、App/Universal Link、真实 TLS/ACME 与公网收发。
 - 真实手机及 Windows/Linux 桌面，用于光学扫码、系统后台到期/OEM 行为、托盘/通知和安装器交互；长期公网容量还需实际部署环境。
-- Android 16 KB ARM64 模拟器的 `android-sdk-arm-dbt-license` 额外许可尚待所有者授权；安装器未接受该许可，因此镜像未安装，未把静态 16 KB 对齐当成运行验证。完整条款保留在本机 `/tmp/ct-android-16k-license.txt`，异步确认已发出。
 
 上述资源到位后继续发布验收。PLAN 第 14 项的可选增强仍未启动。以下各节保留实施过程与历史回归记录。
+
+## Android 16 KB 系统运行（2026-09-22）
+
+所有者明确授权后，安装器已接受 `android-sdk-arm-dbt-license`，安装 `system-images;android-35;google_apis_ps16k;arm64-v8a` revision 5。专用 AVD `CrossTransfer_API35_16K` 的系统指纹为 `google/sdk_gphone16k_arm64/emu64a16k:15/AE3A.240806.043/12960925:userdebug/dev-keys`；`getconf PAGE_SIZE` 实测 **16384**。按 [Android 官方指南](https://developer.android.com/guide/practices/page-sizes#16kb-backcompat)，以此专用模拟器的 adb root 设置并回读 `bionic.linker.16kb.app_compat.enabled=false`、`pm.16kb.app_compat.disabled=true`，全程关闭兼容回退。
+
+| 运行项 | 结果 |
+| --- | --- |
+| Release 安装与冷启动 | 测试签名 APK 安装成功、主界面正常渲染；从进程 APK 映射偏移核对 Flutter 引擎、Dart AOT 和 `libcrosstransfer_native.so` 均已加载可执行段 |
+| Android 仪器测试 | 6 项通过，0 failure/error/skipped，10.147 秒；覆盖 SAF 导入导出、系统分享、扫码桥接、通知和导入副本清理 |
+| Dart FFI 实际收发 | P2P、强制 WebSocket 中继两项通过；1 MiB+37 B、Unicode 路径、空文件/目录与内容一致性 |
+| CLI → 完整 App | 冷/热启动 scheme 两次通过；各含 8 MiB+37 B 文件、Unicode、空文件/目录并校验 SHA-256；热启动接收退到桌面后完成，前台服务按工作启动/退出 |
+| 收尾 | crash buffer 为空；隔离服务与 adb reverse 已清理，重新安装产品 Release APK 并关闭模拟器；镜像和 AVD 保留供复测 |
+
+验证时源码为 `a1133b5`，本次无需修改产品代码。Release APK 为 85,494,595 字节，SHA-256 `12a746f6565e9d802278ed9db453d1d21b59eb29250bffe2b1cc7c48343d7514`。本机证据在 `dist/android-16k/`：`environment.json`、`results.json`、仪器测试 XML、`instrumentation.log`、`native-transfer.log`、`app-e2e.log`、`release-maps.log`、启动/收件截图及测试 APK。复测命令见 [Android 构建与验收](ANDROID_BUILD.md#16-kb-模拟器)。这些结果完成 16 KB 模拟器验收，不替代真机、公网与正式签名发布验收。
 
 ## WSS 证书身份（2026-09-22）
 
