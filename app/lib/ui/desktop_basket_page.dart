@@ -103,7 +103,7 @@ class _DesktopBasketPageState extends ConsumerState<DesktopBasketPage> {
           const _BasketHeader(),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
               child: DropTarget(
                 onDragEntered: (_) => setState(() => _dragging = true),
                 onDragExited: (_) => setState(() => _dragging = false),
@@ -116,7 +116,7 @@ class _DesktopBasketPageState extends ConsumerState<DesktopBasketPage> {
                     color: _dragging
                         ? colorScheme.primaryContainer.withValues(alpha: 0.7)
                         : colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _dragging
                           ? colorScheme.primary
@@ -177,7 +177,7 @@ class _BasketHeader extends ConsumerWidget {
     final s = ref.watch(sProvider);
     final colors = Theme.of(context).colorScheme;
     return SizedBox(
-      height: 48,
+      height: 44,
       child: Row(
         children: [
           Expanded(
@@ -187,12 +187,12 @@ class _BasketHeader extends ConsumerWidget {
               child: MouseRegion(
                 cursor: SystemMouseCursors.move,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 14),
+                  padding: const EdgeInsets.only(left: 12),
                   child: Row(
                     children: [
                       Icon(
                         Icons.move_to_inbox_outlined,
-                        size: 20,
+                        size: 18,
                         color: colors.primary,
                       ),
                       const SizedBox(width: 8),
@@ -255,8 +255,8 @@ class _ActiveDropHint extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.file_download_outlined, size: 48, color: colors.primary),
-          const SizedBox(height: 10),
+          Icon(Icons.file_download_outlined, size: 36, color: colors.primary),
+          const SizedBox(height: 7),
           Text(
             ref.watch(sProvider)('send.drop_active'),
             style: Theme.of(context).textTheme.titleMedium,
@@ -283,51 +283,58 @@ class _EmptyBasket extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(sProvider);
     final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.upload_file_outlined, size: 40, color: colors.primary),
-          const SizedBox(height: 8),
-          Text(
-            s('basket.drop_hint'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          Row(
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  onPressed: onPickFiles,
-                  icon: const Icon(Icons.insert_drive_file_outlined, size: 18),
-                  label: Text(s('send.pick_files')),
-                ),
+              Icon(Icons.upload_file_outlined, size: 34, color: colors.primary),
+              const SizedBox(height: 7),
+              Text(
+                s('basket.drop_hint'),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: onPickFiles,
+                      icon: const Icon(
+                        Icons.insert_drive_file_outlined,
+                        size: 18,
+                      ),
+                      label: Text(s('send.pick_files')),
+                    ),
                   ),
-                  onPressed: onPickFolder,
-                  icon: const Icon(Icons.folder_outlined, size: 18),
-                  label: Text(s('send.pick_folder')),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: onPickFolder,
+                      icon: const Icon(Icons.folder_outlined, size: 18),
+                      label: Text(s('send.pick_folder')),
+                    ),
+                  ),
+                ],
               ),
+              if (!serviceAvailable) ...[
+                const SizedBox(height: 8),
+                Text(
+                  s('service.unavailable'),
+                  style: TextStyle(color: colors.error, fontSize: 12),
+                ),
+              ],
             ],
           ),
-          if (!serviceAvailable) ...[
-            const SizedBox(height: 8),
-            Text(
-              s('service.unavailable'),
-              style: TextStyle(color: colors.error, fontSize: 12),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -353,40 +360,47 @@ class _PendingSelection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(sProvider);
     final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inventory_2_outlined, size: 34, color: colors.primary),
-          const SizedBox(height: 8),
-          Text(
-            _pathSummary(paths),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          if (error != null) ...[
-            const SizedBox(height: 7),
-            Text(
-              error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: colors.error, fontSize: 12),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Row(
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FilledButton(
-                onPressed: canRetry ? onRetry : null,
-                child: Text(s('basket.retry')),
+              Icon(Icons.inventory_2_outlined, size: 30, color: colors.primary),
+              const SizedBox(height: 6),
+              Text(
+                _pathSummary(paths),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(width: 8),
-              TextButton(onPressed: onClear, child: Text(s('common.cancel'))),
+              if (error != null) ...[
+                const SizedBox(height: 7),
+                Text(
+                  error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colors.error, fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FilledButton(
+                    onPressed: canRetry ? onRetry : null,
+                    child: Text(s('basket.retry')),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: onClear,
+                    child: Text(s('common.cancel')),
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -423,62 +437,92 @@ class _ShareResult extends ConsumerWidget {
       );
     }
     if (share!.state == 'failed') {
-      return Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, color: colors.error, size: 36),
-            const SizedBox(height: 8),
-            Text(s('send.share_failed'), style: TextStyle(color: colors.error)),
-            if (share!.error.isNotEmpty) Text(s.errorCode(share!.error)),
-            const SizedBox(height: 10),
-            TextButton(onPressed: onAgain, child: Text(s('basket.try_again'))),
-          ],
+      return Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Icon(Icons.error_outline, color: colors.error, size: 30),
+                const SizedBox(height: 6),
+                Text(
+                  s('send.share_failed'),
+                  style: TextStyle(color: colors.error),
+                ),
+                if (share!.error.isNotEmpty) Text(s.errorCode(share!.error)),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: onAgain,
+                  child: Text(s('basket.try_again')),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            _pathSummary(share!.paths),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 5),
-          SelectableText(
-            share!.code,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: colors.primary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-            ),
-          ),
-          if (confirmation != null)
-            Text(confirmation!, style: TextStyle(color: colors.primary)),
-          const SizedBox(height: 8),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 6,
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
             children: [
-              FilledButton.tonalIcon(
-                onPressed: onCopyCode,
-                icon: const Icon(Icons.copy, size: 17),
-                label: Text(s('send.copy_code')),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _pathSummary(share!.paths),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onAgain,
+                    child: Text(s('basket.again')),
+                  ),
+                ],
               ),
-              if (share!.link.isNotEmpty)
-                FilledButton.tonalIcon(
-                  onPressed: onCopyLink,
-                  icon: const Icon(Icons.link, size: 17),
-                  label: Text(s('send.copy_link')),
+              SelectableText(
+                share!.code,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
                 ),
-              TextButton(onPressed: onAgain, child: Text(s('basket.again'))),
+              ),
+              if (confirmation != null)
+                Text(confirmation!, style: TextStyle(color: colors.primary)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                      ),
+                      onPressed: onCopyCode,
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: Text(s('send.copy_code')),
+                    ),
+                  ),
+                  if (share!.link.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: FilledButton.tonalIcon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                        ),
+                        onPressed: onCopyLink,
+                        icon: const Icon(Icons.link, size: 16),
+                        label: Text(s('send.copy_link')),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

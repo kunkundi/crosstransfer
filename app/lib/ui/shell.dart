@@ -18,6 +18,7 @@ import 'desktop_basket_page.dart';
 import 'receive_page.dart';
 import 'send_page.dart';
 import 'settings_page.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
 class CrossTransferApp extends ConsumerWidget {
@@ -26,17 +27,11 @@ class CrossTransferApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(sProvider);
-    final seed = const Color(0xFF2E6BE6);
-    ThemeData theme(Brightness b) => ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: b),
-          useMaterial3: true,
-          visualDensity: VisualDensity.compact,
-        );
     return MaterialApp(
       title: s('app.title'),
       debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      darkTheme: theme(Brightness.dark),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
       home: const Shell(),
     );
   }
@@ -62,13 +57,18 @@ class _ShellState extends ConsumerState<Shell> {
       final inbox = await MobilePlatform.readInbox();
       if (mounted) setState(() => _inbox = inbox);
     } catch (e) {
-      if (mounted) showSnack(context, '${ref.read(sProvider)('common.error')}: $e');
+      if (mounted) {
+        showSnack(context, '${ref.read(sProvider)('common.error')}: $e');
+      }
     } finally {
       _readingInbox = false;
     }
   }
 
-  Future<void> _consumeInbox(Map<String, dynamic> item, {bool send = true}) async {
+  Future<void> _consumeInbox(
+    Map<String, dynamic> item, {
+    bool send = true,
+  }) async {
     if (_consumingInbox) return;
     setState(() => _consumingInbox = true);
     try {
@@ -93,7 +93,9 @@ class _ShellState extends ConsumerState<Shell> {
       await MobilePlatform.acknowledgeInbox(item['id'] as String);
       await _readInbox();
     } catch (e) {
-      if (mounted) showSnack(context, '${ref.read(sProvider)('common.error')}: $e');
+      if (mounted) {
+        showSnack(context, '${ref.read(sProvider)('common.error')}: $e');
+      }
     } finally {
       if (mounted) setState(() => _consumingInbox = false);
     }
@@ -102,16 +104,23 @@ class _ShellState extends ConsumerState<Shell> {
   @override
   void initState() {
     super.initState();
-    _mobile = MobileLifecycle(() {
-      if (mounted) showSnack(context, ref.read(sProvider)('mobile.expired'));
-    }, _readInbox, (error) {
-      if (mounted) {
-        showSnack(context, '${ref.read(sProvider)('common.error')}: $error');
-      }
-    })..start();
+    _mobile = MobileLifecycle(
+      () {
+        if (mounted) showSnack(context, ref.read(sProvider)('mobile.expired'));
+      },
+      _readInbox,
+      (error) {
+        if (mounted) {
+          showSnack(context, '${ref.read(sProvider)('common.error')}: $error');
+        }
+      },
+    )..start();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      _mobile.update(ref.read(coreStateProvider), ref.read(coreStateProvider.notifier));
+      _mobile.update(
+        ref.read(coreStateProvider),
+        ref.read(coreStateProvider.notifier),
+      );
       final s = ref.read(sProvider);
       await DesktopTray.instance.install(s);
       if (!mounted) return;
@@ -152,8 +161,10 @@ class _ShellState extends ConsumerState<Shell> {
       final p = prev.receives[r.transferId];
       if (p == null || p.state == r.state) continue;
       if (r.state == 'completed') {
-        notifier.show(s('notify.recv_done'),
-            s('notify.saved_to').replaceFirst('{dir}', r.saveDir));
+        notifier.show(
+          s('notify.recv_done'),
+          s('notify.saved_to').replaceFirst('{dir}', r.saveDir),
+        );
       } else if (r.state == 'failed') {
         notifier.show(s('notify.recv_failed'), s.errorCode(r.errorCode));
       }
@@ -174,85 +185,126 @@ class _ShellState extends ConsumerState<Shell> {
     });
 
     final pages = const [SendPage(), ReceivePage(), SettingsPage()];
-    final page = Column(children: [
-      if (MobilePlatform.isIOS && MobileLifecycle.hasActiveWork(ref.watch(coreStateProvider)))
-        Padding(padding: const EdgeInsets.all(8), child: Text(s('mobile.foreground'))),
-      if (_inbox.isNotEmpty)
-        Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(s('mobile.inbox')),
-            Text((_inbox.first['paths'] as List).map((p) => (p as String).split('/').last).join(', '), maxLines: 2, overflow: TextOverflow.ellipsis),
-            Wrap(spacing: 8, children: [
-              FilledButton(onPressed: _consumingInbox ? null : () => _consumeInbox(_inbox.first), child: Text(s((_inbox.first['paths'] as List).isEmpty ? 'recv.start' : 'mobile.inbox_send'))),
-              TextButton(onPressed: _consumingInbox ? null : () => _consumeInbox(_inbox.first, send: false), child: Text(s('mobile.inbox_remove'))),
-            ]),
-          ],
-        ))),
-      Expanded(child: IndexedStack(index: index, children: pages)),
-    ]);
-    if (MediaQuery.sizeOf(context).width < 600) {
-      return _basketOr(Scaffold(
-        appBar: AppBar(title: Text(s('app.title')), actions: const [
-          Padding(padding: EdgeInsets.all(20), child: _SignalIndicator()),
-        ]),
-        body: SafeArea(child: page),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: (i) => ref.read(navIndexProvider.notifier).set(i),
-          destinations: [
-            NavigationDestination(icon: const Icon(Icons.upload_outlined), label: s('nav.send')),
-            NavigationDestination(icon: const Icon(Icons.download_outlined), label: s('nav.receive')),
-            NavigationDestination(icon: const Icon(Icons.settings_outlined), label: s('nav.settings')),
-          ],
+    final page = Column(
+      children: [
+        if (MobilePlatform.isIOS &&
+            MobileLifecycle.hasActiveWork(ref.watch(coreStateProvider)))
+          _NoticeBanner(icon: Icons.phone_iphone, text: s('mobile.foreground')),
+        if (_inbox.isNotEmpty)
+          _InboxBanner(
+            item: _inbox.first,
+            busy: _consumingInbox,
+            onConsume: () => _consumeInbox(_inbox.first),
+            onRemove: () => _consumeInbox(_inbox.first, send: false),
+          ),
+        Expanded(
+          child: IndexedStack(index: index, children: pages),
         ),
-      ));
-    }
-    return _basketOr(Scaffold(
-      body: SafeArea(child: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: index,
-            onDestinationSelected: (i) => ref.read(navIndexProvider.notifier).set(i),
-            labelType: NavigationRailLabelType.all,
-            leading: const Padding(
-              padding: EdgeInsets.only(top: 12, bottom: 8),
-              child: Icon(Icons.swap_horiz_rounded, size: 32),
+      ],
+    );
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return _basketOr(
+        Scaffold(
+          appBar: AppBar(
+            toolbarHeight: 62,
+            titleSpacing: 18,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AppMark(size: 30),
+                const SizedBox(width: 10),
+                Text(s('app.title')),
+              ],
             ),
-            trailing: const Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: _SignalIndicator(),
-                ),
-              ),
-            ),
-            destinations: [
-              NavigationRailDestination(
-                icon: const Icon(Icons.upload_outlined),
-                selectedIcon: const Icon(Icons.upload),
-                label: Text(s('nav.send')),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.download_outlined),
-                selectedIcon: const Icon(Icons.download),
-                label: Text(s('nav.receive')),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.settings_outlined),
-                selectedIcon: const Icon(Icons.settings),
-                label: Text(s('nav.settings')),
+            actions: const [
+              Padding(
+                padding: EdgeInsets.only(right: 18),
+                child: _SignalIndicator(),
               ),
             ],
           ),
-          const VerticalDivider(width: 1, thickness: 1),
-          Expanded(
-            child: page,
+          body: SafeArea(child: page),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: index,
+            onDestinationSelected: (i) =>
+                ref.read(navIndexProvider.notifier).set(i),
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.upload_outlined),
+                label: s('nav.send'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.download_outlined),
+                label: s('nav.receive'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.settings_outlined),
+                label: s('nav.settings'),
+              ),
+            ],
           ),
-        ],
-      )),
-    ));
+        ),
+      );
+    }
+    return _basketOr(
+      Scaffold(
+        body: SafeArea(
+          child: Row(
+            children: [
+              NavigationRail(
+                selectedIndex: index,
+                onDestinationSelected: (i) =>
+                    ref.read(navIndexProvider.notifier).set(i),
+                extended: true,
+                minExtendedWidth: 160,
+                groupAlignment: -0.72,
+                leading: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 14, 6, 20),
+                  child: Row(
+                    children: [
+                      const AppMark(size: 26),
+                      const SizedBox(width: 6),
+                      Text(
+                        s('app.title'),
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ],
+                  ),
+                ),
+                trailing: const Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 8, 18),
+                      child: _SignalIndicator(showLabel: true),
+                    ),
+                  ),
+                ),
+                destinations: [
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.upload_outlined),
+                    selectedIcon: const Icon(Icons.upload),
+                    label: Text(s('nav.send')),
+                  ),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.download_outlined),
+                    selectedIcon: const Icon(Icons.download),
+                    label: Text(s('nav.receive')),
+                  ),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.settings_outlined),
+                    selectedIcon: const Icon(Icons.settings),
+                    label: Text(s('nav.settings')),
+                  ),
+                ],
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: page),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _basketOr(Widget shell) {
@@ -267,13 +319,17 @@ class _ShellState extends ConsumerState<Shell> {
 }
 
 class _SignalIndicator extends ConsumerWidget {
-  const _SignalIndicator();
+  const _SignalIndicator({this.showLabel = false});
+
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(sProvider);
     final state = ref.watch(coreStateProvider.select((st) => st.signalState));
-    final configured = ref.watch(coreStateProvider.select((st) => st.serviceAvailable));
+    final configured = ref.watch(
+      coreStateProvider.select((st) => st.serviceAvailable),
+    );
     final cs = Theme.of(context).colorScheme;
     Color color;
     String label;
@@ -292,12 +348,139 @@ class _SignalIndicator extends ConsumerWidget {
       }
       label = s('signal.$state');
     }
+    final dot = Container(
+      width: 9,
+      height: 9,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 6),
+        ],
+      ),
+    );
     return Tooltip(
       message: label,
-      child: Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: showLabel
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                dot,
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            )
+          : Semantics(label: label, child: dot),
+    );
+  }
+}
+
+class _NoticeBanner extends StatelessWidget {
+  const _NoticeBanner({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: colors.onSecondaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxBanner extends ConsumerWidget {
+  const _InboxBanner({
+    required this.item,
+    required this.busy,
+    required this.onConsume,
+    required this.onRemove,
+  });
+
+  final Map<String, dynamic> item;
+  final bool busy;
+  final VoidCallback onConsume;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(sProvider);
+    final colors = Theme.of(context).colorScheme;
+    final paths = (item['paths'] as List).cast<String>();
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.primaryContainer,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                Icons.move_to_inbox_outlined,
+                color: colors.onPrimaryContainer,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s('mobile.inbox'),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    paths.map((path) => path.split('/').last).join(', '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: busy ? null : onRemove,
+              child: Text(s('mobile.inbox_remove')),
+            ),
+            FilledButton(
+              onPressed: busy ? null : onConsume,
+              child: Text(
+                s(paths.isEmpty ? 'recv.start' : 'mobile.inbox_send'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

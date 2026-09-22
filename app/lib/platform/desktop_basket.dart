@@ -16,14 +16,11 @@ class DesktopBasket extends ChangeNotifier {
   DesktopBasket._();
   static final DesktopBasket instance = DesktopBasket._();
 
-  static const size = Size(420, 300);
-  static const _mainMinimumSize = Size(720, 520);
-  static const _unboundedMaximumSize = Size(100000, 100000);
+  static const mainSize = Size(660, 430);
+  static const size = Size(360, 240);
 
   AppPrefs? _prefs;
   Rect? _mainBounds;
-  bool _mainWasMaximized = false;
-  bool _mainWasFullScreen = false;
   bool _mainWasAlwaysOnTop = false;
   bool _mainWasSkipTaskbar = false;
   bool _active = false;
@@ -52,12 +49,14 @@ class DesktopBasket extends ChangeNotifier {
 
     _transitioning = true;
     try {
-      _mainWasMaximized = await windowManager.isMaximized();
-      _mainWasFullScreen = await windowManager.isFullScreen();
       _mainWasAlwaysOnTop = await windowManager.isAlwaysOnTop();
       _mainWasSkipTaskbar = await windowManager.isSkipTaskbar();
-      if (_mainWasFullScreen) await windowManager.setFullScreen(false);
-      if (_mainWasMaximized) await windowManager.unmaximize();
+      if (await windowManager.isFullScreen()) {
+        await windowManager.setFullScreen(false);
+      }
+      if (await windowManager.isMaximized()) {
+        await windowManager.unmaximize();
+      }
       _mainBounds = await windowManager.getBounds();
 
       _active = true;
@@ -104,9 +103,9 @@ class DesktopBasket extends ChangeNotifier {
       await _savePosition();
       await _restoreWindowChrome();
       final bounds = _mainBounds;
-      if (bounds != null) await windowManager.setBounds(bounds);
-      if (_mainWasMaximized) await windowManager.maximize();
-      if (_mainWasFullScreen) await windowManager.setFullScreen(true);
+      if (bounds != null) {
+        await windowManager.setBounds(bounds.topLeft & mainSize);
+      }
       _active = false;
       notifyListeners();
       await _revealWindow();
@@ -144,10 +143,14 @@ class DesktopBasket extends ChangeNotifier {
   }
 
   Future<void> _restoreWindowChrome() async {
-    await windowManager.setMaximumSize(_unboundedMaximumSize);
-    await windowManager.setMinimumSize(_mainMinimumSize);
-    await windowManager.setResizable(true);
-    await windowManager.setMaximizable(true);
+    if (await windowManager.isFullScreen()) {
+      await windowManager.setFullScreen(false);
+    }
+    await windowManager.setMaximumSize(mainSize);
+    await windowManager.setMinimumSize(mainSize);
+    await windowManager.setSize(mainSize);
+    await windowManager.setResizable(false);
+    await windowManager.setMaximizable(false);
     await windowManager.setTitleBarStyle(
       TitleBarStyle.normal,
       windowButtonVisibility: true,

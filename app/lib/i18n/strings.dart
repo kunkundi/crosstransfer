@@ -72,6 +72,10 @@ const Map<String, String> _zh = {
   'signal.unavailable': '服务暂不可用',
 
   'send.drop_hint': '拖入文件或文件夹',
+  'send.title': '发送文件',
+  'send.subtitle': '选择内容并生成取件码，对方无需登录即可接收。',
+  'send.secure_hint': '传输内容不会存储在服务器',
+  'send.active_shares': '当前分享',
   'send.drop_or': '或',
   'send.pick_files': '选择文件',
   'send.pick_folder': '选择文件夹',
@@ -97,6 +101,8 @@ const Map<String, String> _zh = {
   'service.unavailable': '服务暂不可用，请稍后重试。',
 
   'recv.title': '接收',
+  'recv.subtitle': '输入取件码或粘贴分享链接，文件会保存到指定位置。',
+  'recv.history': '接收记录',
   'recv.input_hint': '粘贴链接或输入取件码',
   'recv.start': '接收',
   'recv.paste': '粘贴链接或取件码',
@@ -119,6 +125,7 @@ const Map<String, String> _zh = {
   'recv.no_save_dir': '请先选择保存目录',
 
   'settings.title': '设置',
+  'settings.subtitle': '调整默认保存位置、分享方式与语言。',
   'settings.general': '常规',
   'settings.save_dir': '默认保存目录',
   'settings.language': '语言',
@@ -251,6 +258,11 @@ const Map<String, String> _en = {
   'signal.unavailable': 'Service unavailable',
 
   'send.drop_hint': 'Drop files or folders here',
+  'send.title': 'Send files',
+  'send.subtitle':
+      'Choose what to share and create a take code. No sign-in required.',
+  'send.secure_hint': 'Transfer content is never stored on the server',
+  'send.active_shares': 'Active shares',
   'send.drop_or': 'or',
   'send.pick_files': 'Choose files',
   'send.pick_folder': 'Choose folder',
@@ -276,6 +288,9 @@ const Map<String, String> _en = {
   'service.unavailable': 'Service is unavailable. Please try again later.',
 
   'recv.title': 'Receive',
+  'recv.subtitle':
+      'Enter a take code or paste a share link to save files here.',
+  'recv.history': 'Recent receives',
   'recv.input_hint': 'Paste a link or type a take code',
   'recv.start': 'Receive',
   'recv.paste': 'Paste link or take-code',
@@ -298,6 +313,8 @@ const Map<String, String> _en = {
   'recv.no_save_dir': 'Choose a save folder first',
 
   'settings.title': 'Settings',
+  'settings.subtitle':
+      'Choose your save location, sharing defaults and language.',
   'settings.general': 'General',
   'settings.save_dir': 'Default save folder',
   'settings.language': 'Language',

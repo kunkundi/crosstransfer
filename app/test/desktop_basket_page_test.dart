@@ -43,7 +43,7 @@ class BasketFakeCore extends CoreStateNotifier {
 
 void main() {
   Future<void> mount(WidgetTester tester, BasketFakeCore core) async {
-    tester.view.physicalSize = const Size(420, 300);
+    tester.view.physicalSize = DesktopBasket.size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

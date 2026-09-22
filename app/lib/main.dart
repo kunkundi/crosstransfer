@@ -21,7 +21,8 @@ import 'ui/shell.dart';
 
 const String kAppVersion = '0.1.0';
 
-bool get _isDesktop => Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+bool get _isDesktop =>
+    Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,26 +48,31 @@ Future<void> main() async {
   }
   final client = CoreClient.create(createConfig);
 
-  runApp(ProviderScope(
-    overrides: [
-      appPrefsProvider.overrideWithValue(prefs),
-      coreClientProvider.overrideWithValue(client),
-    ],
-    child: const CrossTransferApp(),
-  ));
+  runApp(
+    ProviderScope(
+      overrides: [
+        appPrefsProvider.overrideWithValue(prefs),
+        coreClientProvider.overrideWithValue(client),
+      ],
+      child: const CrossTransferApp(),
+    ),
+  );
   // A notification permission dialog must not block startup or link delivery.
   unawaited(DesktopNotifier.instance.init());
 
   if (_isDesktop) {
     const options = WindowOptions(
-      size: Size(980, 680),
-      minimumSize: Size(720, 520),
+      size: DesktopBasket.mainSize,
+      minimumSize: DesktopBasket.mainSize,
+      maximumSize: DesktopBasket.mainSize,
       center: true,
+      fullScreen: false,
       title: 'CrossTransfer',
     );
-    await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
+    await windowManager.waitUntilReadyToShow(options);
+    await windowManager.setResizable(false);
+    await windowManager.setMaximizable(false);
+    await windowManager.show();
+    await windowManager.focus();
   }
 }

@@ -18,6 +18,11 @@ class MainFlutterWindow: NSWindow, UNUserNotificationCenterDelegate {
     notifications?.setMethodCallHandler { [weak self] call, result in self?.HandleNotification(call, result: result) }
 
     super.awakeFromNib()
+    // Both the main view and quick-drop basket use fixed window sizes.
+    collectionBehavior.remove(.fullScreenPrimary)
+    collectionBehavior.remove(.fullScreenAuxiliary)
+    collectionBehavior.insert(.fullScreenNone)
+    standardWindowButton(.zoomButton)?.isEnabled = false
   }
 
   private func EnableDropTargetFirstMouse(in rootView: NSView) {

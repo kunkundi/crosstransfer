@@ -47,8 +47,9 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
 
   Future<void> _chooseDir() async {
     final dir = await FilePicker.getDirectoryPath(
-        dialogTitle: ref.read(sProvider)('settings.choose_dir'),
-        initialDirectory: _saveDir.isEmpty ? null : _saveDir);
+      dialogTitle: ref.read(sProvider)('settings.choose_dir'),
+      initialDirectory: _saveDir.isEmpty ? null : _saveDir,
+    );
     if (mounted && dir != null) setState(() => _saveDirOverride = dir);
   }
 
@@ -60,9 +61,8 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
   }
 
   Future<void> _scan() async {
-    final code = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const ScanPage()),
-    );
+    final code = await Navigator.of(context)
+        .push<String>(MaterialPageRoute(builder: (_) => const ScanPage()));
     if (!mounted || code == null) return;
     _input.text = code;
     _start();
@@ -89,7 +89,9 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
     }
     setState(() => _error = null);
     try {
-      ref.read(coreStateProvider.notifier).startReceive(code, saveDir: _saveDir);
+      ref
+          .read(coreStateProvider.notifier)
+          .startReceive(code, saveDir: _saveDir);
       _input.clear();
       if (MobilePlatform.isMobile) _focus.unfocus();
     } on CoreException catch (e) {
@@ -102,8 +104,11 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
     final s = ref.watch(sProvider);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final receives = ref.watch(coreStateProvider.select((st) => st.receiveList));
-    final String saveDir = _saveDirOverride ??
+    final receives = ref.watch(
+      coreStateProvider.select((st) => st.receiveList),
+    );
+    final String saveDir =
+        _saveDirOverride ??
         ref.watch(coreStateProvider.select<String>((st) => st.config.saveDir));
 
     // A link opened from the OS lands here.
@@ -118,95 +123,187 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
       });
     });
 
+    final mobile = MediaQuery.sizeOf(context).width < 600;
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: cs.error, width: 1.6),
+    );
+    final errorLineHeight =
+        MediaQuery.textScalerOf(context).scale(12) * 1.3 + 4;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.fromLTRB(
+        mobile ? 16 : 24,
+        mobile ? 26 : 20,
+        mobile ? 16 : 24,
+        mobile ? 32 : 24,
+      ),
       children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: cs.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (MobilePlatform.isMobile) ...[
-                FilledButton.icon(
-                  onPressed: _scan,
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: Text(s('recv.scan')),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PageHeader(
+                  title: s('recv.title'),
+                  subtitle: s('recv.subtitle'),
                 ),
-                const SizedBox(height: 12),
-              ],
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _input,
-                    focusNode: _focus,
-                    autofocus: !MobilePlatform.isMobile,
-                    textCapitalization: TextCapitalization.characters,
-                    autocorrect: false,
-                    onChanged: _onChanged,
-                    onSubmitted: (_) => _start(),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()]),
-                    decoration: InputDecoration(
-                      hintText: s('recv.input_hint'),
-                      prefixIcon: const Icon(Icons.qr_code_2),
-                      suffixIcon: IconButton(
-                        tooltip: s('recv.paste'),
-                        onPressed: _paste,
-                        icon: const Icon(Icons.content_paste),
-                      ),
-                      errorText: _error,
-                      border: const OutlineInputBorder(),
+                Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(mobile ? 16 : 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (MobilePlatform.isMobile) ...[
+                          FilledButton.tonalIcon(
+                            onPressed: _scan,
+                            icon: const Icon(Icons.qr_code_scanner_rounded),
+                            label: Text(s('recv.scan')),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _input,
+                                focusNode: _focus,
+                                autofocus: !MobilePlatform.isMobile,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                autocorrect: false,
+                                onChanged: _onChanged,
+                                onSubmitted: (_) => _start(),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                  letterSpacing: 0.4,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: s('recv.input_hint'),
+                                  prefixIcon: const Icon(
+                                    Icons.qr_code_2_rounded,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    tooltip: s('recv.paste'),
+                                    onPressed: _paste,
+                                    icon: const Icon(
+                                      Icons.content_paste_rounded,
+                                    ),
+                                  ),
+                                  enabledBorder: _error == null
+                                      ? null
+                                      : errorBorder,
+                                  focusedBorder: _error == null
+                                      ? null
+                                      : errorBorder,
+                                ),
+                              ),
+                            ),
+                            if (!mobile) ...[
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                height: 54,
+                                child: FilledButton.icon(
+                                  onPressed: _start,
+                                  icon: const Icon(Icons.download_rounded),
+                                  label: Text(s('recv.start')),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        SizedBox(
+                          height: errorLineHeight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 40, top: 3),
+                            child: Semantics(
+                              liveRegion: true,
+                              child: Text(
+                                _error ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: cs.error,
+                                  fontSize: 12,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (mobile)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: FilledButton.icon(
+                              onPressed: _start,
+                              icon: const Icon(Icons.download_rounded),
+                              label: Text(s('recv.start')),
+                            ),
+                          ),
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainer,
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.folder_outlined,
+                                size: 19,
+                                color: cs.primary,
+                              ),
+                              const SizedBox(width: 9),
+                              Text(
+                                '${s('recv.save_to')}: ',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  MobilePlatform.displayPath(saveDir),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!MobilePlatform.isMobile)
+                                TextButton(
+                                  onPressed: _chooseDir,
+                                  child: Text(s('recv.change')),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                if (MediaQuery.sizeOf(context).width >= 600) SizedBox(
-                  height: 56,
-                  child: FilledButton.icon(
-                    onPressed: _start,
-                    icon: const Icon(Icons.download),
-                    label: Text(s('recv.start')),
-                  ),
-                ),
-              ]),
-              if (MediaQuery.sizeOf(context).width < 600)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: FilledButton.icon(onPressed: _start, icon: const Icon(Icons.download), label: Text(s('recv.start'))),
-                ),
-              const SizedBox(height: 12),
-              Row(children: [
-                Icon(Icons.folder_open, size: 18, color: cs.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Text('${s('recv.save_to')}: ',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant)),
-                Expanded(
-                  child: Text(MobilePlatform.displayPath(saveDir),
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
-                if (!MobilePlatform.isMobile) TextButton(onPressed: _chooseDir, child: Text(s('recv.change'))),
-              ]),
-            ],
+                if (receives.isEmpty)
+                  EmptyState(
+                    icon: Icons.download_done_rounded,
+                    text: s('recv.empty'),
+                  )
+                else ...[
+                  const SizedBox(height: 26),
+                  Text(s('recv.history'), style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  for (final r in receives)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _ReceiveCard(r, key: ValueKey(r.transferId)),
+                    ),
+                ],
+              ],
+            ),
           ),
         ),
-        if (receives.isEmpty)
-          EmptyHint(s('recv.empty'))
-        else ...[
-          const SizedBox(height: 16),
-          for (final r in receives)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ReceiveCard(r, key: ValueKey(r.transferId)),
-            ),
-        ],
       ],
     );
   }
@@ -222,104 +319,140 @@ class _ReceiveCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final t = ref.watch(
-        coreStateProvider.select((st) => st.transferForReceive(r.transferId)));
+      coreStateProvider.select((st) => st.transferForReceive(r.transferId)),
+    );
     final n = ref.read(coreStateProvider.notifier);
     final name = r.metaName.isNotEmpty ? r.metaName : r.code;
-    final detail = (r.state == 'failed' || r.state == 'interrupted') && r.errorCode.isNotEmpty
+    final detail =
+        (r.state == 'failed' || r.state == 'interrupted') &&
+            r.errorCode.isNotEmpty
         ? s.errorCode(r.errorCode)
         : null;
     final paused = r.state == 'paused';
-    final running = r.state == 'transferring' || r.state == 'verifying' || paused;
+    final running =
+        r.state == 'transferring' || r.state == 'verifying' || paused;
     // A rejected code never becomes valid again; only offer retry when the
     // core kept a resume token or the failure was transient.
-    const permanent = {'code_not_found', 'code_expired', 'share_closed', 'user'};
-    final canRetry = (r.isInterrupted || r.state == 'failed') &&
+    const permanent = {
+      'code_not_found',
+      'code_expired',
+      'share_closed',
+      'user',
+    };
+    final canRetry =
+        (r.isInterrupted || r.state == 'failed') &&
         (r.resumable || !permanent.contains(r.errorCode));
 
     return Card(
-      elevation: 0,
-      color: cs.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: cs.outlineVariant),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Icon(
-                r.metaRoots > 1 || (r.metaFiles > 1) ? Icons.folder_zip_outlined : Icons.insert_drive_file_outlined,
-                color: cs.primary,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(
+                    r.metaRoots > 1 || (r.metaFiles > 1)
+                        ? Icons.folder_zip_outlined
+                        : Icons.insert_drive_file_outlined,
+                    size: 21,
+                    color: cs.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
                         style: theme.textTheme.titleMedium,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        r.code,
-                        if (r.metaFiles > 0)
-                          s('send.files_bytes')
-                              .replaceFirst('{files}', '${r.metaFiles}')
-                              .replaceFirst('{bytes}', formatBytes(r.metaBytes)),
-                        MobilePlatform.displayPath(r.saveDir),
-                      ].join('  ·  '),
-                      style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
+                Flexible(child: StateChip(r.state, detail: detail)),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Text(
+              [
+                r.code,
+                if (r.metaFiles > 0)
+                  s('send.files_bytes')
+                      .replaceFirst('{files}', '${r.metaFiles}')
+                      .replaceFirst('{bytes}', formatBytes(r.metaBytes)),
+                MobilePlatform.displayPath(r.saveDir),
+              ].join('  ·  '),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
               ),
-              const SizedBox(width: 12),
-              Flexible(child: StateChip(r.state, detail: detail)),
-              const SizedBox(width: 4),
-              if (running)
-                IconButton(
-                  tooltip: paused ? s('recv.resume') : s('recv.pause'),
-                  onPressed: () => paused
-                      ? n.resumeTransfer(r.transferId)
-                      : n.pauseTransfer(r.transferId),
-                  icon: Icon(paused ? Icons.play_arrow : Icons.pause),
-                ),
-              if (canRetry)
-                IconButton(
-                  tooltip: s('recv.retry'),
-                  onPressed: () => n.resumeReceive(r.transferId),
-                  icon: const Icon(Icons.refresh),
-                ),
-              if (r.state == 'completed')
-                IconButton(
-                  tooltip: s(MobilePlatform.isMobile ? 'recv.export' : 'recv.open_dir'),
-                  // Open the containing folder, including when the share was
-                  // a single file or the receiver renamed a colliding root.
-                  onPressed: () => MobilePlatform.isMobile
-                      ? MobilePlatform.exportDirectory(r.saveDir)
-                      : OpenFilex.open(r.saveDir),
-                  icon: const Icon(Icons.folder_open),
-                ),
-              if (r.isActive)
-                IconButton(
-                  tooltip: s('recv.cancel'),
-                  onPressed: () => n.cancelTransfer(r.transferId),
-                  icon: const Icon(Icons.close),
-                )
-              else
-                IconButton(
-                  tooltip: s('recv.remove'),
-                  onPressed: () => n.removeReceive(r.transferId),
-                  icon: const Icon(Icons.delete_outline),
-                ),
-            ]),
-            if (t != null && (running || t.state == 'completed' && r.state == 'completed')) ...[
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 2,
+                runSpacing: 2,
+                children: [
+                  if (running)
+                    IconButton(
+                      tooltip: paused ? s('recv.resume') : s('recv.pause'),
+                      onPressed: () => paused
+                          ? n.resumeTransfer(r.transferId)
+                          : n.pauseTransfer(r.transferId),
+                      icon: Icon(
+                        paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      ),
+                    ),
+                  if (canRetry)
+                    IconButton(
+                      tooltip: s('recv.retry'),
+                      onPressed: () => n.resumeReceive(r.transferId),
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                  if (r.state == 'completed')
+                    IconButton(
+                      tooltip: s(
+                        MobilePlatform.isMobile
+                            ? 'recv.export'
+                            : 'recv.open_dir',
+                      ),
+                      onPressed: () => MobilePlatform.isMobile
+                          ? MobilePlatform.exportDirectory(r.saveDir)
+                          : OpenFilex.open(r.saveDir),
+                      icon: const Icon(Icons.folder_open_rounded),
+                    ),
+                  if (r.isActive)
+                    IconButton(
+                      tooltip: s('recv.cancel'),
+                      onPressed: () => n.cancelTransfer(r.transferId),
+                      icon: const Icon(Icons.close_rounded),
+                    )
+                  else
+                    IconButton(
+                      tooltip: s('recv.remove'),
+                      onPressed: () => n.removeReceive(r.transferId),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                ],
+              ),
+            ),
+            if (t != null &&
+                (running ||
+                    t.state == 'completed' && r.state == 'completed')) ...[
               const SizedBox(height: 12),
               TransferProgressView(t),
             ] else if (r.isActive && !running) ...[
