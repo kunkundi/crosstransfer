@@ -267,7 +267,7 @@ const char* CtVersion(void);
 2. **接收页**：扫码 / 粘贴链接为首屏，手输 10 位码兜底 → 保存目录 → 清单与进度 → 完成后打开目录。
 3. **设置**：保存目录、分享 ttl、默认 once / open、语言（中 / 英）；底部“关于”入口进入独立页面，展示版本、版权与第三方开源声明入口。
 
-平台：桌面托盘与关窗隐藏；iOS 15.0+，原生分享扩展 + App Group 批次导入、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。iOS 分享扩展导入后提示用户返回主 App 生成取件码，不采用 `share_handler` 的响应链 UIApplication 跳转；Android 分享插件在阶段 4 决定。
+平台：桌面托盘与关窗隐藏；Windows / macOS / Linux 共用可由托盘呼出的紧凑“快速投递篮”，窗口置顶状态与位置可保留，拖入文件或目录后直接走现有分享状态机，macOS 菜单栏图标拖放只作为可选平台增强而非跨平台基线；iOS 15.0+，原生分享扩展 + App Group 批次导入、`Documents/Received`、传输期间 `beginBackgroundTask`；Android SAF、分享入口、前台服务。iOS 分享扩展导入后提示用户返回主 App 生成取件码，不采用 `share_handler` 的响应链 UIApplication 跳转；Android 分享插件在阶段 4 决定。
 
 桌面基线（阶段 2 确定）：macOS 12.0+（Flutter 3.47 模板与 `file_picker_darwin` 的要求），**不启用 App Sandbox**（P2P 任意 UDP 端口 + 用户任意目录读写），走 Developer ID 签名 + 公证的 dmg 分发；`crosstransfer_native` 以 `vendored_libraries` podspec 嵌入 `Contents/Frameworks/`。Windows / Linux 把共享库放在可执行文件旁（`lib/`），Dart `DynamicLibrary.open` 按 `CT_NATIVE_LIB` → 包内路径 → 裸名顺序查找。
 

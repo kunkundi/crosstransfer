@@ -5,6 +5,7 @@
 // The 0.5-compatible tray API is the documented bridge for tray_manager 0.7.
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ import 'package:tray_manager/legacy.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../i18n/strings.dart';
+import 'desktop_basket.dart';
 
 class DesktopTray with TrayListener, WindowListener {
   DesktopTray._();
@@ -45,17 +47,27 @@ class DesktopTray with TrayListener, WindowListener {
 
   Future<void> setMenu(S s) async {
     if (!supported) return;
-    await trayManager.setContextMenu(Menu(items: [
-      MenuItem(key: 'show', label: s('tray.show')),
-      MenuItem.separator(),
-      MenuItem(key: 'quit', label: s('tray.quit')),
-    ]));
+    await trayManager.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(key: 'quick_send', label: s('tray.quick_send')),
+          MenuItem.separator(),
+          MenuItem(key: 'show', label: s('tray.show')),
+          MenuItem.separator(),
+          MenuItem(key: 'quit', label: s('tray.quit')),
+        ],
+      ),
+    );
   }
 
   Future<void> showWindow() async {
     if (!supported) return;
-    await windowManager.show();
-    await windowManager.focus();
+    await DesktopBasket.instance.showMain();
+  }
+
+  Future<void> showBasket() async {
+    if (!supported) return;
+    await DesktopBasket.instance.show(anchor: await trayManager.getBounds());
   }
 
   Future<void> quit() async {
@@ -69,7 +81,11 @@ class DesktopTray with TrayListener, WindowListener {
   @override
   void onTrayIconMouseDown() {
     if (Platform.isLinux) return;
-    showWindow();
+    // Let the macOS status-item click finish before changing the app's window
+    // activation state. Showing a key window from inside the native click
+    // callback can leave it ordered behind other apps until another status-bar
+    // interaction occurs.
+    Timer.run(() => unawaited(showBasket()));
   }
 
   @override
@@ -78,6 +94,8 @@ class DesktopTray with TrayListener, WindowListener {
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
+      case 'quick_send':
+        showBasket();
       case 'show':
         showWindow();
       case 'quit':
@@ -92,4 +110,10 @@ class DesktopTray with TrayListener, WindowListener {
       await windowManager.hide();
     }
   }
+
+  @override
+  void onWindowMove() => DesktopBasket.instance.schedulePositionSave();
+
+  @override
+  void onWindowMoved() => DesktopBasket.instance.schedulePositionSave();
 }

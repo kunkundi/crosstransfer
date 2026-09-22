@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'ffi/core_client.dart';
+import 'platform/desktop_basket.dart';
 import 'platform/notifications.dart';
 import 'platform/legal.dart';
 import 'platform/paths.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
   final paths = await AppPaths.resolve();
   final prefs = AppPrefs(paths.dataDir);
   await prefs.load();
+  if (_isDesktop) DesktopBasket.instance.configure(prefs);
 
   // The core fills empty keys with its own defaults on creation and persists
   // them, so first-run defaults must be supplied up front.

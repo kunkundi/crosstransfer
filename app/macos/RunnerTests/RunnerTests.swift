@@ -4,9 +4,12 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
-  func testExample() {
-    // If you add code to the Runner application, consider adding tests here.
-    // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
+  func testDesktopDropAcceptsFirstMouse() {
+    let dropTarget = NSApp.windows
+      .flatMap { $0.contentViewController?.view.subviews ?? [] }
+      .first { NSStringFromClass(type(of: $0)) == "desktop_drop.DropTarget" }
+    XCTAssertNotNil(dropTarget, "desktop_drop should register its native drop view")
+    XCTAssertTrue(dropTarget?.acceptsFirstMouse(for: nil) ?? false)
   }
 
 }

@@ -6,14 +6,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../platform/desktop_basket.dart';
+import '../platform/links.dart';
 import '../platform/mobile.dart';
 import '../platform/mobile_lifecycle.dart';
-import '../state/format.dart';
-
-import '../platform/links.dart';
 import '../platform/notifications.dart';
 import '../platform/tray.dart';
+import '../state/format.dart';
 import '../state/providers.dart';
+import 'desktop_basket_page.dart';
 import 'receive_page.dart';
 import 'send_page.dart';
 import 'settings_page.dart';
@@ -191,7 +192,7 @@ class _ShellState extends ConsumerState<Shell> {
       Expanded(child: IndexedStack(index: index, children: pages)),
     ]);
     if (MediaQuery.sizeOf(context).width < 600) {
-      return Scaffold(
+      return _basketOr(Scaffold(
         appBar: AppBar(title: Text(s('app.title')), actions: const [
           Padding(padding: EdgeInsets.all(20), child: _SignalIndicator()),
         ]),
@@ -205,9 +206,9 @@ class _ShellState extends ConsumerState<Shell> {
             NavigationDestination(icon: const Icon(Icons.settings_outlined), label: s('nav.settings')),
           ],
         ),
-      );
+      ));
     }
-    return Scaffold(
+    return _basketOr(Scaffold(
       body: SafeArea(child: Row(
         children: [
           NavigationRail(
@@ -251,6 +252,16 @@ class _ShellState extends ConsumerState<Shell> {
           ),
         ],
       )),
+    ));
+  }
+
+  Widget _basketOr(Widget shell) {
+    if (!DesktopBasket.supported) return shell;
+    return ListenableBuilder(
+      listenable: DesktopBasket.instance,
+      child: shell,
+      builder: (context, child) =>
+          DesktopBasket.instance.active ? const DesktopBasketPage() : child!,
     );
   }
 }
