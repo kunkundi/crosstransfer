@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../platform/links.dart';
+import '../platform/desktop_menu.dart';
 import '../platform/mobile.dart';
 import '../platform/mobile_lifecycle.dart';
 import '../platform/notifications.dart';
@@ -36,7 +37,7 @@ class CrossTransferApp extends ConsumerWidget {
           ? Overlay.wrap(
               child: DesktopWindowFrame(
                 strings: s,
-                status: const _SignalIndicator(),
+                status: const _SignalIndicator(showLabel: true),
                 child: child!,
               ),
             )
@@ -131,6 +132,12 @@ class _ShellState extends ConsumerState<Shell> {
         ref.read(coreStateProvider.notifier),
       );
       final s = ref.read(sProvider);
+      await DesktopMenu.start(s, (index) {
+        if (!mounted) return;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        ref.read(navIndexProvider.notifier).set(index);
+      });
+      if (!mounted) return;
       await DesktopTray.instance.install(s);
       if (!mounted) return;
       await LinkHandler.instance.start((code) {
@@ -146,6 +153,7 @@ class _ShellState extends ConsumerState<Shell> {
   @override
   void dispose() {
     _mobile.dispose();
+    DesktopMenu.stop();
     LinkHandler.instance.stop();
     super.dispose();
   }
@@ -191,6 +199,7 @@ class _ShellState extends ConsumerState<Shell> {
     ref.listen<CoreState>(coreStateProvider, _onCoreChange);
     ref.listen<String>(languageProvider, (_, _) {
       DesktopTray.instance.setMenu(ref.read(sProvider));
+      DesktopMenu.update(ref.read(sProvider));
     });
 
     final pages = [

@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:crosstransfer/i18n/strings.dart';
 import 'package:crosstransfer/platform/desktop_window.dart';
 import 'package:crosstransfer/state/models.dart';
@@ -10,6 +12,7 @@ import 'package:crosstransfer/ui/settings_page.dart';
 import 'package:crosstransfer/ui/about_page.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -97,8 +100,12 @@ void main() {
     String language = 'en',
     Brightness brightness = Brightness.light,
     double scale = 1,
+    TargetPlatform platform = TargetPlatform.macOS,
   }) async {
-    tester.view.physicalSize = DesktopWindow.size;
+    tester.view.physicalSize = Size(
+      DesktopWindow.size.width,
+      DesktopWindow.size.height - 38,
+    );
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -110,7 +117,7 @@ void main() {
           sProvider.overrideWithValue(S(language)),
         ],
         child: MaterialApp(
-          theme: buildAppTheme(brightness, platform: TargetPlatform.macOS),
+          theme: buildAppTheme(brightness, platform: platform),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(textScaler: TextScaler.linear(scale)),
@@ -223,6 +230,83 @@ void main() {
     expect(find.byTooltip('Keep on top'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final platform in [
+    TargetPlatform.macOS,
+    TargetPlatform.windows,
+    TargetPlatform.linux,
+  ]) {
+    testWidgets('desktop shortcuts preserve input on ${platform.name}', (
+      tester,
+    ) async {
+      await mount(tester, DesktopFakeCore(), platform: platform);
+      await tester.pump();
+      final modifier = platform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+      Future<void> shortcut(LogicalKeyboardKey key) async {
+        await tester.sendKeyDownEvent(modifier);
+        await tester.sendKeyEvent(key);
+        await tester.sendKeyUpEvent(modifier);
+        await tester.pump();
+      }
+
+      await shortcut(LogicalKeyboardKey.digit2);
+      await tester.enterText(find.byType(TextField), 'ABCD');
+      await shortcut(LogicalKeyboardKey.comma);
+      expect(find.byKey(const Key('settings-ttl')), findsOneWidget);
+      await shortcut(LogicalKeyboardKey.digit1);
+      expect(find.text('Choose files'), findsOneWidget);
+      await shortcut(LogicalKeyboardKey.digit2);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'ABCD',
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('preference menus select values and dismiss with Escape', (
+    tester,
+  ) async {
+    await mount(tester, DesktopFakeCore());
+    await tester.tap(find.byKey(const ValueKey('desktop-tab-2')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('settings-share-mode')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, 'Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Save'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('settings-share-mode')));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mouse clicks switch tabs across the full visible segment', (
+    tester,
+  ) async {
+    await mount(tester, DesktopFakeCore());
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DesktopLayout)),
+    );
+    for (final fraction in [0.08, 0.5, 0.92]) {
+      for (final index in [1, 2, 0]) {
+        final rect = tester.getRect(find.byKey(ValueKey('desktop-tab-$index')));
+        await tester.tapAt(
+          Offset(rect.left + rect.width * fraction, rect.center.dy),
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pump();
+        expect(container.read(navIndexProvider), index);
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'switching tabs preserves the share and unfinished receive input',
     (tester) async {
@@ -264,7 +348,10 @@ void main() {
     await tester.pump();
     expect(core.receives, ['MXT3XF8SK2']);
     expect(container.read(pendingReceiveProvider), isNull);
-    expect(tester.getSize(find.byType(DesktopWindowFrame)), DesktopWindow.size);
+    expect(
+      tester.getSize(find.byType(DesktopWindowFrame)),
+      Size(DesktopWindow.size.width, DesktopWindow.size.height - 38),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -292,7 +379,7 @@ void main() {
   });
 
   testWidgets(
-    'window controls remain available on the about route and dialog',
+    'pin remains available on routes and dialogs without duplicate OS controls',
     (tester) async {
       await mount(tester, DesktopFakeCore());
       final context = tester.element(find.byType(DesktopLayout));
@@ -307,14 +394,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('window-pin-toggle')), findsOneWidget);
-      expect(find.byTooltip('Close window'), findsOneWidget);
+      expect(find.byTooltip('Close window'), findsNothing);
       final details = find.text(const S('en')('about.version_details'));
       await tester.ensureVisible(details);
       await tester.pumpAndSettle();
       await tester.tap(details);
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.byTooltip('Close window'), findsOneWidget);
+      expect(find.byKey(const Key('window-pin-toggle')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

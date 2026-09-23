@@ -15,7 +15,7 @@ import '../state/app_prefs.dart';
 class DesktopWindow extends ChangeNotifier {
   DesktopWindow._();
   static final DesktopWindow instance = DesktopWindow._();
-  static const size = Size(280, 360);
+  static const size = Size(360, 420);
 
   AppPrefs? _prefs;
   bool _pinned = true;
@@ -43,8 +43,10 @@ class DesktopWindow extends ChangeNotifier {
       center: true,
       fullScreen: false,
       title: 'CrossTransfer',
-      titleBarStyle: TitleBarStyle.hidden,
-      windowButtonVisibility: false,
+      // Let the OS own dragging, window buttons, inactive appearance and
+      // accessibility instead of painting a shared Flutter title bar.
+      titleBarStyle: TitleBarStyle.normal,
+      windowButtonVisibility: true,
     );
     await windowManager.waitUntilReadyToShow(options);
     await windowManager.setResizable(false);

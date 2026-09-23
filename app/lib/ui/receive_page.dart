@@ -199,9 +199,9 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                                         ? 'recv.desktop_input_hint'
                                         : 'recv.input_hint',
                                   ),
-                                  prefixIcon: const Icon(
-                                    Icons.qr_code_2_rounded,
-                                  ),
+                                  prefixIcon: desktop
+                                      ? null
+                                      : const Icon(Icons.qr_code_2_rounded),
                                   suffixIcon: IconButton(
                                     tooltip: s('recv.paste'),
                                     onPressed: _paste,
@@ -237,7 +237,10 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                         SizedBox(
                           height: errorLineHeight,
                           child: Padding(
-                            padding: const EdgeInsets.only(left: 40, top: 3),
+                            padding: EdgeInsets.only(
+                              left: desktop ? 12 : 40,
+                              top: 3,
+                            ),
                             child: Semantics(
                               liveRegion: true,
                               child: Text(
@@ -300,8 +303,6 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                                       ),
                                       child: Text(
                                         MobilePlatform.displayPath(saveDir),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                               color: cs.onSurfaceVariant,

@@ -18,7 +18,7 @@ bool isDesktopTheme(BuildContext context) =>
     isDesktopPlatform(Theme.of(context).platform);
 
 bool isCompactDesktop(BuildContext context) =>
-    isDesktopTheme(context) && MediaQuery.sizeOf(context).width < 340;
+    isDesktopTheme(context) && MediaQuery.sizeOf(context).width < 600;
 
 ThemeData buildAppTheme(Brightness brightness, {TargetPlatform? platform}) {
   platform ??= defaultTargetPlatform;
@@ -218,16 +218,20 @@ ThemeData buildAppTheme(Brightness brightness, {TargetPlatform? platform}) {
 // Windows or Linux, and CJK text falls back to the platform's native sans face.
 ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
   final dark = brightness == Brightness.dark;
-  final primary = dark ? const Color(0xFF64A9FF) : const Color(0xFF0067D9);
-  final surface = dark ? const Color(0xFF202124) : const Color(0xFFF7F7F9);
-  final panel = dark ? const Color(0xFF2A2B2F) : Colors.white;
+  final mac = platform == TargetPlatform.macOS;
+  final primary = mac
+      ? (dark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF))
+      : (dark ? const Color(0xFF60CDFF) : const Color(0xFF0067C0));
+  final surface = dark ? const Color(0xFF242424) : const Color(0xFFF5F5F5);
+  final panel = dark ? const Color(0xFF303030) : Colors.white;
+  final glassPanel = mac ? panel.withValues(alpha: dark ? 0.48 : 0.56) : panel;
   final text = dark ? const Color(0xFFF3F3F5) : const Color(0xFF1D1D1F);
   final secondary = dark ? const Color(0xFFACADB5) : const Color(0xFF686970);
-  final separator = dark ? const Color(0xFF414248) : const Color(0xFFE3E3E8);
+  final separator = dark ? const Color(0xFF484848) : const Color(0xFFDCDCDC);
   final scheme =
       ColorScheme.fromSeed(seedColor: primary, brightness: brightness).copyWith(
         primary: primary,
-        onPrimary: dark ? const Color(0xFF102440) : Colors.white,
+        onPrimary: mac || !dark ? Colors.white : const Color(0xFF102440),
         primaryContainer: dark
             ? const Color(0xFF253B57)
             : const Color(0xFFE9F2FF),
@@ -236,16 +240,16 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
         onSurface: text,
         onSurfaceVariant: secondary,
         surfaceContainerLowest: panel,
-        surfaceContainerLow: panel,
-        surfaceContainer: dark
-            ? const Color(0xFF303136)
-            : const Color(0xFFF0F0F4),
+        surfaceContainerLow: glassPanel,
+        surfaceContainer: mac
+            ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.06)
+            : (dark ? const Color(0xFF383838) : const Color(0xFFE9E9E9)),
         surfaceContainerHigh: dark
-            ? const Color(0xFF35363B)
-            : const Color(0xFFECECF0),
+            ? const Color(0xFF3D3D3D)
+            : const Color(0xFFECECEC),
         surfaceContainerHighest: dark
-            ? const Color(0xFF3B3C42)
-            : const Color(0xFFE5E5EA),
+            ? const Color(0xFF444444)
+            : const Color(0xFFE2E2E2),
         outline: secondary,
         outlineVariant: separator,
       );
@@ -284,8 +288,12 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
         bodyColor: text,
         displayColor: text,
       );
-  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
+  final shape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(mac ? 5 : 4),
+  );
   final buttonText = textTheme.labelLarge!;
+  // Desktop controls should keep their visible size as their hit target;
+  // Material's invisible 48 px touch padding makes a small utility feel mobile.
   final base = ThemeData(
     useMaterial3: true,
     platform: platform,
@@ -294,9 +302,21 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     fontFamily: family,
     fontFamilyFallback: fallbacks,
     textTheme: textTheme,
-    scaffoldBackgroundColor: surface,
+    // AppKit draws the macOS backdrop underneath the transparent Flutter view.
+    // Other platforms keep their opaque desktop surface.
+    scaffoldBackgroundColor: mac ? Colors.transparent : surface,
     canvasColor: surface,
     splashFactory: NoSplash.splashFactory,
+    highlightColor: Colors.transparent,
+    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    visualDensity: VisualDensity.standard,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.macOS: _DesktopPageTransition(),
+        TargetPlatform.windows: _DesktopPageTransition(),
+        TargetPlatform.linux: _DesktopPageTransition(),
+      },
+    ),
     hoverColor: primary.withValues(alpha: 0.05),
     focusColor: primary.withValues(alpha: 0.14),
     dividerTheme: DividerThemeData(color: separator, thickness: 0.5, space: 1),
@@ -313,17 +333,17 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     cardTheme: CardThemeData(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: panel,
+      color: glassPanel,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(mac ? 9 : 6),
         side: BorderSide(color: separator, width: 0.6),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 34),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        minimumSize: const Size(0, 28),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         shape: shape,
         textStyle: buttonText,
         iconSize: 17,
@@ -331,8 +351,8 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 34),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        minimumSize: const Size(0, 28),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         backgroundColor: panel,
         foregroundColor: text,
         side: BorderSide(color: separator),
@@ -343,15 +363,15 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        minimumSize: const Size(0, 32),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        minimumSize: const Size(0, 26),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         shape: shape,
         textStyle: buttonText,
       ),
     ),
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
-        minimumSize: const Size(32, 32),
+        minimumSize: const Size(28, 28),
         padding: const EdgeInsets.all(7),
         iconSize: 18,
         shape: shape,
@@ -360,7 +380,7 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: SegmentedButton.styleFrom(
-        minimumSize: const Size(0, 32),
+        minimumSize: const Size(0, 26),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         textStyle: buttonText,
         foregroundColor: secondary,
@@ -373,23 +393,23 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: dark ? scheme.surfaceContainer : const Color(0xFFFAFAFC),
+      fillColor: dark ? panel : Colors.white,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       hintStyle: textTheme.bodyMedium?.copyWith(color: secondary),
       prefixIconColor: secondary,
       suffixIconColor: secondary,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(mac ? 5 : 4),
         borderSide: BorderSide(color: separator),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(mac ? 5 : 4),
         borderSide: BorderSide(color: separator),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primary, width: 1.5),
+        borderRadius: BorderRadius.circular(mac ? 5 : 4),
+        borderSide: BorderSide(color: primary.withValues(alpha: 0.7), width: 2),
       ),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -400,17 +420,63 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      contentTextStyle: textTheme.bodyMedium?.copyWith(
-        color: scheme.onInverseSurface,
+      elevation: 3,
+      backgroundColor: panel,
+      insetPadding: const EdgeInsets.all(10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: separator),
       ),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(color: text),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: panel,
       surfaceTintColor: Colors.transparent,
       elevation: 12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.all(12),
+      titleTextStyle: textTheme.titleMedium,
+      contentTextStyle: textTheme.bodyMedium,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(mac ? 12 : 8),
+      ),
+    ),
+    menuTheme: MenuThemeData(
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(panel),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        elevation: const WidgetStatePropertyAll(6),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(4)),
+        side: WidgetStatePropertyAll(BorderSide(color: separator, width: 0.5)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        ),
+      ),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(0, 28)),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        ),
+        textStyle: WidgetStatePropertyAll(textTheme.bodySmall),
+        iconSize: const WidgetStatePropertyAll(14),
+        shape: WidgetStatePropertyAll(shape),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.focused)
+              ? scheme.onPrimary
+              : text,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.focused)
+              ? primary
+              : Colors.transparent,
+        ),
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
     ),
     tooltipTheme: TooltipThemeData(
       waitDuration: const Duration(milliseconds: 500),
@@ -422,4 +488,19 @@ ThemeData _desktopTheme(Brightness brightness, TargetPlatform platform) {
     ),
   );
   return base;
+}
+
+// Navigation inside a desktop utility changes the content in place. Keep the
+// mobile route transitions in the separate mobile theme.
+class _DesktopPageTransition extends PageTransitionsBuilder {
+  const _DesktopPageTransition();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => child;
 }

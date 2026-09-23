@@ -99,7 +99,11 @@ void main() {
               testWidgets(
                 '${entry.key} fits ${platform.name} ${brightness.name} $language at $scale (populated: $populated)',
                 (tester) async {
-                  tester.view.physicalSize = DesktopWindow.size;
+                  // Reserve room for the OS title bar (Windows is tallest).
+                  tester.view.physicalSize = Size(
+                    DesktopWindow.size.width,
+                    DesktopWindow.size.height - 38,
+                  );
                   tester.view.devicePixelRatio = 1;
                   addTearDown(tester.view.resetPhysicalSize);
                   addTearDown(tester.view.resetDevicePixelRatio);

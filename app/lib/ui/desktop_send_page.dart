@@ -112,7 +112,7 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
       );
     }
     return Material(
-      color: colorScheme.surface,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         children: [
           Expanded(
@@ -228,20 +228,10 @@ class _EmptySend extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     return _SendBody(
       children: [
-        Center(
-          child: Container(
-            width: 44,
-            height: 48,
-            decoration: BoxDecoration(
-              color: colors.primaryContainer,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              Icons.upload_file_outlined,
-              size: 29,
-              color: colors.primary,
-            ),
-          ),
+        Icon(
+          Icons.file_copy_outlined,
+          size: 36,
+          color: colors.onSurfaceVariant.withValues(alpha: 0.6),
         ),
         const SizedBox(height: 14),
         Text(
@@ -299,12 +289,7 @@ class _PendingSelection extends ConsumerWidget {
       children: [
         Icon(Icons.inventory_2_outlined, size: 32, color: colors.primary),
         const SizedBox(height: 12),
-        Text(
-          _pathSummary(paths),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
+        Text(_pathSummary(paths), textAlign: TextAlign.center),
         if (error != null) ...[
           const SizedBox(height: 8),
           Text(
@@ -406,8 +391,6 @@ class _ShareResult extends ConsumerWidget {
       children: [
         Text(
           _pathSummary(share!.paths),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             color: colors.onSurfaceVariant,

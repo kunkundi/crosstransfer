@@ -1,13 +1,12 @@
-// Shared window controls remain available above every desktop route.
+// Native window decorations surround compact, keyboard-accessible app content.
 //
 // Copyright (c) 2026 DI JUNKUN. All Rights Reserved. Proprietary.
 
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
+import 'package:flutter/services.dart';
 
 import '../i18n/strings.dart';
 import '../platform/desktop_window.dart';
-import 'widgets.dart';
 
 class DesktopWindowFrame extends StatelessWidget {
   const DesktopWindowFrame({
@@ -25,79 +24,53 @@ class DesktopWindowFrame extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     return Material(
-      color: colors.surface,
+      color: theme.scaffoldBackgroundColor,
       child: SafeArea(
         child: Column(
           children: [
-            SizedBox(
-              height: 42,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onPanStart: (_) => windowManager.startDragging(),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 10),
-                        child: Row(
-                          children: [
-                            const AppMark(size: 20),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                strings('app.title'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+            Expanded(child: child),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.platform == TargetPlatform.macOS
+                    ? colors.surfaceContainerLow
+                    : colors.surface,
+                border: Border(
+                  top: BorderSide(color: colors.outlineVariant, width: 0.5),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 2, 6, 2),
+                child: Row(
+                  children: [
+                    Expanded(child: status),
+                    const SizedBox(width: 8),
+                    ListenableBuilder(
+                      listenable: DesktopWindow.instance,
+                      builder: (context, _) {
+                        final pinned = DesktopWindow.instance.pinned;
+                        return IconButton(
+                          key: const Key('window-pin-toggle'),
+                          tooltip: strings(
+                            pinned ? 'window.unpin' : 'window.pin',
+                          ),
+                          isSelected: pinned,
+                          selectedIcon: const Icon(Icons.push_pin, size: 14),
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(26, 24),
+                            padding: const EdgeInsets.all(4),
+                            foregroundColor: pinned
+                                ? colors.primary
+                                : colors.onSurfaceVariant,
+                          ),
+                          onPressed: DesktopWindow.instance.togglePinned,
+                          icon: const Icon(Icons.push_pin_outlined, size: 14),
+                        );
+                      },
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: status,
-                  ),
-                  ListenableBuilder(
-                    listenable: DesktopWindow.instance,
-                    builder: (context, _) {
-                      final pinned = DesktopWindow.instance.pinned;
-                      return IconButton(
-                        key: const Key('window-pin-toggle'),
-                        tooltip: strings(
-                          pinned ? 'window.unpin' : 'window.pin',
-                        ),
-                        isSelected: pinned,
-                        selectedIcon: const Icon(Icons.push_pin, size: 17),
-                        style: IconButton.styleFrom(
-                          backgroundColor: pinned
-                              ? colors.primaryContainer
-                              : Colors.transparent,
-                          foregroundColor: pinned
-                              ? colors.primary
-                              : colors.onSurfaceVariant,
-                        ),
-                        onPressed: DesktopWindow.instance.togglePinned,
-                        icon: const Icon(Icons.push_pin_outlined, size: 17),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    tooltip: strings('window.close'),
-                    // The tray listener hides on close. Without a tray this
-                    // actually closes, rather than stranding a hidden process.
-                    onPressed: () => windowManager.close(),
-                    icon: const Icon(Icons.close, size: 18),
-                  ),
-                  const SizedBox(width: 4),
-                ],
+                  ],
+                ),
               ),
             ),
-            Expanded(child: child),
           ],
         ),
       ),
@@ -120,60 +93,103 @@ class DesktopLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: Row(
-                children: [
-                  _tab(context, 0, 'nav.send'),
-                  _tab(context, 1, 'nav.receive'),
-                  _tab(context, 2, 'nav.settings'),
-                ],
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final mac = theme.platform == TargetPlatform.macOS;
+    return CallbackShortcuts(
+      bindings: {
+        for (final (index, key) in [
+          (0, LogicalKeyboardKey.digit1),
+          (1, LogicalKeyboardKey.digit2),
+          (2, LogicalKeyboardKey.digit3),
+          (2, LogicalKeyboardKey.comma),
+        ])
+          SingleActivator(key, meta: mac, control: !mac): () =>
+              onSelected(index),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: mac ? colors.surfaceContainer : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(mac ? 2 : 0),
+                  child: Row(
+                    children: [
+                      _tab(context, 0, 'nav.send', mac),
+                      _tab(context, 1, 'nav.receive', mac),
+                      _tab(context, 2, 'nav.settings', mac),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+            Expanded(child: child),
+          ],
         ),
-        Expanded(child: child),
-      ],
+      ),
     );
   }
 
-  Widget _tab(BuildContext context, int index, String label) {
+  Widget _tab(BuildContext context, int index, String label, bool mac) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final selected = selectedIndex == index;
     return Expanded(
       child: Semantics(
         selected: selected,
-        child: TextButton(
-          key: ValueKey('desktop-tab-$index'),
-          onPressed: () => onSelected(index),
-          style: TextButton.styleFrom(
-            minimumSize: const Size(0, 28),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
-            foregroundColor: selected
-                ? colors.primary
-                : colors.onSurfaceVariant,
-            backgroundColor: selected
-                ? colors.surfaceContainerLow
-                : Colors.transparent,
-            textStyle: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+        child: Container(
+          decoration: BoxDecoration(
+            color: mac && selected ? colors.surfaceContainerLow : null,
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: mac && selected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: TextButton(
+            key: ValueKey('desktop-tab-$index'),
+            onPressed: () => onSelected(index),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 26),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              foregroundColor: selected
+                  ? colors.onSurface
+                  : colors.onSurfaceVariant,
+              textStyle: theme.textTheme.labelLarge?.copyWith(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+              ),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(strings(label), textAlign: TextAlign.center),
+                if (!mac) ...[
+                  const SizedBox(height: 5),
+                  Container(
+                    height: 2,
+                    width: 18,
+                    decoration: BoxDecoration(
+                      color: selected ? colors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          child: Text(strings(label), textAlign: TextAlign.center),
         ),
       ),
     );

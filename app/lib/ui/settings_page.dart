@@ -5,7 +5,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as path;
 
 import '../ffi/core_client.dart';
 import '../platform/mobile.dart';
@@ -303,7 +302,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onTap: _chooseDir,
                       child: _PreferenceRow(
                         label: s('settings.save_location'),
-                        value: _saveDir.isEmpty ? '—' : path.basename(_saveDir),
+                        value: _saveDir.isEmpty ? '—' : _saveDir,
+                        wrapValue: true,
                         icon: Icons.chevron_right_rounded,
                       ),
                     ),
@@ -407,7 +407,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         if (_dirty)
           DecoratedBox(
             decoration: BoxDecoration(
-              color: colors.surface,
+              color: colors.surfaceContainerLow,
               border: Border(top: BorderSide(color: colors.outlineVariant)),
             ),
             child: Padding(
@@ -447,11 +447,13 @@ class _PreferenceRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.wrapValue = false,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final bool wrapValue;
 
   @override
   Widget build(BuildContext context) {
@@ -459,9 +461,9 @@ class _PreferenceRow extends StatelessWidget {
     final colors = theme.colorScheme;
     final optionStyle = _desktopOptionStyle(context);
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 40),
+      constraints: const BoxConstraints(minHeight: 34),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         child: Row(
           children: [
             Expanded(flex: 5, child: Text(label, style: optionStyle)),
@@ -470,8 +472,10 @@ class _PreferenceRow extends StatelessWidget {
               flex: 6,
               child: Text(
                 value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: wrapValue ? null : 1,
+                overflow: wrapValue
+                    ? TextOverflow.visible
+                    : TextOverflow.ellipsis,
                 textAlign: TextAlign.right,
                 style: optionStyle.copyWith(color: colors.onSurfaceVariant),
               ),
@@ -485,7 +489,7 @@ class _PreferenceRow extends StatelessWidget {
   }
 }
 
-class _PreferenceChoice extends StatelessWidget {
+class _PreferenceChoice extends StatefulWidget {
   const _PreferenceChoice({
     super.key,
     required this.label,
@@ -500,38 +504,54 @@ class _PreferenceChoice extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
+  State<_PreferenceChoice> createState() => _PreferenceChoiceState();
+}
+
+class _PreferenceChoiceState extends State<_PreferenceChoice> {
+  final _focus = FocusNode();
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return LayoutBuilder(
-      builder: (context, constraints) => PopupMenuButton<String>(
-        tooltip: label,
-        initialValue: value,
-        position: PopupMenuPosition.under,
-        offset: Offset(constraints.maxWidth - 156, 0),
-        constraints: const BoxConstraints.tightFor(width: 156),
-        menuPadding: const EdgeInsets.symmetric(vertical: 4),
-        color: colors.surfaceContainerLow,
-        surfaceTintColor: Colors.transparent,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: colors.outlineVariant, width: 0.5),
-        ),
-        onSelected: (selection) {
-          if (selection != value) onChanged(selection);
-        },
-        itemBuilder: (_) => [
-          for (final entry in choices.entries)
-            CheckedPopupMenuItem(
-              value: entry.key,
-              checked: value == entry.key,
-              child: Text(entry.value, style: _desktopOptionStyle(context)),
+    final label = widget.label;
+    final value = widget.value;
+    final choices = widget.choices;
+    return MenuAnchor(
+      childFocusNode: _focus,
+      style: const MenuStyle(alignment: Alignment.bottomRight),
+      menuChildren: [
+        for (final entry in choices.entries)
+          MenuItemButton(
+            onPressed: () {
+              if (entry.key != value) widget.onChanged(entry.key);
+            },
+            leadingIcon: Icon(
+              entry.key == value ? Icons.check : null,
+              size: 14,
             ),
-        ],
-        child: _PreferenceRow(
-          label: label,
-          value: choices[value] ?? value,
-          icon: Icons.unfold_more_rounded,
+            child: Semantics(
+              selected: entry.key == value,
+              child: Text(entry.value),
+            ),
+          ),
+      ],
+      builder: (context, controller, _) => Semantics(
+        button: true,
+        expanded: controller.isOpen,
+        child: InkWell(
+          focusNode: _focus,
+          onTap: () =>
+              controller.isOpen ? controller.close() : controller.open(),
+          child: _PreferenceRow(
+            label: label,
+            value: choices[value] ?? value,
+            icon: Icons.unfold_more_rounded,
+          ),
         ),
       ),
     );
