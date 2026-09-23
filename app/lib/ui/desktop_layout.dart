@@ -4,11 +4,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../i18n/strings.dart';
 import '../platform/desktop_window.dart';
+import '../state/transfer_activity.dart';
 
-class DesktopWindowFrame extends StatelessWidget {
+class DesktopWindowFrame extends ConsumerWidget {
   const DesktopWindowFrame({
     super.key,
     required this.strings,
@@ -20,9 +22,11 @@ class DesktopWindowFrame extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final activity = ref.watch(transferActivityProvider);
+    final total = activity.sending + activity.receiving;
     return Material(
       color: theme.scaffoldBackgroundColor,
       child: SafeArea(
@@ -43,6 +47,25 @@ class DesktopWindowFrame extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(child: status),
+                    if (total > 0) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Tooltip(
+                          message: strings('activity.running')
+                              .replaceFirst('{n}', '$total'),
+                          child: Text(
+                            strings('activity.running')
+                                .replaceFirst('{n}', '$total'),
+                            key: const Key('desktop-activity'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     ListenableBuilder(
                       listenable: DesktopWindow.instance,
@@ -78,7 +101,7 @@ class DesktopWindowFrame extends StatelessWidget {
   }
 }
 
-class DesktopLayout extends StatelessWidget {
+class DesktopLayout extends ConsumerWidget {
   const DesktopLayout({
     super.key,
     required this.strings,
@@ -92,10 +115,11 @@ class DesktopLayout extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final mac = theme.platform == TargetPlatform.macOS;
+    final activity = ref.watch(transferActivityProvider);
     return CallbackShortcuts(
       bindings: {
         for (final (index, key) in [
@@ -122,9 +146,9 @@ class DesktopLayout extends StatelessWidget {
                   padding: EdgeInsets.all(mac ? 2 : 0),
                   child: Row(
                     children: [
-                      _tab(context, 0, 'nav.send', mac),
-                      _tab(context, 1, 'nav.receive', mac),
-                      _tab(context, 2, 'nav.settings', mac),
+                      _tab(context, 0, 'nav.send', mac, activity.sending),
+                      _tab(context, 1, 'nav.receive', mac, activity.receiving),
+                      _tab(context, 2, 'nav.settings', mac, 0),
                     ],
                   ),
                 ),
@@ -137,13 +161,22 @@ class DesktopLayout extends StatelessWidget {
     );
   }
 
-  Widget _tab(BuildContext context, int index, String label, bool mac) {
+  Widget _tab(
+    BuildContext context,
+    int index,
+    String label,
+    bool mac,
+    int count,
+  ) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final selected = selectedIndex == index;
     return Expanded(
       child: Semantics(
         selected: selected,
+        label: count > 0
+            ? '${strings(label)}, ${strings('activity.running').replaceFirst('{n}', '$count')}'
+            : null,
         child: Container(
           decoration: BoxDecoration(
             color: mac && selected ? colors.surfaceContainerLow : null,
@@ -175,7 +208,39 @@ class DesktopLayout extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(strings(label), textAlign: TextAlign.center),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        strings(label),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (count > 0) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        key: ValueKey('desktop-count-$index'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          count > 99 ? '99+' : '$count',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 10,
+                            color: colors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 if (!mac) ...[
                   const SizedBox(height: 5),
                   Container(

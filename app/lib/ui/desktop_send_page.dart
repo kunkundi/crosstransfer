@@ -16,6 +16,7 @@ import '../ffi/core_client.dart';
 import '../state/format.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
+import '../state/transfer_activity.dart';
 import 'send_page.dart';
 import 'widgets.dart';
 
@@ -89,6 +90,8 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
     final state = ref.watch(coreStateProvider);
     final share = _lastShareId == null ? null : state.shares[_lastShareId];
     final colorScheme = Theme.of(context).colorScheme;
+    final sending = ref.watch(transferActivityProvider).sending;
+    final s = ref.watch(sProvider);
 
     if (_showHistory) {
       return Column(
@@ -146,7 +149,7 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
             TextButton(
               onPressed: () => setState(() => _showHistory = true),
               child: Text(
-                '${ref.watch(sProvider)('send.history')} · ${state.shares.length}',
+                '${s('send.history')} · ${sending > 0 ? s('activity.running').replaceFirst('{n}', '$sending') : state.shares.length}',
               ),
             ),
         ],

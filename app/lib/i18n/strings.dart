@@ -150,7 +150,8 @@ const Map<String, String> _zh = {
   'settings.choose_dir': '选择目录',
 
   'window.close': '关闭窗口',
-  'send.history': '发送记录',
+  'activity.running': '{n} 项进行中',
+  'send.history': '传输记录',
   'tray.show': '显示窗口',
   'tray.quit': '退出',
   'window.pin': '保持置顶',
@@ -346,7 +347,8 @@ const Map<String, String> _en = {
   'settings.choose_dir': 'Choose folder',
 
   'window.close': 'Close window',
-  'send.history': 'Sent files',
+  'activity.running': '{n} active',
+  'send.history': 'Transfers',
   'tray.show': 'Show window',
   'tray.quit': 'Quit',
   'window.pin': 'Keep on top',

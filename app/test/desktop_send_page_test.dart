@@ -34,6 +34,12 @@ class DesktopFakeCore extends CoreStateNotifier {
     );
   }
 
+  void setReceives(List<ReceiveInfo> receives) {
+    state = state.copyWith(
+      receives: {for (final receive in receives) receive.transferId: receive},
+    );
+  }
+
   void setExpiry(int expiry) {
     const id = 'desktop-share';
     state = state.copyWith(
@@ -351,6 +357,65 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets(
+    'activity remains visible across tabs and clears when work ends',
+    (tester) async {
+      final core = DesktopFakeCore();
+      await mount(tester, core);
+      core.setTransfers([
+        TransferInfo.fromJson({
+          'transfer_id': 'send',
+          'role': 'sender',
+          'state': 'transferring',
+        }),
+        TransferInfo.fromJson({
+          'transfer_id': 'receive',
+          'role': 'receiver',
+          'state': 'transferring',
+        }),
+        TransferInfo.fromJson({
+          'transfer_id': 'paused',
+          'role': 'sender',
+          'state': 'paused',
+        }),
+      ]);
+      core.setReceives([
+        ReceiveInfo.fromJson({
+          'transfer_id': 'receive',
+          'state': 'transferring',
+        }),
+        ReceiveInfo.fromJson({
+          'transfer_id': 'interrupted',
+          'state': 'interrupted',
+        }),
+      ]);
+      await tester.pump();
+      for (final index in [1, 2, 0]) {
+        await tester.tap(find.byKey(ValueKey('desktop-tab-$index')));
+        await tester.pump();
+        expect(find.byKey(const ValueKey('desktop-count-0')), findsOneWidget);
+        expect(find.byKey(const ValueKey('desktop-count-1')), findsOneWidget);
+        expect(find.text('2 active'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+      core.setTransfers([
+        TransferInfo.fromJson({
+          'transfer_id': 'send',
+          'role': 'sender',
+          'state': 'completed',
+        }),
+      ]);
+      core.setReceives([
+        ReceiveInfo.fromJson({'transfer_id': 'receive', 'state': 'failed'}),
+      ]);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('desktop-count-0')), findsNothing);
+      expect(find.byKey(const ValueKey('desktop-count-1')), findsNothing);
+      expect(find.byKey(const Key('desktop-activity')), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('pin button immediately reflects the selected state', (
     tester,
   ) async {
@@ -511,7 +576,7 @@ void main() {
       dropped(['/tmp/history.txt']),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sent files · 1'));
+    await tester.tap(find.text('Transfers · 1'));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.ensureVisible(find.byTooltip('Close share'));
     await tester.tap(find.byTooltip('Close share'));
