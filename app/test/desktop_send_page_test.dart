@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class DesktopFakeCore extends CoreStateNotifier {
   DesktopFakeCore({this.available = true});
@@ -29,6 +30,22 @@ class DesktopFakeCore extends CoreStateNotifier {
     state = state.copyWith(
       transfers: {
         for (final transfer in transfers) transfer.transferId: transfer,
+      },
+    );
+  }
+
+  void setExpiry(int expiry) {
+    const id = 'desktop-share';
+    state = state.copyWith(
+      shares: {
+        id: ShareInfo.fromJson({
+          'id': id,
+          'state': 'ready',
+          'mode': 'once',
+          'code': 'ABCD-EFGH12',
+          'link': 'https://example.test/r/ABCD-EFGH12',
+          'expires_at': expiry,
+        }, previous: state.shares[id]),
       },
     );
   }
@@ -267,6 +284,73 @@ void main() {
     },
   );
 
+  testWidgets('copy feedback stays in place and QR follows share expiry', (
+    tester,
+  ) async {
+    final core = DesktopFakeCore();
+    await mount(tester, core);
+    tester.widget<DropTarget>(find.byType(DropTarget)).onDragDone!(
+      dropped(['/tmp/alpha.txt']),
+    );
+    await tester.pumpAndSettle();
+    final clipboard = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboard.add((call.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final copy = find.byKey(const Key('share-copy-code'));
+    final rect = tester.getRect(copy);
+    final againRect = tester.getRect(find.text(const S('en')('send.again')));
+    await tester.tap(copy);
+    await tester.pumpAndSettle();
+    expect(clipboard, ['ABCD-EFGH12']);
+    expect(find.text('Copied'), findsOneWidget);
+    expect(tester.getRect(copy), rect);
+    expect(tester.getRect(find.text(const S('en')('send.again'))), againRect);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Copied'), findsNothing);
+    expect(find.text('Copy code'), findsOneWidget);
+
+    core.setExpiry(DateTime.now().millisecondsSinceEpoch ~/ 1000 + 120);
+    await tester.pump();
+    expect(find.textContaining('Expires in'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('share-show-qr')));
+    await tester.pumpAndSettle();
+    expect(find.byType(QrImageView), findsOneWidget);
+    core.setExpiry(DateTime.now().millisecondsSinceEpoch ~/ 1000 - 1);
+    await tester.pump();
+    expect(find.byType(QrImageView), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Expired'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(copy).onPressed, isNull);
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const Key('share-show-qr')))
+          .onPressed,
+      isNull,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('pin button immediately reflects the selected state', (
     tester,
   ) async {
@@ -500,6 +584,13 @@ void main() {
               tester.getRect(find.text(s('send.copy_code'))).bottom,
               lessThan(tester.getRect(find.text(s('send.copy_link'))).top),
             );
+            await tester.ensureVisible(find.byKey(const Key('share-show-qr')));
+            await tester.tap(find.byKey(const Key('share-show-qr')));
+            await tester.pumpAndSettle();
+            expect(find.byType(QrImageView), findsOneWidget);
+            expect(tester.takeException(), isNull);
+            await tester.tap(find.text(s('common.close')));
+            await tester.pumpAndSettle();
             await tester.ensureVisible(find.text(s('send.again')));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);

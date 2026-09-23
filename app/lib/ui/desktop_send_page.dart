@@ -2,12 +2,15 @@
 //
 // Copyright (c) 2026 DI JUNKUN. All Rights Reserved. Proprietary.
 
+import 'dart:async';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../ffi/core_client.dart';
 import '../state/format.dart';
@@ -29,7 +32,6 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
   String? _lastShareId;
   List<String> _pendingPaths = const [];
   String? _error;
-  String? _confirmation;
 
   void _share(List<String> paths) {
     final cleaned = paths.where((path) => path.isNotEmpty).toSet().toList();
@@ -39,7 +41,6 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
       _pendingPaths = cleaned;
       _lastShareId = null;
       _error = null;
-      _confirmation = null;
     });
     final state = ref.read(coreStateProvider);
     if (!state.serviceAvailable) {
@@ -75,20 +76,11 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
     if (mounted && path != null) _share([path]);
   }
 
-  Future<void> _copy(String value) async {
-    if (value.isEmpty) return;
-    await Clipboard.setData(ClipboardData(text: value));
-    if (mounted) {
-      setState(() => _confirmation = ref.read(sProvider)('send.copied'));
-    }
-  }
-
   void _reset() {
     setState(() {
       _lastShareId = null;
       _pendingPaths = const [];
       _error = null;
-      _confirmation = null;
     });
   }
 
@@ -177,9 +169,6 @@ class _DesktopSendPageState extends ConsumerState<DesktopSendPage> {
       return _ShareResult(
         key: const ValueKey('result'),
         share: share,
-        confirmation: _confirmation,
-        onCopyCode: () => _copy(share.code),
-        onCopyLink: () => _copy(share.link),
         onAgain: _reset,
       );
     }
@@ -313,35 +302,60 @@ class _PendingSelection extends ConsumerWidget {
   }
 }
 
-class _ShareResult extends ConsumerWidget {
-  const _ShareResult({
-    super.key,
-    required this.share,
-    required this.confirmation,
-    required this.onCopyCode,
-    required this.onCopyLink,
-    required this.onAgain,
-  });
+class _ShareResult extends ConsumerStatefulWidget {
+  const _ShareResult({super.key, required this.share, required this.onAgain});
 
-  final ShareInfo? share;
-  final String? confirmation;
-  final VoidCallback onCopyCode;
-  final VoidCallback onCopyLink;
+  final ShareInfo share;
   final VoidCallback onAgain;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ShareResult> createState() => _ShareResultState();
+}
+
+class _ShareResultState extends ConsumerState<_ShareResult> {
+  Timer? _copyReset;
+  String? _copied;
+
+  @override
+  void didUpdateWidget(covariant _ShareResult oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.share.id != widget.share.id) {
+      _copyReset?.cancel();
+      _copied = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _copyReset?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _copy(String kind, String value) async {
+    final id = widget.share.id;
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!mounted || widget.share.id != id) return;
+    _copyReset?.cancel();
+    setState(() => _copied = kind);
+    _copyReset = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = null);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final share = widget.share;
     final s = ref.watch(sProvider);
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
     final transfers = ref.watch(
       coreStateProvider.select(
-        (state) => state.transfersForShare(share?.id ?? ''),
+        (state) => state.transfersForShare(widget.share.id),
       ),
     )..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     final live = transfers.where((transfer) => !transfer.isTerminal).toList();
     final visibleTransfers = live.isNotEmpty ? live : transfers.take(1);
-    if (share == null || (share!.code.isEmpty && share!.isActive)) {
+    if (share.code.isEmpty && share.isActive) {
       return _SendBody(
         children: [
           const Center(
@@ -356,7 +370,7 @@ class _ShareResult extends ConsumerWidget {
         ],
       );
     }
-    if (share!.state == 'failed') {
+    if (share.state == 'failed') {
       return _SendBody(
         children: [
           Icon(Icons.error_outline, color: colors.error, size: 32),
@@ -366,20 +380,23 @@ class _ShareResult extends ConsumerWidget {
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(color: colors.error),
           ),
-          if (share!.error.isNotEmpty) ...[
+          if (share.error.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(s.errorCode(share!.error), textAlign: TextAlign.center),
+            Text(s.errorCode(share.error), textAlign: TextAlign.center),
           ],
           const SizedBox(height: 18),
-          OutlinedButton(onPressed: onAgain, child: Text(s('send.try_again'))),
+          OutlinedButton(
+            onPressed: widget.onAgain,
+            child: Text(s('send.try_again')),
+          ),
         ],
       );
     }
-    if (!share!.isActive) {
+    if (!share.isActive) {
       return _SendBody(
         children: [
           Icon(
-            share!.state == 'completed'
+            share.state == 'completed'
                 ? Icons.check_circle_outline
                 : Icons.cancel_outlined,
             size: 32,
@@ -387,19 +404,19 @@ class _ShareResult extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            s.state(share!.state),
+            s.state(share.state),
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 18),
-          FilledButton(onPressed: onAgain, child: Text(s('send.again'))),
+          FilledButton(onPressed: widget.onAgain, child: Text(s('send.again'))),
         ],
       );
     }
     return _SendBody(
       children: [
         Text(
-          _pathSummary(share!.paths),
+          _pathSummary(share.paths),
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             color: colors.onSurfaceVariant,
@@ -411,13 +428,13 @@ class _ShareResult extends ConsumerWidget {
         ],
         const SizedBox(height: 12),
         Text(
-          '${s('send.code_label')} · ${s.state(share!.state)}',
+          '${s('send.code_label')} · ${s.state(share.state)}',
           textAlign: TextAlign.center,
           style: theme.textTheme.labelMedium,
         ),
         const SizedBox(height: 4),
         SelectableText(
-          share!.code,
+          share.code,
           textAlign: TextAlign.center,
           style: theme.textTheme.headlineSmall?.copyWith(
             fontSize: 22,
@@ -427,36 +444,107 @@ class _ShareResult extends ConsumerWidget {
             letterSpacing: 1,
           ),
         ),
-        if (confirmation != null) ...[
-          const SizedBox(height: 4),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              confirmation!,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: colors.primary),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: onCopyCode,
-          icon: const Icon(Icons.copy, size: 16),
-          label: Text(s('send.copy_code')),
+        const SizedBox(height: 8),
+        _ShareClock(
+          expiresAt: share.expiresAt,
+          builder: (context, remaining) {
+            final expired = remaining != null && remaining <= 0;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (remaining != null) ...[
+                  Text(
+                    expired
+                        ? s('send.expired')
+                        : '${s('send.expires_in')} ${formatCountdown(remaining)}',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: remaining < 60
+                          ? colors.error
+                          : colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                FilledButton.icon(
+                  key: const Key('share-copy-code'),
+                  onPressed: expired ? null : () => _copy('code', share.code),
+                  icon: Icon(
+                    _copied == 'code' ? Icons.check : Icons.copy,
+                    size: 16,
+                  ),
+                  label: _CopyLabel(
+                    label: s('send.copy_code'),
+                    confirmation: _copied == 'code' ? s('send.copied') : null,
+                  ),
+                ),
+                if (share.link.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 4,
+                    children: [
+                      TextButton.icon(
+                        key: const Key('share-copy-link'),
+                        onPressed: expired
+                            ? null
+                            : () => _copy('link', share.link),
+                        icon: Icon(
+                          _copied == 'link' ? Icons.check : Icons.link,
+                          size: 16,
+                        ),
+                        label: _CopyLabel(
+                          label: s('send.copy_link'),
+                          confirmation: _copied == 'link'
+                              ? s('send.copied')
+                              : null,
+                        ),
+                      ),
+                      TextButton.icon(
+                        key: const Key('share-show-qr'),
+                        onPressed: expired
+                            ? null
+                            : () => showDialog<void>(
+                                context: context,
+                                builder: (_) =>
+                                    _ShareQrDialog(shareId: share.id),
+                              ),
+                        icon: const Icon(Icons.qr_code, size: 16),
+                        label: Text(s('send.qr')),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            );
+          },
         ),
-        if (share!.link.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: onCopyLink,
-            icon: const Icon(Icons.link, size: 18),
-            label: Text(s('send.copy_link')),
-          ),
-        ],
         const SizedBox(height: 6),
-        TextButton(onPressed: onAgain, child: Text(s('send.again'))),
+        TextButton(onPressed: widget.onAgain, child: Text(s('send.again'))),
       ],
     );
   }
+}
+
+class _CopyLabel extends StatelessWidget {
+  const _CopyLabel({required this.label, required this.confirmation});
+  final String label;
+  final String? confirmation;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    label: confirmation ?? label,
+    excludeSemantics: true,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Opacity(opacity: confirmation == null ? 1 : 0, child: Text(label)),
+        if (confirmation != null)
+          Positioned.fill(child: Center(child: Text(confirmation!))),
+      ],
+    ),
+  );
 }
 
 class _SendingProgress extends ConsumerWidget {
@@ -555,4 +643,115 @@ String _pathSummary(List<String> paths) {
   if (paths.isEmpty) return '';
   final names = paths.take(2).map(p.basename).join(', ');
   return paths.length > 2 ? '$names +${paths.length - 2}' : names;
+}
+
+// Keep expiry local to the code controls: it must not interrupt an active transfer.
+class _ShareClock extends StatefulWidget {
+  const _ShareClock({required this.expiresAt, required this.builder});
+  final int expiresAt;
+  final Widget Function(BuildContext, int?) builder;
+
+  @override
+  State<_ShareClock> createState() => _ShareClockState();
+}
+
+class _ShareClockState extends State<_ShareClock> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startClock();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ShareClock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expiresAt != widget.expiresAt) _startClock();
+  }
+
+  void _startClock() {
+    _timer?.cancel();
+    if (widget.expiresAt <= 0 || secondsUntil(widget.expiresAt) <= 0) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (secondsUntil(widget.expiresAt) <= 0) timer.cancel();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(
+    context,
+    widget.expiresAt > 0 ? secondsUntil(widget.expiresAt) : null,
+  );
+}
+
+class _ShareQrDialog extends ConsumerWidget {
+  const _ShareQrDialog({required this.shareId});
+  final String shareId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(sProvider);
+    final share = ref.watch(
+      coreStateProvider.select((state) => state.shares[shareId]),
+    );
+    return AlertDialog(
+      title: Text(s('send.qr')),
+      content: _ShareClock(
+        expiresAt: share?.expiresAt ?? 0,
+        builder: (context, remaining) {
+          final available =
+              share != null &&
+              share.isActive &&
+              share.link.isNotEmpty &&
+              (remaining == null || remaining > 0);
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (available)
+                  Semantics(
+                    label: s('send.qr'),
+                    child: SizedBox.square(
+                      dimension: 190,
+                      child: QrImageView(
+                        data: share.link,
+                        size: 190,
+                        padding: const EdgeInsets.all(12),
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    s(
+                      remaining != null && remaining <= 0
+                          ? 'send.expired'
+                          : 'send.unavailable',
+                    ),
+                  ),
+                if (available) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(share.code, textAlign: TextAlign.center),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(s('common.close')),
+        ),
+      ],
+    );
+  }
 }
