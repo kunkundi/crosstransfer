@@ -18,7 +18,7 @@ class DesktopWindow extends ChangeNotifier {
   static const size = Size(360, 420);
 
   AppPrefs? _prefs;
-  bool _pinned = true;
+  bool _pinned = false;
   bool _initialized = false;
   Timer? _positionSaveTimer;
 
@@ -31,7 +31,7 @@ class DesktopWindow extends ChangeNotifier {
     _prefs = prefs;
     final savedPinned =
         prefs.values['window_pinned'] ?? prefs.values['basket_pinned'];
-    if (savedPinned is bool) _pinned = savedPinned;
+    _pinned = savedPinned is bool ? savedPinned : false;
   }
 
   Future<void> initialize() async {

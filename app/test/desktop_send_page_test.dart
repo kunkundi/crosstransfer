@@ -420,9 +420,10 @@ void main() {
     tester,
   ) async {
     final window = DesktopWindow.instance;
+    final originallyPinned = window.pinned;
     if (!window.pinned) await window.togglePinned();
     addTearDown(() async {
-      if (!window.pinned) await window.togglePinned();
+      if (window.pinned != originallyPinned) await window.togglePinned();
     });
 
     await mount(tester, DesktopFakeCore());
@@ -466,7 +467,7 @@ void main() {
       await shortcut(LogicalKeyboardKey.digit2);
       await tester.enterText(find.byType(TextField), 'ABCD');
       await shortcut(LogicalKeyboardKey.comma);
-      expect(find.byKey(const Key('settings-ttl')), findsOneWidget);
+      expect(find.byKey(const Key('settings-ttl-preset')), findsOneWidget);
       await shortcut(LogicalKeyboardKey.digit1);
       expect(find.text('Choose files'), findsOneWidget);
       await shortcut(LogicalKeyboardKey.digit2);

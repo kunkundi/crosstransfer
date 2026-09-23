@@ -31,14 +31,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _ttl = TextEditingController();
   String _shareMode = 'once';
   String _saveDir = '';
+  String _draftLanguage = 'en';
+  String _ttlPreset = '600';
+  bool _saving = false;
+  String? _settingsError;
+  static const _ttlPresets = {'300', '600', '1800', '3600'};
   bool _dirty = false;
   bool _loaded = false;
 
   void _loadFrom(CoreConfig c) {
     _ttl.text = '${c.shareTtlSec}';
+    _ttlPreset = _ttlPresets.contains(_ttl.text) ? _ttl.text : 'custom';
+    _draftLanguage = ref.read(languageProvider);
     _shareMode = c.shareMode;
     _saveDir = c.saveDir;
     _dirty = false;
+    _settingsError = null;
     _loaded = true;
   }
 
@@ -48,38 +56,59 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.dispose();
   }
 
-  void _mark() => setState(() => _dirty = true);
+  void _mark() => setState(() {
+    _dirty = true;
+    _settingsError = null;
+  });
+
+  void _showError(String message) {
+    if (isDesktopTheme(context)) {
+      setState(() => _settingsError = message);
+    } else {
+      showSnack(context, message);
+    }
+  }
 
   Future<void> _chooseDir() async {
     final dir = await FilePicker.getDirectoryPath(
       dialogTitle: ref.read(sProvider)('settings.choose_dir'),
       initialDirectory: _saveDir.isEmpty ? null : _saveDir,
     );
-    if (dir != null) {
+    if (mounted && dir != null) {
       setState(() {
         _saveDir = dir;
         _dirty = true;
+        _settingsError = null;
       });
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
+    if (_saving) return;
     final s = ref.read(sProvider);
     final ttl = int.tryParse(_ttl.text.trim());
     if (ttl == null || ttl < 30 || ttl > 86400) {
-      showSnack(context, s('settings.invalid_ttl'));
+      _showError(s('settings.invalid_ttl'));
       return;
     }
     final patch = <String, dynamic>{
       'save_dir': _saveDir,
       'share': {'mode': _shareMode, 'ttl_sec': ttl},
     };
+    setState(() => _saving = true);
     try {
       ref.read(coreStateProvider.notifier).updateConfig(patch);
+      if (isDesktopTheme(context) &&
+          _draftLanguage != ref.read(languageProvider)) {
+        await ref.read(languageProvider.notifier).set(_draftLanguage);
+      }
+      if (!mounted) return;
       setState(() => _dirty = false);
-      showSnack(context, s('settings.saved'));
+      showSnack(context, ref.read(sProvider)('settings.saved'));
     } on CoreException catch (e) {
-      showSnack(context, '${s('common.error')} ${e.status}');
+      if (mounted) _showError('${s('common.error')} ${e.status}');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -89,7 +118,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final config = ref.watch(coreStateProvider.select((st) => st.config));
     final lang = ref.watch(languageProvider);
     if (!_loaded) _loadFrom(config);
-    if (isDesktopTheme(context)) return _desktopSettings(s, config, lang);
+    if (isDesktopTheme(context)) {
+      return AbsorbPointer(
+        absorbing: _saving,
+        child: _desktopSettings(s, config),
+      );
+    }
     final mobile = MediaQuery.sizeOf(context).width < 600;
 
     return ListView(
@@ -185,6 +219,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           onSelectionChanged: (v) => setState(() {
                             _shareMode = v.first;
                             _dirty = true;
+                            _settingsError = null;
                           }),
                         ),
                       ),
@@ -281,7 +316,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _desktopSettings(S s, CoreConfig config, String lang) {
+  Widget _desktopSettings(S s, CoreConfig config) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final optionStyle = _desktopOptionStyle(context);
@@ -311,13 +346,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   _PreferenceChoice(
                     key: const Key('settings-language'),
                     label: s('settings.language'),
-                    value: lang,
+                    value: _draftLanguage,
                     choices: {
                       for (final language in S.supported)
                         language: S.languageName(language),
                     },
-                    onChanged: (value) =>
-                        ref.read(languageProvider.notifier).set(value),
+                    onChanged: (value) => setState(() {
+                      _draftLanguage = value;
+                      _dirty = true;
+                      _settingsError = null;
+                    }),
                   ),
                 ],
               ),
@@ -337,48 +375,68 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onChanged: (value) => setState(() {
                       _shareMode = value;
                       _dirty = true;
+                      _settingsError = null;
                     }),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            s('settings.code_lifetime'),
-                            style: optionStyle,
+                  _PreferenceChoice(
+                    key: const Key('settings-ttl-preset'),
+                    label: s('settings.code_lifetime'),
+                    value: _ttlPreset,
+                    choices: {
+                      '300': s('settings.ttl_5m'),
+                      '600': s('settings.ttl_10m'),
+                      '1800': s('settings.ttl_30m'),
+                      '3600': s('settings.ttl_1h'),
+                      'custom': s('settings.ttl_custom'),
+                    },
+                    onChanged: (value) => setState(() {
+                      _ttlPreset = value;
+                      if (value != 'custom') _ttl.text = value;
+                      _dirty = true;
+                      _settingsError = null;
+                    }),
+                  ),
+                  if (_ttlPreset == 'custom')
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              s('settings.custom_lifetime'),
+                              style: optionStyle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 94,
-                          child: TextField(
-                            key: const Key('settings-ttl'),
-                            controller: _ttl,
-                            onChanged: (_) => _mark(),
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.right,
-                            style: optionStyle,
-                            decoration: InputDecoration(
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 7,
-                              ),
-                              suffixText: s('settings.seconds'),
-                              suffixStyle: optionStyle.copyWith(
-                                fontSize: 11,
-                                color: colors.onSurfaceVariant,
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 94,
+                            child: TextField(
+                              key: const Key('settings-ttl'),
+                              controller: _ttl,
+                              onChanged: (_) => _mark(),
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.right,
+                              style: optionStyle,
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 7,
+                                ),
+                                suffixText: s('settings.seconds'),
+                                suffixStyle: optionStyle.copyWith(
+                                  fontSize: 11,
+                                  color: colors.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -412,26 +470,47 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: TextButton(
-                      style: TextButton.styleFrom(textStyle: optionStyle),
-                      onPressed: () => setState(() => _loadFrom(config)),
-                      child: Text(s('common.cancel')),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        textStyle: optionStyle.copyWith(
-                          fontWeight: FontWeight.w500,
+                  if (_settingsError != null) ...[
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _settingsError!,
+                        key: const Key('settings-error'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.error,
                         ),
                       ),
-                      onPressed: _save,
-                      child: Text(s('settings.save')),
                     ),
+                    const SizedBox(height: 6),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(textStyle: optionStyle),
+                          onPressed: _saving
+                              ? null
+                              : () => setState(() => _loadFrom(config)),
+                          child: Text(s('common.cancel')),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            textStyle: optionStyle.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onPressed: _saving ? null : _save,
+                          child: Text(s('settings.save')),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
