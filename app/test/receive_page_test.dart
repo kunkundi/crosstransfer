@@ -4,6 +4,7 @@ import 'package:crosstransfer/state/providers.dart';
 import 'package:crosstransfer/ui/receive_page.dart';
 import 'package:crosstransfer/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -132,6 +133,62 @@ void main() {
       expect(container.read(pendingReceiveProvider), isNull);
     },
   );
+
+  testWidgets(
+    'desktop typing waits for Enter or Receive and paste is explicit',
+    (tester) async {
+      final core = FakeCoreState();
+      await mount(tester, core, platform: TargetPlatform.macOS);
+      final input = find.byType(TextField);
+      await tester.enterText(input, 'MXT3X-F8SK2');
+      await tester.pump();
+      expect(core.requests, isEmpty);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      expect(core.requests, ['MXT3XF8SK2']);
+      expect(tester.widget<TextField>(input).controller!.text, isEmpty);
+      await tester.enterText(input, 'https://example.test/r/MXT3XF8SK2');
+      expect(core.requests.length, 1);
+      await tester.tap(find.text('Receive'));
+      await tester.pump();
+      expect(core.requests.length, 2);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.getData') {
+            return {'text': 'https://example.test/r/MXT3XF8SK2'};
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await tester.tap(find.text('Paste & receive'));
+      await tester.pumpAndSettle();
+      expect(core.requests, List.filled(3, 'MXT3XF8SK2'));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('desktop submission failure preserves the input for retry', (
+    tester,
+  ) async {
+    final core = FakeCoreState()..configured = false;
+    await mount(tester, core, platform: TargetPlatform.macOS);
+    await tester.enterText(find.byType(TextField), 'MXT3XF8SK2');
+    await tester.tap(find.text('Receive'));
+    await tester.pump();
+    expect(core.requests, isEmpty);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'MXT3XF8SK2',
+    );
+    expect(find.text(const S('en')('service.unavailable')), findsOneWidget);
+  });
 
   testWidgets('unavailable service leaves the code available for retry', (
     tester,

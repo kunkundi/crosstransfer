@@ -161,7 +161,8 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                     autofocus: !MobilePlatform.isMobile,
                     textCapitalization: TextCapitalization.characters,
                     autocorrect: false,
-                    onChanged: _onChanged,
+                    onChanged: desktop ? null : _onChanged,
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _start(),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: desktop ? FontWeight.w400 : null,
@@ -175,17 +176,19 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                       prefixIcon: desktop
                           ? null
                           : const Icon(Icons.qr_code_2_rounded),
-                      suffixIcon: IconButton(
-                        tooltip: s('recv.paste'),
-                        onPressed: _paste,
-                        icon: const Icon(Icons.content_paste_rounded),
-                      ),
+                      suffixIcon: desktop
+                          ? null
+                          : IconButton(
+                              tooltip: s('recv.paste'),
+                              onPressed: _paste,
+                              icon: const Icon(Icons.content_paste_rounded),
+                            ),
                       enabledBorder: _error == null ? null : errorBorder,
                       focusedBorder: _error == null ? null : errorBorder,
                     ),
                   ),
                 ),
-                if (!mobile) ...[
+                if (!mobile && !desktop) ...[
                   const SizedBox(width: 12),
                   SizedBox(
                     height: desktop ? 44 : 54,
@@ -208,11 +211,11 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                 child: Semantics(
                   liveRegion: true,
                   child: Text(
-                    _error ?? '',
+                    _error ?? (desktop ? s('recv.submit_hint') : ''),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: cs.error,
+                      color: _error == null ? cs.onSurfaceVariant : cs.error,
                       fontSize: 12,
                       height: 1.2,
                     ),
@@ -220,7 +223,26 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                 ),
               ),
             ),
-            if (mobile)
+            if (desktop)
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton.icon(
+                    key: const Key('receive-paste'),
+                    onPressed: _paste,
+                    icon: const Icon(Icons.content_paste_rounded, size: 16),
+                    label: Text(s('recv.paste_receive')),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _start,
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: Text(s('recv.start')),
+                  ),
+                ],
+              )
+            else if (mobile)
               Padding(
                 padding: EdgeInsets.only(top: compact ? 0 : 12),
                 child: FilledButton.icon(
