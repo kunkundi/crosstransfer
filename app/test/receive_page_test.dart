@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 class FakeCoreState extends CoreStateNotifier {
   final requests = <String>[];
   bool configured = true;
+  int historyCount = 0;
 
   @override
   CoreState build() => CoreState(
@@ -17,6 +18,17 @@ class FakeCoreState extends CoreStateNotifier {
       'save_dir': '/tmp/received',
       'service_available': configured,
     }),
+    receives: {
+      for (var index = 0; index < historyCount; index++)
+        'receive-$index': ReceiveInfo.fromJson({
+          'transfer_id': 'receive-$index',
+          'state': 'completed',
+          'code': 'MXT3XF8SK2',
+          'save_dir': '/tmp/received',
+          'meta': {'name': 'file-$index.txt'},
+          'created_at': historyCount - index,
+        }),
+    },
   );
 
   @override
@@ -31,6 +43,7 @@ void main() {
     WidgetTester tester,
     FakeCoreState core, {
     bool withDesktopRail = false,
+    TargetPlatform? platform,
   }) async {
     final container = ProviderContainer(
       overrides: [
@@ -43,7 +56,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          theme: buildAppTheme(Brightness.light),
+          theme: buildAppTheme(Brightness.light, platform: platform),
           home: Scaffold(
             body: withDesktopRail
                 ? const Row(
@@ -75,6 +88,37 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
       isEmpty,
     );
+  });
+
+  testWidgets('desktop receive input stays visible while history scrolls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 382);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await mount(
+      tester,
+      FakeCoreState()..historyCount = 12,
+      platform: TargetPlatform.macOS,
+    );
+    final input = find.byType(TextField);
+    final folder = find.byKey(const Key('receive-save-location'));
+    final inputRect = tester.getRect(input);
+    final folderRect = tester.getRect(folder);
+    await tester.scrollUntilVisible(
+      find.text('file-9.txt'),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const PageStorageKey('receive-history')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(tester.getRect(input), inputRect);
+    expect(tester.getRect(folder), folderRect);
+    expect(find.byTooltip('/tmp/received'), findsOneWidget);
+    expect(input.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

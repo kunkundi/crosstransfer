@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
 
 import '../ffi/core_client.dart';
 import '../platform/mobile.dart';
@@ -133,6 +134,207 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
     );
     final errorLineHeight =
         MediaQuery.textScalerOf(context).scale(12) * 1.3 + 4;
+    final inputCard = Card(
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 12 : (mobile ? 16 : 20)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (desktop) ...[
+              Text(s('send.code_label'), style: theme.textTheme.titleSmall),
+              const SizedBox(height: 10),
+            ],
+            if (MobilePlatform.isMobile) ...[
+              FilledButton.tonalIcon(
+                onPressed: _scan,
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                label: Text(s('recv.scan')),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    focusNode: _focus,
+                    autofocus: !MobilePlatform.isMobile,
+                    textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
+                    onChanged: _onChanged,
+                    onSubmitted: (_) => _start(),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: desktop ? FontWeight.w400 : null,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      letterSpacing: 0.4,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: s(
+                        desktop ? 'recv.desktop_input_hint' : 'recv.input_hint',
+                      ),
+                      prefixIcon: desktop
+                          ? null
+                          : const Icon(Icons.qr_code_2_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: s('recv.paste'),
+                        onPressed: _paste,
+                        icon: const Icon(Icons.content_paste_rounded),
+                      ),
+                      enabledBorder: _error == null ? null : errorBorder,
+                      focusedBorder: _error == null ? null : errorBorder,
+                    ),
+                  ),
+                ),
+                if (!mobile) ...[
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: desktop ? 44 : 54,
+                    child: FilledButton.icon(
+                      onPressed: _start,
+                      icon: Icon(
+                        Icons.arrow_downward_rounded,
+                        size: desktop ? 17 : 24,
+                      ),
+                      label: Text(s('recv.start')),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(
+              height: errorLineHeight,
+              child: Padding(
+                padding: EdgeInsets.only(left: desktop ? 12 : 40, top: 3),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _error ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: cs.error,
+                      fontSize: 12,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (mobile)
+              Padding(
+                padding: EdgeInsets.only(top: compact ? 0 : 12),
+                child: FilledButton.icon(
+                  onPressed: _start,
+                  icon: const Icon(Icons.download_rounded),
+                  label: Text(s('recv.start')),
+                ),
+              ),
+            SizedBox(height: compact ? 10 : 14),
+            if (desktop)
+              Tooltip(
+                message: saveDir,
+                child: TextButton(
+                  key: const Key('receive-save-location'),
+                  onPressed: _chooseDir,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${s('recv.save_to')}: ${saveDir.isEmpty ? '—' : p.basename(saveDir)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, size: 16),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainer,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_outlined, size: 19, color: cs.primary),
+                    const SizedBox(width: 9),
+                    Text(
+                      '${s('recv.save_to')}: ',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        MobilePlatform.displayPath(saveDir),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (!MobilePlatform.isMobile)
+                      TextButton(
+                        onPressed: _chooseDir,
+                        child: Text(s('recv.change')),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (desktop) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+            child: inputCard,
+          ),
+          Expanded(
+            child: ListView(
+              key: const PageStorageKey('receive-history'),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+              children: [
+                if (receives.isEmpty)
+                  EmptyState(
+                    icon: Icons.download_done_rounded,
+                    text: s('recv.empty'),
+                  )
+                else ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      s('recv.history'),
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ),
+                  for (final receive in receives)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _ReceiveCard(
+                        receive,
+                        key: ValueKey(receive.transferId),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     return ListView(
       padding: compact
           ? const EdgeInsets.fromLTRB(10, 4, 10, 12)
@@ -153,202 +355,7 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                   title: s('recv.title'),
                   subtitle: s('recv.subtitle'),
                 ),
-                Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(compact ? 12 : (mobile ? 16 : 20)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (desktop) ...[
-                          Text(
-                            s('send.code_label'),
-                            style: theme.textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                        if (MobilePlatform.isMobile) ...[
-                          FilledButton.tonalIcon(
-                            onPressed: _scan,
-                            icon: const Icon(Icons.qr_code_scanner_rounded),
-                            label: Text(s('recv.scan')),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _input,
-                                focusNode: _focus,
-                                autofocus: !MobilePlatform.isMobile,
-                                textCapitalization:
-                                    TextCapitalization.characters,
-                                autocorrect: false,
-                                onChanged: _onChanged,
-                                onSubmitted: (_) => _start(),
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: desktop ? FontWeight.w400 : null,
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                  letterSpacing: 0.4,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: s(
-                                    desktop
-                                        ? 'recv.desktop_input_hint'
-                                        : 'recv.input_hint',
-                                  ),
-                                  prefixIcon: desktop
-                                      ? null
-                                      : const Icon(Icons.qr_code_2_rounded),
-                                  suffixIcon: IconButton(
-                                    tooltip: s('recv.paste'),
-                                    onPressed: _paste,
-                                    icon: const Icon(
-                                      Icons.content_paste_rounded,
-                                    ),
-                                  ),
-                                  enabledBorder: _error == null
-                                      ? null
-                                      : errorBorder,
-                                  focusedBorder: _error == null
-                                      ? null
-                                      : errorBorder,
-                                ),
-                              ),
-                            ),
-                            if (!mobile) ...[
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                height: desktop ? 44 : 54,
-                                child: FilledButton.icon(
-                                  onPressed: _start,
-                                  icon: Icon(
-                                    Icons.arrow_downward_rounded,
-                                    size: desktop ? 17 : 24,
-                                  ),
-                                  label: Text(s('recv.start')),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        SizedBox(
-                          height: errorLineHeight,
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              left: desktop ? 12 : 40,
-                              top: 3,
-                            ),
-                            child: Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                _error ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: cs.error,
-                                  fontSize: 12,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (mobile)
-                          Padding(
-                            padding: EdgeInsets.only(top: compact ? 0 : 12),
-                            child: FilledButton.icon(
-                              onPressed: _start,
-                              icon: const Icon(Icons.download_rounded),
-                              label: Text(s('recv.start')),
-                            ),
-                          ),
-                        SizedBox(height: compact ? 10 : 14),
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainer,
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                          child: compact
-                              ? Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.folder_outlined,
-                                          size: 17,
-                                          color: cs.primary,
-                                        ),
-                                        const SizedBox(width: 7),
-                                        Expanded(
-                                          child: Text(
-                                            s('recv.save_to'),
-                                            style: theme.textTheme.bodySmall,
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: _chooseDir,
-                                          child: Text(s('recv.change')),
-                                        ),
-                                      ],
-                                    ),
-                                    Tooltip(
-                                      message: MobilePlatform.displayPath(
-                                        saveDir,
-                                      ),
-                                      child: Text(
-                                        MobilePlatform.displayPath(saveDir),
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: cs.onSurfaceVariant,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Row(
-                                  children: [
-                                    Icon(
-                                      Icons.folder_outlined,
-                                      size: 19,
-                                      color: cs.primary,
-                                    ),
-                                    const SizedBox(width: 9),
-                                    Text(
-                                      '${s('recv.save_to')}: ',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        MobilePlatform.displayPath(saveDir),
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (!MobilePlatform.isMobile)
-                                      TextButton(
-                                        onPressed: _chooseDir,
-                                        child: Text(s('recv.change')),
-                                      ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                inputCard,
                 if (receives.isEmpty)
                   EmptyState(
                     icon: Icons.download_done_rounded,
