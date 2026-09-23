@@ -23,6 +23,18 @@ class DesktopFakeCore extends CoreStateNotifier {
   final requests = <List<String>>[];
   final receives = <String>[];
   final closed = <String>[];
+  final cancelled = <String>[];
+
+  void setTransfers(List<TransferInfo> transfers) {
+    state = state.copyWith(
+      transfers: {
+        for (final transfer in transfers) transfer.transferId: transfer,
+      },
+    );
+  }
+
+  @override
+  void cancelTransfer(String id) => cancelled.add(id);
 
   @override
   String startReceive(String codeOrLink, {String? saveDir}) {
@@ -203,6 +215,57 @@ void main() {
     expect(find.text('ABCD-EFGH12'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'current share shows live progress and cancels only its transfer',
+    (tester) async {
+      final core = DesktopFakeCore();
+      await mount(tester, core);
+      tester.widget<DropTarget>(find.byType(DropTarget)).onDragDone!(
+        dropped(['/tmp/alpha.txt']),
+      );
+      await tester.pumpAndSettle();
+      TransferInfo transfer(
+        String id,
+        String share,
+        int done, {
+        String state = 'transferring',
+      }) => TransferInfo.fromJson({
+        'transfer_id': id,
+        'share_id': share,
+        'role': 'sender',
+        'state': state,
+        'bytes_total': 104857600,
+        'bytes_done': done,
+        'rate_bps': 8388608,
+        'eta_sec': 50,
+      });
+      core.setTransfers([
+        transfer('first', 'desktop-share', 52428800),
+        transfer('second', 'desktop-share', 26214400),
+        transfer('other', 'other-share', 1048576),
+      ]);
+      await tester.pump();
+      expect(find.text('50.0%'), findsOneWidget);
+      expect(find.text('25.0%'), findsOneWidget);
+      expect(find.text('1.0 MiB/s'), findsNWidgets(2));
+      expect(find.text('ETA 50s'), findsNWidgets(2));
+      expect(find.byKey(const ValueKey('sending-other')), findsNothing);
+      await tester.ensureVisible(find.byKey(const ValueKey('cancel-first')));
+      await tester.tap(find.byKey(const ValueKey('cancel-first')));
+      expect(core.cancelled, ['first']);
+      expect(core.closed, isEmpty);
+      core.setTransfers([
+        transfer('first', 'desktop-share', 104857600, state: 'completed'),
+      ]);
+      await tester.pump();
+      expect(find.text('100.0%'), findsOneWidget);
+      expect(find.text('Completed'), findsOneWidget);
+      expect(find.byKey(const ValueKey('cancel-first')), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('pin button immediately reflects the selected state', (
     tester,

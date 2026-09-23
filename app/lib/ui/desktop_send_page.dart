@@ -10,9 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../ffi/core_client.dart';
+import '../state/format.dart';
 import '../state/models.dart';
 import '../state/providers.dart';
 import 'send_page.dart';
+import 'widgets.dart';
 
 class DesktopSendPage extends ConsumerStatefulWidget {
   const DesktopSendPage({super.key});
@@ -332,6 +334,13 @@ class _ShareResult extends ConsumerWidget {
     final s = ref.watch(sProvider);
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final transfers = ref.watch(
+      coreStateProvider.select(
+        (state) => state.transfersForShare(share?.id ?? ''),
+      ),
+    )..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final live = transfers.where((transfer) => !transfer.isTerminal).toList();
+    final visibleTransfers = live.isNotEmpty ? live : transfers.take(1);
     if (share == null || (share!.code.isEmpty && share!.isActive)) {
       return _SendBody(
         children: [
@@ -396,6 +405,10 @@ class _ShareResult extends ConsumerWidget {
             color: colors.onSurfaceVariant,
           ),
         ),
+        for (final transfer in visibleTransfers) ...[
+          const SizedBox(height: 10),
+          _SendingProgress(transfer: transfer),
+        ],
         const SizedBox(height: 12),
         Text(
           '${s('send.code_label')} · ${s.state(share!.state)}',
@@ -441,6 +454,78 @@ class _ShareResult extends ConsumerWidget {
         ],
         const SizedBox(height: 6),
         TextButton(onPressed: onAgain, child: Text(s('send.again'))),
+      ],
+    );
+  }
+}
+
+class _SendingProgress extends ConsumerWidget {
+  const _SendingProgress({required this.transfer});
+  final TransferInfo transfer;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(sProvider);
+    final theme = Theme.of(context);
+    return Column(
+      key: ValueKey('sending-${transfer.transferId}'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                s.state(transfer.state),
+                style: theme.textTheme.labelMedium,
+              ),
+            ),
+            Text(
+              formatPercent(transfer.fraction),
+              style: theme.textTheme.labelMedium,
+            ),
+            if (!transfer.isTerminal)
+              IconButton(
+                key: ValueKey('cancel-${transfer.transferId}'),
+                tooltip: s('recv.cancel'),
+                onPressed: () => ref
+                    .read(coreStateProvider.notifier)
+                    .cancelTransfer(transfer.transferId),
+                icon: const Icon(Icons.close, size: 16),
+              ),
+          ],
+        ),
+        LinearProgressIndicator(
+          value: transfer.bytesTotal > 0
+              ? transfer.fraction
+              : (transfer.isTerminal ? 0 : null),
+          color: stateColor(context, transfer.state),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          '${formatBytes(transfer.bytesDone)} / ${formatBytes(transfer.bytesTotal)}',
+          style: theme.textTheme.bodySmall,
+        ),
+        if (!transfer.isTerminal)
+          Wrap(
+            spacing: 12,
+            children: [
+              Text(
+                formatRate(transfer.rateBps),
+                style: theme.textTheme.bodySmall,
+              ),
+              Text(
+                '${s('recv.eta')} ${formatEta(transfer.etaSec)}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        if (transfer.state == 'failed' && transfer.errorCode.isNotEmpty)
+          Text(
+            s.errorCode(transfer.errorCode),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
       ],
     );
   }
