@@ -14,6 +14,8 @@ import '../platform/notifications.dart';
 import '../platform/tray.dart';
 import '../state/format.dart';
 import '../state/providers.dart';
+import '../state/notifications.dart';
+import 'notifications_page.dart';
 import 'desktop_send_page.dart';
 import 'desktop_layout.dart';
 import 'receive_page.dart';
@@ -196,6 +198,9 @@ class _ShellState extends ConsumerState<Shell> {
   Widget build(BuildContext context) {
     final s = ref.watch(sProvider);
     final index = ref.watch(navIndexProvider);
+    final unread = ref.watch(
+      notificationInboxProvider.select((v) => v.unreadCount),
+    );
     ref.listen<CoreState>(coreStateProvider, _onCoreChange);
     ref.listen<String>(languageProvider, (_, _) {
       DesktopTray.instance.setMenu(ref.read(sProvider));
@@ -206,6 +211,7 @@ class _ShellState extends ConsumerState<Shell> {
       isDesktopTheme(context) ? const DesktopSendPage() : const SendPage(),
       const ReceivePage(),
       const SettingsPage(),
+      const NotificationsPage(),
     ];
     final page = Column(
       children: [
@@ -230,6 +236,7 @@ class _ShellState extends ConsumerState<Shell> {
           child: DesktopLayout(
             strings: s,
             selectedIndex: index,
+            notificationCount: unread,
             onSelected: (i) => ref.read(navIndexProvider.notifier).set(i),
             child: page,
           ),
@@ -273,6 +280,14 @@ class _ShellState extends ConsumerState<Shell> {
             NavigationDestination(
               icon: const Icon(Icons.settings_outlined),
               label: s('nav.settings'),
+            ),
+            NavigationDestination(
+              icon: Badge(
+                isLabelVisible: unread > 0,
+                label: Text('$unread'),
+                child: const Icon(Icons.notifications_outlined),
+              ),
+              label: s('nav.notifications'),
             ),
           ],
         ),
@@ -326,6 +341,14 @@ class _ShellState extends ConsumerState<Shell> {
                   icon: const Icon(Icons.settings_outlined),
                   selectedIcon: const Icon(Icons.settings),
                   label: Text(s('nav.settings')),
+                ),
+                NavigationRailDestination(
+                  icon: Badge(
+                    isLabelVisible: unread > 0,
+                    label: Text('$unread'),
+                    child: const Icon(Icons.notifications_outlined),
+                  ),
+                  label: Text(s('nav.notifications')),
                 ),
               ],
             ),

@@ -71,6 +71,8 @@ type Hub struct {
 	closed       bool
 	relayGlobal  *relay.Limiter
 	queueDropped atomic.Uint64
+
+	notifications []byte
 }
 
 // Stats is a snapshot of counters for /metrics and /healthz.
@@ -107,6 +109,8 @@ type Peer struct {
 	sessions map[string]*Session
 	relay    *relay.Limiter
 	joined   time.Time
+
+	notifications bool
 }
 
 // Share is a registered take-code.
@@ -176,6 +180,8 @@ func NewHub(o Options) *Hub {
 		codes:       codes.NewRegistry(),
 		perIP:       make(map[string]*ipLimiter),
 		relayGlobal: relay.NewLimiter(o.RelayGlobalRateLimit),
+
+		notifications: []byte(`{"type":"notifications","items":[]}`),
 	}
 	if o.ClaimRateGlobal > 0 {
 		h.global = rate.NewLimiter(rate.Limit(o.ClaimRateGlobal), max(o.ClaimBurstGlobal, 1))
@@ -380,7 +386,7 @@ func (h *Hub) onHello(p *Peer, env Envelope, data []byte) {
 	p.hello = true
 	p.app = m.App
 	p.platform = m.Platform
-	h.mu.Unlock()
+	p.notifications = m.Notifications
 	p.send(WelcomeMsg{
 		Envelope:     Envelope{Type: "welcome", ID: env.ID},
 		PeerID:       p.ID,
@@ -388,6 +394,10 @@ func (h *Hub) onHello(p *Peer, env Envelope, data []byte) {
 		HeartbeatSec: h.opt.HeartbeatSec,
 		ServerTime:   h.opt.Now().Unix(),
 	})
+	if p.notifications {
+		p.sink.SendText(h.notifications)
+	}
+	h.mu.Unlock()
 	h.log.Info("peer hello", "peer", p.ID, "app", m.App, "version", m.Version, "platform", m.Platform)
 }
 
@@ -779,4 +789,17 @@ func (p *Peer) send(v any) {
 
 func (p *Peer) sendError(id int64, code, msg string) {
 	p.send(ErrorMsg{Envelope: Envelope{Type: "error", ID: id}, Code: code, Message: msg})
+}
+
+// SetNotifications updates the snapshot and queues it in the same order for all
+// opted-in peers, including a peer concurrently completing hello.
+func (h *Hub) SetNotifications(snapshot []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.notifications = append([]byte(nil), snapshot...)
+	for _, p := range h.peers {
+		if p.hello && p.notifications {
+			p.sink.SendText(h.notifications)
+		}
+	}
 }

@@ -18,18 +18,23 @@ class DesktopNotifier {
   LinuxFlutterLocalNotificationsPlugin? _linux;
   FlutterLocalNotificationsWindows? _windows;
   bool _ready = false;
+  Future<void>? _initialization;
   int _seq = 0;
 
-  Future<void> init() async {
+  Future<void> init() => _initialization ??= _initialize();
+
+  Future<void> _initialize() async {
     if (kIsWeb) return;
     try {
       if (Platform.isLinux) {
         _linux = LinuxFlutterLocalNotificationsPlugin();
-        _ready = await _linux!.initialize(
-          settings: const LinuxInitializationSettings(
-            defaultActionName: 'Open',
-          ),
-        ) ?? true;
+        _ready =
+            await _linux!.initialize(
+              settings: const LinuxInitializationSettings(
+                defaultActionName: 'Open',
+              ),
+            ) ??
+            true;
       } else if (Platform.isWindows) {
         _windows = FlutterLocalNotificationsWindows();
         _ready = await _windows!.initialize(
@@ -55,6 +60,8 @@ class DesktopNotifier {
   }
 
   Future<void> show(String title, String body) async {
+    // A fast first snapshot can arrive while permission setup is still pending.
+    await init();
     if (!_ready) return;
     try {
       final id = ++_seq;

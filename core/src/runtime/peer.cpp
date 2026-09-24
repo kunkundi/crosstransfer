@@ -59,6 +59,7 @@ bool Peer::Connect(std::string* error) {
   p.app = cfg_.app.c_str();
   p.version = cfg_.version.c_str();
   p.platform = cfg_.platform.c_str();
+  p.on_notifications = &Peer::OnNotifications;
   p.on_signal_status = &Peer::OnSignalStatus;
   p.on_share_event = &Peer::OnShareEvent;
   p.on_claim_result = &Peer::OnClaimResult;
@@ -175,6 +176,14 @@ void Peer::RemoveDataSink(const std::string& session_id, const DataSink* expecte
   std::shared_lock<std::shared_mutex> gate_lock(gate->mutex);     \
   if (!gate->open || !gate->peer) return;                         \
   Peer* self = gate->peer;
+
+void Peer::OnNotifications(const char* json, void* ud) {
+  CT_PEER_GATE(ud)
+  std::string snapshot = S(json);
+  self->loop_->Post([self, snapshot]() {
+    if (self->cbs_.on_notifications) self->cbs_.on_notifications(snapshot);
+  });
+}
 
 void Peer::OnSignalStatus(MiniRtcSignalStatus st, const char* peer_id, void* ud) {
   CT_PEER_GATE(ud)

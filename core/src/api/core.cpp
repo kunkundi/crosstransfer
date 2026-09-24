@@ -157,6 +157,12 @@ bool Core::EnsurePeer(std::string* error) {
     return false;
   }
   Peer::Callbacks cbs;
+  cbs.on_notifications = [this](const std::string& snapshot) {
+    auto ev = nlohmann::json::parse(snapshot, nullptr, false);
+    if (!ev.is_object() || !ev.contains("items") || !ev["items"].is_array()) return;
+    notifications_ = ev["items"];
+    Emit({{"type", "notifications"}, {"items", notifications_}});
+  };
   cbs.on_signal = [this](MiniRtcSignalStatus st, const std::string& pid) { OnSignal(st, pid); };
   cbs.on_share = [this](MiniRtcShareEvent ev, const std::string& sid, const std::string& code,
                         int64_t exp, const std::string& detail) {
@@ -977,6 +983,7 @@ nlohmann::json Core::QueryLocked(const std::string& what) {
   }
   if (what == "config" || what == "all") {
     out["config"] = cfg_.ToJson();
+    out["notifications"] = notifications_;
     out["signal_connected"] = signal_connected_;
     out["peer_id"] = peer_id_;
   }

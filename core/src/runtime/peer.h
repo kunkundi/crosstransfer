@@ -70,6 +70,7 @@ class DataSink {
 class Peer {
  public:
   struct Callbacks {
+    std::function<void(const std::string&)> on_notifications;
     std::function<void(MiniRtcSignalStatus, const std::string& peer_id)> on_signal;
     std::function<void(MiniRtcShareEvent, const std::string& share_id,
                        const std::string& code, int64_t expires_at,
@@ -117,6 +118,7 @@ class Peer {
 
  private:
   struct Gate;
+  static void OnNotifications(const char*, void*);
   static void OnSignalStatus(MiniRtcSignalStatus, const char*, void*);
   static void OnShareEvent(MiniRtcShareEvent, const char*, const char*, int64_t, const char*, void*);
   static void OnClaimResult(MiniRtcClaimResult, const char*, const char*, const char*, void*);

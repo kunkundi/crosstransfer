@@ -50,6 +50,7 @@ type ICEServer struct {
 // --- client → server ---
 
 type HelloMsg struct {
+	Notifications bool `json:"notifications,omitempty"`
 	Envelope
 	App      string `json:"app"`
 	Version  string `json:"version"`

@@ -16,6 +16,9 @@ import (
 
 // Config is the complete server configuration.
 type Config struct {
+	AdminToken       string `yaml:"admin_token"`       // CT_ADMIN_TOKEN; empty disables administration
+	NotificationFile string `yaml:"notification_file"` // CT_NOTIFICATION_FILE
+
 	DownloadURL    string `yaml:"download_url"`    // CT_DOWNLOAD_URL, HTTPS release/download page
 	AssociationDir string `yaml:"association_dir"` // CT_ASSOCIATION_DIR, generated platform association JSON
 
@@ -65,6 +68,7 @@ type Config struct {
 func Default() Config {
 	return Config{
 		Listen:               ":8080",
+		NotificationFile:     "notifications.json",
 		TURNPort:             3478,
 		TURNPortRange:        "49152-65535",
 		TURNRealm:            "crosstransfer",
@@ -158,6 +162,8 @@ func (c *Config) applyEnv(lookup func(string) (string, bool)) error {
 		return nil
 	}
 
+	str("CT_ADMIN_TOKEN", &c.AdminToken)
+	str("CT_NOTIFICATION_FILE", &c.NotificationFile)
 	str("CT_DOWNLOAD_URL", &c.DownloadURL)
 	str("CT_ASSOCIATION_DIR", &c.AssociationDir)
 	str("CT_LISTEN", &c.Listen)
@@ -221,6 +227,15 @@ func (c *Config) applyEnv(lookup func(string) (string, bool)) error {
 
 // Validate checks cross-field constraints.
 func (c *Config) Validate() error {
+	if c.AdminToken != "" {
+		if len(c.AdminToken) < 32 || strings.TrimSpace(c.AdminToken) != c.AdminToken || strings.ContainsAny(c.AdminToken, "\r\n") {
+			return errors.New("admin_token must contain at least 32 bytes with no surrounding whitespace or line breaks")
+		}
+		if strings.TrimSpace(c.NotificationFile) == "" {
+			return errors.New("notification_file is required when admin is enabled")
+		}
+	}
+
 	if c.DownloadURL != "" {
 		u, err := url.Parse(c.DownloadURL)
 		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {

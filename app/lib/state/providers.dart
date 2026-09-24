@@ -12,6 +12,7 @@ import '../platform/mobile.dart';
 import '../i18n/strings.dart';
 import 'app_prefs.dart';
 import 'models.dart';
+import 'notification_model.dart';
 
 /// Overridden in main() once the data directory is known.
 final appPrefsProvider = Provider<AppPrefs>((ref) => throw UnimplementedError());
@@ -36,7 +37,7 @@ final languageProvider =
 
 final sProvider = Provider<S>((ref) => S(ref.watch(languageProvider)));
 
-/// Which page the shell shows: 0 send, 1 receive, 2 settings.
+/// Which page the shell shows: 0 send, 1 receive, 2 settings, 3 notifications.
 class NavIndexNotifier extends Notifier<int> {
   @override
   int build() => 0;
@@ -72,6 +73,7 @@ class CoreState {
     this.transfers = const {},
     this.config = const CoreConfig({}),
     this.lastError,
+    this.notifications,
   });
 
   final String signalState;
@@ -81,6 +83,7 @@ class CoreState {
   final Map<String, TransferInfo> transfers; // transfer id -> info
   final CoreConfig config;
   final CoreError? lastError;
+  final List<ServiceNotification>? notifications;
 
   bool get serviceAvailable => config.serviceAvailable;
 
@@ -116,6 +119,7 @@ class CoreState {
     Map<String, TransferInfo>? transfers,
     CoreConfig? config,
     CoreError? lastError,
+    List<ServiceNotification>? notifications,
   }) {
     return CoreState(
       signalState: signalState ?? this.signalState,
@@ -125,6 +129,7 @@ class CoreState {
       transfers: transfers ?? this.transfers,
       config: config ?? this.config,
       lastError: lastError ?? this.lastError,
+      notifications: notifications ?? this.notifications,
     );
   }
 }
@@ -176,12 +181,20 @@ class CoreStateNotifier extends Notifier<CoreState> {
       receives: receives,
       transfers: transfers,
       config: CoreConfig(cfg is Map<String, dynamic> ? cfg : const {}),
+      notifications: q['notifications'] is List
+          ? ServiceNotification.parseList(q['notifications']) : null,
     );
   }
 
   void _onEvent(CoreEvent ev) {
     final type = ev['type'];
     switch (type) {
+      case 'notifications':
+        if (ev['items'] is List) {
+          state = state.copyWith(
+            notifications: ServiceNotification.parseList(ev['items']),
+          );
+        }
       case 'signal_state':
         state = state.copyWith(
           signalState: ev['state'] is String ? ev['state'] : state.signalState,

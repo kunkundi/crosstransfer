@@ -149,6 +149,7 @@ class Core {
   std::unique_ptr<Peer> peer_;
   std::string peer_id_;
   bool signal_connected_ = false;
+  nlohmann::json notifications_ = nullptr; // null until first server snapshot
 
   std::map<std::string, Share> shares_;              // by local id
   std::deque<std::string> share_create_queue_;       // local ids awaiting share_created

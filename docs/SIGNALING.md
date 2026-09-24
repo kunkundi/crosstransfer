@@ -14,7 +14,7 @@
 
 | 方向 | type | 字段 | 回复 |
 | --- | --- | --- | --- |
-| C→S | `hello` | `app`, `version`, `platform`, `proto`=1 | `welcome{peer_id, ice_servers[], heartbeat_sec, server_time}` |
+| C→S | `hello` | `app`, `version`, `platform`, `proto`=1, `notifications`(可选 bool) | `welcome{peer_id, ice_servers[], heartbeat_sec, server_time}` |
 | C→S | `create_share` | `mode`("once"/"open"), `ttl_sec`, `meta`(≤16 KiB JSON) | `share_created{share_id, code, code_display, expires_at, mode}` |
 | C→S | `close_share` | `share_id` | `ok`；已配对接收端收到 `session_end{reason:"share_closed"}` |
 | C→S | `claim` | `code` 或 `resume_token` | 成功：双方 `session_start`（接收端的带请求 `id`）；失败：`error{code}` |
@@ -26,6 +26,18 @@
 `session_start` 字段：`session_id`(16 hex)、`share_id`、`role`("sender"/"receiver")、`remote_peer_id`、`ice_servers[]`、`resume_token`(32 hex)、`resumed`、`meta`(仅接收端)。
 
 `ice_servers[]` 与 WebRTC `RTCIceServer` 同形：`{urls[], username?, credential?, expires_at?}`；TURN 凭据为 coturn REST 算法（`<expiry>:<peer_id>` / base64(HMAC-SHA1)），有效期 `CT_TURN_CRED_TTL`。
+
+## 运营通知扩展
+
+支持通知的客户端在 `hello` 中设置 `notifications: true`。服务端在 `welcome` 之后发送完整有效通知列表，并在发布或撤回后发送新快照；未声明该能力的旧客户端不会收到扩展消息，协议版本仍为 1。
+
+```json
+{"type":"notifications","items":[{"id":"0123456789abcdef0123456789abcdef","title":"服务维护","body":"维护详情","level":"maintenance","created_at":1780000000}]}
+```
+
+`id` 是服务端随机生成的 32 位十六进制 ID；`created_at` 为 Unix 秒；`level` 为 `info` / `important` / `maintenance`。列表按发布时间从新到旧，最多 50 条，空列表表示清空；客户端以此快照替换本地缓存，并按 ID 保存已读/已提醒状态。正文和标题分别最多 2000/120 个 Unicode 码点，完整消息小于 1 MiB。所有 peer 的入队顺序与持久化提交顺序一致，hello 与更新并发时也不会回退到旧快照。
+
+此扩展不包含取件码、身份或传输数据，不开放客户端发通知能力。管理接口和存储设置见 SELF_HOSTING「通知管理后台」。MiniRTC 的 `on_notifications` 回调将借用的 JSON 交给 core；core 发送 `notifications` 事件并在 `CtQuery(all)` 的 `notifications` 字段中保留快照（首次同步前为 null），供 Flutter 启动时补取。
 
 ## 错误码
 

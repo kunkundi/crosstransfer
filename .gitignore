@@ -14,6 +14,8 @@
 # server
 /server/ctserver
 /server/bin/
+/server/notifications.json
+/notifications.json
 
 # logs / local runs
 logs/

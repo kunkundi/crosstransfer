@@ -208,6 +208,7 @@ void PeerConnection::OnWsStatus(WsStatus status) {
                     {"version", params_.version},
                     {"platform", params_.platform},
                     {"proto", kProtoVersion}};
+      if (params_.on_notifications) hello["notifications"] = true;
       hello_sent_ = ws_->SendText(hello.dump());
       return;  // CONNECTED is reported on welcome
     }
@@ -264,6 +265,9 @@ void PeerConnection::OnWsText(const std::string& text) {
   const std::string type = Str(j, "type");
   if (type == "welcome") {
     HandleWelcome(j);
+  } else if (type == "notifications") {
+    if (params_.on_notifications && j.contains("items") && j["items"].is_array() && j["items"].size() <= 50)
+      params_.on_notifications(text.c_str(), params_.user_data);
   } else if (type == "share_created") {
     HandleShareCreated(j);
   } else if (type == "share_closed") {

@@ -13,8 +13,10 @@ services:
       CT_TURN_PORT_RANGE: ${CT_TURN_PORT_RANGE:-49152-65535}
       CT_TURN_SECRET: ${CT_TURN_SECRET:?set a long random secret}
       CT_LOG_JSON: "true"
+      CT_NOTIFICATION_FILE: ${CT_NOTIFICATION_FILE:-/var/lib/ctserver/data/notifications.json}
     volumes:
       - acme:/var/lib/ctserver/acme
+      - data:/var/lib/ctserver/data
     healthcheck:
       test: ["/ctserver", "-healthz"]
       interval: 30s
@@ -23,3 +25,4 @@ services:
 
 volumes:
   acme:
+  data:

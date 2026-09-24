@@ -22,7 +22,7 @@
 | 2 | 断线续传用 `resume_token`；`once` 码失效后仍可凭 token 恢复 |
 | 3 | 第一版 DTLS-SRTP、信任服务器转发的指纹；协议预留 `auth` 字段供 SPAKE2 升级 |
 | 4 | 输入取件码即视为同意，`offer` 到达直接开始；进度页可取消 |
-| 5 | 服务端无账号、纯内存、单实例；不存文件；`claim` 限速；TURN 内嵌 pion/turn，可切外部 coturn |
+| 5 | 客户端无账号、服务端单实例；传输状态仅在内存，不存文件；运营通知独立持久化，管理端由独立密钥保护；`claim` 限速；TURN 内嵌 pion/turn，可切外部 coturn |
 | 6 | 固定由接收端发 offer |
 | 7 | 全部专有许可；依赖允许 MPL / BSD / Boost / Apache / MIT，以及已审计的 ISC、Unicode/ICU、Zlib、libpng、FTL/IJG、public-domain；Linux GTK/GLib 仅限系统动态链接例外；ICE 使用 libjuice + miniupnpc；无 ICE-TCP / TURN-TCP，由 WSS 中继兜底 |
 | 8 | 第一版不做浏览器接收页，落地页仅"用 App 打开 / 下载" |
@@ -66,7 +66,13 @@
 | WSS 中继兜底 | ICE 失败时，会话双方经 `relay` 二进制帧在同一条 WSS 上转发；服务端按 `session_id` 转发、按连接限速；UI 提示"中继模式" |
 | 运维 | `/healthz`、结构化日志、可选 Prometheus `/metrics`；TLS 支持自带证书或 ACME；Dockerfile + compose；配置用环境变量 + 可选 YAML |
 
-不做：用户账号、持久身份、历史记录、文件中转存储。服务器不接触文件内容。
+不做：用户账号、持久身份、传输历史记录、文件中转存储。服务器不接触文件内容。
+
+### 运营通知（2026-09-25）
+
+运营者通过 `/admin/` 管理页使用独立的 `CT_ADMIN_TOKEN` 登录，发布纯文本标题、正文与通知级别，查看最近 50 条记录并撤回。管理接口使用 Bearer 鉴权；未配置密钥时关闭后台。`CT_NOTIFICATION_FILE` 指定通知 JSON 文件，原子替换保存成功后才推送，容器单独挂载数据卷。保留最近 50 条记录（含撤回）；新通知替换最旧记录。
+
+客户端在 `hello` 中声明 `notifications: true`，服务端在 welcome 后、发布或撤回时发送 `notifications{items:[{id,title,body,level,created_at}]}` 完整有效列表。旧客户端不接收此扩展。复用既有 WSS、MiniRTC → core → Flutter 事件链，不增加公共轮询接口。客户端提供通知中心、未读标记、全部已读、本地缓存与系统提醒；重连同步并按 ID 去重，批量补收仅提醒最新一条。服务端撤回或记录超出保留上限后，客户端下次同步移除。操作系统终止/挂起应用时不保证即时到达，下次连接补收；本阶段不接入 APNs/FCM。
 
 ### 信令协议 v1
 

@@ -5,7 +5,7 @@
 
 服务端二进制内置 Go 依赖版权/许可文本，可运行 `ctserver -licenses` 查看；容器使用 `docker run --rm <镜像> -licenses`。清单覆盖 `go.mod` 中的 15 个直接/间接模块和 Go 运行时，`tools/check_go_notices.py` 与 CI 核对源码许可和模块版本。ISC 等既有许可的项目白名单解释仍见 `docs/LICENSE_AUDIT.md`。
 
-CrossTransfer 服务是单实例、内存状态的 Go 进程，提供 `/ws` 信令、取件码、TURN-UDP 和 WSS 中继。服务器不保存传输文件；第一版仍信任服务器转发的 DTLS 指纹。重启会清空分享、会话和服务器端续传令牌，因此升级应安排在活动传输结束后。
+CrossTransfer 服务是单实例、传输状态仅保存在内存的 Go 进程，提供 `/ws` 信令、取件码、TURN-UDP 和 WSS 中继。服务器不保存传输文件；第一版仍信任服务器转发的 DTLS 指纹。重启会清空分享、会话和服务器端续传令牌，因此升级应安排在活动传输结束后。
 
 当前代码处于阶段 5 验收，正式下载包、生产域名和签名身份尚未配置。以下命令供运营者在自己控制的机器上部署，仓库中的 `example.com` 和文档 IP 必须替换。
 
@@ -91,6 +91,53 @@ docker compose logs --tail=100 ctserver
 - `/healthz` 返回存活、版本、连接/分享/会话/TURN 数量。`ctserver -healthz` 使用相同的 YAML/环境设置，并为 ACME 提供正确的 SNI；此本机存活探针不验证服务端证书，不代表公网证书验收。
 - `CT_METRICS=true` 开启 Prometheus 文本 `/metrics`。该路由没有独立鉴权，应由内部代理访问策略保护。默认关闭。
 - 指标包括 `ct_peers`、`ct_sessions`、`ct_turn_allocations`、`ct_relay_bytes_total`、`ct_relay_dropped_total` 和 claim 成功/失败/限速计数。WSS 中继限速通过丢弃非可靠帧实现，客户端负责降速和重传。
+
+## 通知管理后台
+
+新版本客户端在「通知」页面查看服务公告，支持未读标记、通知详情、全部已读和本地离线缓存。服务端提供独立的运营后台 `/admin/`，无需额外前端构建。未设置 `CT_ADMIN_TOKEN` 时后台及其接口均不开放。
+
+运营者使用独立随机密钥启用后台，不要复用 TURN secret：
+
+```sh
+# 密钥保存在受权限保护的环境文件或部署密钥中。
+openssl rand -hex 32
+```
+
+将生成的值填入服务配置并重启：
+
+```dotenv
+CT_ADMIN_TOKEN=<上一步生成的随机密钥，至少32字节>
+CT_NOTIFICATION_FILE=/var/lib/ctserver/data/notifications.json
+```
+
+随后访问 `https://<服务域名>/admin/`，输入该管理密钥登录。公网必须通过 HTTPS 访问；也可由反向代理进一步限制后台来源 IP。浏览器仅在当前页面内存中保留密钥，刷新或退出后重新输入。此密钥拥有发布和撤回全部通知的权限；轮换时更新服务端配置并重启，旧密钥立即失效。密钥不写入客户端或页面源码。
+
+后台可填写标题（1–120 字）、正文（1–2000 字）和类型（一般、重要、维护），预览后发布；发布记录支持撤回。通知以纯文本显示，内容面向所有连接到此实例、支持通知功能的客户端，不应包含私密信息。发布成功表示已保存并排入在线连接发送队列，不表示所有终端已经展示或已读；本版本不采集客户端阅读回执。
+
+- 最近 50 条记录（含撤回）保存在通知文件中，新记录替换最旧记录；写入失败会返回错误，不会推送。
+- 在线客户端通过现有 WSS 实时接收；重连同步完整有效列表，按 ID 去重。离线补收多条时只对最新一条发系统提醒，所有条目仍进入通知中心。
+- 撤回或超出保留上限的记录在客户端下一次同步时移除；已经出现的操作系统通知无法撤回。
+- 应用被系统终止或挂起时，下次连接才补收；未接入 APNs/FCM。系统提醒受系统权限控制，通知中心不依赖此权限。
+- 管理记录在服务重启后保留，分享、会话和传输续传令牌仍按原有规则清空。备份通知文件即可备份公告记录。仅允许一个服务进程写同一个通知文件。
+
+直接运行二进制默认使用当前目录的 `notifications.json`。Docker Compose 已挂载 `data` 卷并指定 `/var/lib/ctserver/data/notifications.json`；容器以 UID/GID 65532 运行，已有卷或 bind mount 需确保该 UID 可写。若覆盖文件路径，必须同步挂载对应目录，否则重建容器会丢失记录。文件不存在时从空记录开始，已存在但无法解析的文件会使启动失败，避免静默丢失公告。
+
+内部自动化也可调用同源接口（请求头 `Authorization: Bearer <管理密钥>`）：
+
+| 方法 | 路径 | 请求/响应 |
+| --- | --- | --- |
+| GET | `/admin/api/notifications` | `{"items":[...]}`，包含已撤回记录 |
+| POST | `/admin/api/notifications` | JSON `{title,body,level}`，`level` 为 `info` / `important` / `maintenance`；成功 201 |
+| DELETE | `/admin/api/notifications/{id}` | 撤回，重复撤回幂等；成功 204 |
+
+本地端到端回归（先构建 developer 原生库及服务端）：
+
+```sh
+python3 tools/test_notifications.py --server server/ctserver \
+  --library build/macosx/arm64/release/libcrosstransfer_native.dylib
+```
+
+脚本使用隔离的临时密钥、目录和回环端口，验证 HTTP 发布 → WSS → MiniRTC → Ct 回调/查询、重启保留、重连补收及撤回。新通知功能需要一并更新服务端和客户端原生库；`Ct` 的公共 ABI 不变，内部 MiniRTC 参数结构新增回调，需与调用方一起重编译。
 
 ## 下载与手机链接
 

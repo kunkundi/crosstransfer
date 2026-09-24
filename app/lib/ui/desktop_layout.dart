@@ -106,11 +106,13 @@ class DesktopLayout extends ConsumerWidget {
     super.key,
     required this.strings,
     required this.selectedIndex,
+    this.notificationCount = 0,
     required this.onSelected,
     required this.child,
   });
   final S strings;
   final int selectedIndex;
+  final int notificationCount;
   final ValueChanged<int> onSelected;
   final Widget child;
 
@@ -126,6 +128,7 @@ class DesktopLayout extends ConsumerWidget {
           (0, LogicalKeyboardKey.digit1),
           (1, LogicalKeyboardKey.digit2),
           (2, LogicalKeyboardKey.digit3),
+          (3, LogicalKeyboardKey.digit4),
           (2, LogicalKeyboardKey.comma),
         ])
           SingleActivator(key, meta: mac, control: !mac): () =>
@@ -149,6 +152,13 @@ class DesktopLayout extends ConsumerWidget {
                       _tab(context, 0, 'nav.send', mac, activity.sending),
                       _tab(context, 1, 'nav.receive', mac, activity.receiving),
                       _tab(context, 2, 'nav.settings', mac, 0),
+                      _tab(
+                        context,
+                        3,
+                        'nav.notifications',
+                        mac,
+                        notificationCount,
+                      ),
                     ],
                   ),
                 ),
@@ -175,7 +185,7 @@ class DesktopLayout extends ConsumerWidget {
       child: Semantics(
         selected: selected,
         label: count > 0
-            ? '${strings(label)}, ${strings('activity.running').replaceFirst('{n}', '$count')}'
+            ? '${strings(label)}, ${strings(index == 3 ? 'notifications.unread_count' : 'activity.running').replaceFirst('{n}', '$count')}'
             : null,
         child: Container(
           decoration: BoxDecoration(

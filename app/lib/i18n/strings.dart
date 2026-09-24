@@ -22,6 +22,18 @@ class S {
 }
 
 const Map<String, String> _zh = {
+  'nav.notifications': '通知',
+  'notifications.read_all': '全部已读',
+  'notifications.empty': '暂无通知',
+  'notifications.empty_hint': '服务公告和更新消息会显示在这里。',
+  'notifications.offline': '当前离线，显示已缓存的通知。连接后自动同步。',
+  'notifications.info': '一般通知',
+  'notifications.important': '重要通知',
+  'notifications.maintenance': '维护通知',
+  'notifications.unread': '未读',
+  'notifications.unread_count': '{n} 条未读',
+  'notifications.close': '关闭',
+
   'about.tagline': '跨设备文件传输',
   'about.description': '通过取件码、链接或二维码，在设备间发送和接收文件。',
   'about.version_details': '版本信息',
@@ -221,6 +233,20 @@ const Map<String, String> _zh = {
 };
 
 const Map<String, String> _en = {
+  'nav.notifications': 'Notices',
+  'notifications.read_all': 'Mark all read',
+  'notifications.empty': 'No notifications',
+  'notifications.empty_hint':
+      'Service announcements and updates will appear here.',
+  'notifications.offline':
+      'Offline. Showing saved notices; they will sync when connected.',
+  'notifications.info': 'Announcement',
+  'notifications.important': 'Important',
+  'notifications.maintenance': 'Maintenance',
+  'notifications.unread': 'Unread',
+  'notifications.unread_count': '{n} unread',
+  'notifications.close': 'Close',
+
   'about.tagline': 'File transfer across devices',
   'about.description': 'Send and receive files between devices using a take code, link or QR code.',
   'about.version_details': 'Version information',

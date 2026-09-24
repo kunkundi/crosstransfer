@@ -144,3 +144,27 @@ func TestQuotaConfigValidationAndOverrides(t *testing.T) {
 		}
 	}
 }
+
+func TestNotificationConfig(t *testing.T) {
+	cfg := Default()
+	cfg.TURNPort = 0
+	cfg.AdminToken = "short"
+	if cfg.Validate() == nil {
+		t.Fatal("short admin token accepted")
+	}
+	cfg.AdminToken = "0123456789abcdef0123456789abcdef"
+	cfg.NotificationFile = ""
+	if cfg.Validate() == nil {
+		t.Fatal("missing persistence path accepted")
+	}
+	values := map[string]string{"CT_ADMIN_TOKEN": "abcdef0123456789abcdef0123456789", "CT_NOTIFICATION_FILE": "/tmp/notices.json"}
+	if err := cfg.applyEnv(func(k string) (string, bool) { v, ok := values[k]; return v, ok }); err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.NotificationFile != values["CT_NOTIFICATION_FILE"] || cfg.AdminToken != values["CT_ADMIN_TOKEN"] {
+		t.Fatal("environment not applied")
+	}
+}

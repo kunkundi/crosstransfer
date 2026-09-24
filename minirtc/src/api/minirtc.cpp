@@ -52,6 +52,7 @@ MiniRtcPeer* MiniRtcCreate(const MiniRtcParams* p) {
   pp.on_receive_data = p->on_receive_data;
   pp.on_net_stats = p->on_net_stats;
   pp.user_data = p->user_data;
+  pp.on_notifications = p->on_notifications;
   minirtc::InitLogger(pp.log_dir);
   auto* peer = new MiniRtcPeer;
   peer->pc = std::make_unique<PeerConnection>(std::move(pp));

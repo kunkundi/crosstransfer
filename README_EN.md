@@ -7,6 +7,7 @@ A proprietary P2P file-transfer application for Windows, macOS, Linux, iOS and A
 - Flutter UI and Dart FFI over a shared C++ core and a data-only MiniRTC engine maintained in this repository.
 - Direct P2P, TURN over UDP, and WSS relay fallback, with DTLS-SRTP protecting file traffic.
 - English and Chinese UI, directories and empty files, progress, cancellation, resume and multi-receiver shares.
+- A notification inbox with unread markers and reconnect catch-up; the server admin console publishes, revokes and persists announcements.
 - A desktop Quick Drop basket opens from the tray and turns dropped files or folders directly into a take-code.
 - Mobile system sharing, native QR scanning, export and imported-copy cleanup; Android foreground service and limited iOS background execution.
 - Publisher-operated Go signaling service with automatic client connection with no accounts or file storage. The first version trusts server-forwarded DTLS fingerprints; SPAKE2 authentication is not implemented.

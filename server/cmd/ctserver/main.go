@@ -1,5 +1,5 @@
 // Command ctserver is the CrossTransfer signaling / take-code / TURN / relay
-// server. It is stateless across restarts and keeps everything in memory.
+// server. Transfer state is in memory; publisher notifications are persisted.
 package main
 
 import (
@@ -19,6 +19,7 @@ import (
 	"crosstransfer/server/internal/config"
 	"crosstransfer/server/internal/legal"
 	"crosstransfer/server/internal/metrics"
+	"crosstransfer/server/internal/notification"
 	sig "crosstransfer/server/internal/signal"
 	"crosstransfer/server/internal/turn"
 	"golang.org/x/crypto/acme/autocert"
@@ -120,6 +121,14 @@ func run() error {
 	})
 
 	mux := http.NewServeMux()
+	if cfg.AdminToken != "" {
+		store, err := notification.Open(cfg.NotificationFile, hub.SetNotifications)
+		if err != nil {
+			return fmt.Errorf("notification store: %w", err)
+		}
+		notification.Register(mux, cfg.AdminToken, store)
+	}
+
 	mux.Handle("/ws", sig.ServeWS(hub, sig.WSOptions{
 		MaxConnections:      cfg.MaxConnections,
 		MaxConnectionsPerIP: cfg.MaxConnectionsPerIP,

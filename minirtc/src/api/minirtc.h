@@ -139,6 +139,9 @@ typedef void (*MiniRtcOnNetStats)(const char* session_id,
                                   const MiniRtcNetStats* stats,
                                   void* user_data);
 
+/** Complete publisher notification snapshot; JSON is borrowed during callback. */
+typedef void (*MiniRtcOnNotifications)(const char* json, void* user_data);
+
 /** Peer parameters. Strings are copied by MiniRtcCreate. */
 typedef struct MiniRtcParams {
   const char* server_host;   /**< signaling host (no scheme) */
@@ -165,6 +168,7 @@ typedef struct MiniRtcParams {
   MiniRtcOnReceiveData on_receive_data;
   MiniRtcOnNetStats on_net_stats;
   void* user_data;
+  MiniRtcOnNotifications on_notifications;
 } MiniRtcParams;
 
 /* ---- API ------------------------------------------------------------ */

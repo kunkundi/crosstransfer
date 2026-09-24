@@ -14,6 +14,7 @@ class AppPrefs {
   final String dataDir;
   final File _file;
   Map<String, dynamic> _values = {};
+  Future<void> _pendingWrite = Future.value();
 
   Map<String, dynamic> get values => _values;
 
@@ -34,10 +35,16 @@ class AppPrefs {
     } else {
       _values[key] = value;
     }
-    try {
-      await _file.parent.create(recursive: true);
-      await _file.writeAsString(jsonEncode(_values));
-    } catch (_) {}
+    final snapshot = jsonEncode(_values);
+    _pendingWrite = _pendingWrite.then((_) async {
+      try {
+        await _file.parent.create(recursive: true);
+        final temporary = File('${_file.path}.tmp');
+        await temporary.writeAsString(snapshot, flush: true);
+        await temporary.rename(_file.path);
+      } catch (_) {}
+    });
+    await _pendingWrite;
   }
 
   String get language {

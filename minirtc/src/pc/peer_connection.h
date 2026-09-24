@@ -50,6 +50,7 @@ struct PeerParams {
   MiniRtcOnReceiveData on_receive_data = nullptr;
   MiniRtcOnNetStats on_net_stats = nullptr;
   void* user_data = nullptr;
+  MiniRtcOnNotifications on_notifications = nullptr;
 };
 
 // One WSS connection, N sessions. Implements signaling protocol v1
