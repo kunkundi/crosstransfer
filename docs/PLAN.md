@@ -205,6 +205,8 @@ once 模式：close_share，code 失效
 
 发送端：`Sweep`（按 pacer 速率顺序发全部块）→ `Repair`（按 SACK 空洞重发）→ `file_done`。速率来自 `MiniRtcGetLinkEstimate` 的 BWE，不可用时按 SACK 丢包率 AIMD。接收端 `pwrite` 到 `<name>.ctpart`，位图周期性持久化到 `transfers.json`，完成后校验 SHA-256 改名，同名加后缀。目录用 `/` 相对路径，拒绝绝对路径、`..`、驱动器前缀、控制字符、平台保留名；空文件直接创建；任一侧失败以 `error` 收敛并清理。WSS 中继模式下同一协议经 `relay` 帧承载，块大小不变。
 
+完成时序（2026-09-25）：接收端校验全部文件后保留连接与续传记录，处于 `verifying`，等待发送端处理最后的 `file_ok` 并回复 `transfer_done`，再报告完成。兼容现有发送端在完成时直接关闭 once 分享或离开会话：只有本地所有文件已验证，才允许 `share_closed` / `peer_left` 收敛为完成；未验证、异常断线或取消不得因此误报完成。不用固定退出延迟替代对端确认。
+
 ## 六、仓库布局
 
 ```text

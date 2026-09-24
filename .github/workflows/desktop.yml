@@ -202,7 +202,7 @@ jobs:
       - name: Commercial client service policy (offline test domain)
         if: runner.os == 'macOS'
         run: |
-          xmake f --ct_developer=n --ct_service_host=service-policy.invalid --ct_link_host=share-policy.invalid -y
+          xmake f -p macosx -a arm64 -m release --ct_native=y --ct_tests=y --ct_cli=y --target_minver=12.0 --ct_developer=n --ct_service_host=service-policy.invalid --ct_link_host=share-policy.invalid -y
           xmake build -y core_tests ct_cli crosstransfer_native
           xmake run core_tests --test-case='service policy*,managed settings*'
           python3 tools/check_client_service.py build/macosx/arm64/release/libcrosstransfer_native.dylib

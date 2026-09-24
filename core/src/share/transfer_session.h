@@ -9,7 +9,7 @@
  *              files ok on `file_ok`, sends `transfer_done`.
  *   receiver : on `offer` chooses final names, starts a ReceiverTransfer,
  *              replies `accept` with per-file have-runs, relays file_ok /
- *              file_bad, finishes on `transfer_done` (or its own all-done).
+ *              file_bad, waits for sender confirmation after verifying all files.
  *
  * All methods run on the core EventLoop. Progress and state changes are
  * reported through Callbacks (also on the loop).
@@ -153,6 +153,7 @@ class TransferSession : public std::enable_shared_from_this<TransferSession> {
   bool paused_ = false;
   bool progress_scheduled_ = false;
   bool done_sent_ = false;
+  bool sender_confirmed_ = false;
 
   Manifest manifest_;
   std::vector<std::filesystem::path> files_;

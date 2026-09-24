@@ -155,6 +155,15 @@ void TransferSession::OnPathChanged(MiniRtcPath path) {
 
 void TransferSession::OnSessionEnd(const std::string& reason) {
   if (Terminal(snap_.state)) return;
+  // Existing senders may close a once share or leave immediately after they
+  // receive the last file_ok, before their queued transfer_done is delivered.
+  // A normal close is sufficient only when every local file was verified.
+  if (!is_sender_ && receiver_ && receiver_->Finished() &&
+      (reason == "share_closed" || reason == "peer_left")) {
+    sender_confirmed_ = true;
+    OnReceiverAllDone();
+    return;
+  }
   Fail("session_end", reason);
 }
 
@@ -388,8 +397,17 @@ void TransferSession::OnReceiverFileVerified(uint16_t index, bool ok, const std:
 }
 
 void TransferSession::OnReceiverAllDone() {
+  if (Terminal(snap_.state)) return;
   snap_.bytes_done = snap_.bytes_total;
   snap_.files_done = snap_.files_total;
+  // Enqueuing file_ok in KCP does not mean the sender has received it. Keep
+  // the connection and resume record alive until the sender confirms, so a
+  // CLI exit (or core linger timer) cannot discard the final acknowledgement.
+  if (!sender_confirmed_) {
+    SetState(TransferState::kVerifying);
+    EmitProgress(true);
+    return;
+  }
   SetState(TransferState::kCompleted);
   if (cbs_.on_persist) cbs_.on_persist(nullptr);  // clear the resume record
   EmitProgress(true);
@@ -436,9 +454,9 @@ void TransferSession::OnCtrlMessage(const std::string& json) {
     HandleFileAck(j, false);
   } else if (type == "transfer_done") {
     if (!is_sender_) {
-      // Sender says everything was sent; our own all-done drives completion,
-      // but if we are already complete this is a no-op.
-      if (receiver_ && receiver_->Finished() && snap_.state != TransferState::kCompleted) {
+      sender_confirmed_ = true;
+      // A peer message must never bypass our own SHA-256 verification.
+      if (receiver_ && receiver_->Finished()) {
         OnReceiverAllDone();
       }
     }

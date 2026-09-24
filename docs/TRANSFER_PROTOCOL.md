@@ -30,6 +30,8 @@ KCP 单条消息最多 127 个分片，因此 JSON 文档按 `kCtrlChunk` = 16 K
 | 双向 | `cancel` | `reason` | 取消；接收端删除 `.ctpart` |
 | 双向 | `error` | `code`, `msg` | 致命错误，会话终止 |
 
+全部文件验证并发送 `file_ok` 后，接收端进入 `verifying`，保留会话及续传记录；收到发送端的 `transfer_done` 才报告 `completed`。发送控制消息入队不等于已经送达，不能依赖固定的退出延迟。兼容既有发送端完成后立即关闭 once 分享或离开会话：本地文件已全部验证时，正常的 `share_closed` / `peer_left` 也可结束接收；未验证的文件、异常掉线或已经取消的任务不因此误报完成。`transfer_done` 先于本地验证时仍须等待验证完成。
+
 ### manifest
 
 ```json

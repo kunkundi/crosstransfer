@@ -191,3 +191,14 @@ Desktop `35658256959` 的 Windows 已通过 MPL 源码门禁、OpenSSL/原生构
 | Linux x86_64 deb | [CrossTransfer-linux-x86_64](https://github.com/kunkundi/crosstransfer/actions/runs/35660167218/artifacts/10667687772) |
 
 下载的 Windows installer 为 12,626,852 字节，SHA-256 `9ff3dc7b9ba2525487e3452c6bbd3d7f96c78f18663bcf5e3cc2fdf5ca64b868`。校验文件使用 Windows CRLF，可用支持该格式的读取器核对。隔离容器内解包后，20 项法律资产与 WebRTC PATENTS 原文均一致；实际 DLL 清单包含 Flutter、项目/插件库、dartjni/cnativeapi 与官方 MSVC Redist。记录在 `/tmp/ct-phase5-windows-installer-inventory.log`，安装包与解包目录在 `dist/ci-35660167218-windows/`。
+
+
+## Desktop #19 完成确认竞态修复（2026-09-25）
+
+[Desktop Phase 2 #19](https://github.com/kunkundi/crosstransfer/actions/runs/36054589559) 的 Windows、Linux 已通过；macOS 在 `Trusted WSS and wrong-host rejection` 失败。接收端日志显示文件校验和接收完成，但发送端随后收到 `peer_left`、报告 `session_end`，脚本等待发送端退出 15 秒超时。接收端将最后一个 `file_ok` 放入发送队列就报告完成，CLI 的短暂退出延迟不能保证消息已被发送端处理。
+
+接收端现在在全部文件验证后保留连接和续传记录，等待 `transfer_done`。兼容现有发送端完成后立即关闭分享或离开的顺序：本地已验证所有文件时，正常 `share_closed` / `peer_left` 也可结束接收。新增确定性回归覆盖确认延迟、重复确认、正常关闭、提前确认但未验证、异常断线和取消后的迟到确认；旧代码在新增测试中有 12 条断言失败，修复后全部通过。
+
+同时修正 [Desktop #18](https://github.com/kunkundi/crosstransfer/actions/runs/35782844630) 已暴露的后续商用构建步骤：切换 xmake 配置时显式启用 `ct_native`、测试和 CLI，并固定 macOS arm64/12.0，避免 `crosstransfer_native` 目标消失。
+
+本机验证：39 项 core / 937 条断言；可信 WSS 与错误主机名证书拒绝；Dart FFI ↔ CLI 双向完整性；每路 4 接收端 × 8 MiB 的 P2P、TURN、限速 TURN、WSS、限速 WSS 五组传输与状态回收；商用原生库编译、配置策略测试及 C ABI 检查均通过。此处记录本机回归，修复尚未推送，远程完整矩阵需在推送后重新验证。
